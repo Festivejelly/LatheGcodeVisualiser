@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>G-Code Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
+  <script type="module" crossorigin src="/assets/index-xeYk4D-j.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-F6MSeozr.css">
+</head>
+
+<body>
+    <canvas id="gcodeCanvas" width="800" height="600" style="background-color: #b4b4b4;"></canvas>
+    <br />
+
+    <div id="controlsContainer">
+        <div id="gcodeContainer" style="position: relative;">
+            <div id="gcodeEditor" style="height: 200px; width: 100%;"></div>
+            <!-- <textarea id="gcodeInput" rows="10" cols="50" placeholder="Enter G-Code here"
+                style="position: relative; background: transparent;"></textarea> -->
+        </div>
+
+        <div class="innerContainer">
+            <button id="simulateButton">Simulate</button>
+            <button id="clearButton">Clear</button>
+            <input type="file" id="fileInput" accept=".txt,.gcode">
+        </div>
+        <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
+            <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
+            <div id="sliderLabel" style="text-align: center;"></div>
+        </div>
+        <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
+            <input type="checkbox" id="showCuts" checked> Show Cut Moves
+            </label>
+            <label>
+                <input type="checkbox" id="showNonCuts" checked>
+                Show Non-Cut Moves
+            </label>
+        </div>
+    </div>
+</body>
+
+</html>
