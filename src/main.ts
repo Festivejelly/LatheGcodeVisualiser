@@ -24,10 +24,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const displayOptionsContainer = document.getElementById('displayOptionsContainer') as HTMLDivElement;
   const clearButton = document.getElementById('clearButton') as HTMLButtonElement;
 
+
   // Initialize the Ace Editor
   const editor = ace.edit("gcodeEditor");
   editor.setTheme("ace/theme/github_dark");
   editor.session.setMode("ace/mode/plain_text");
+  //dont show print margin
+  editor.setShowPrintMargin(false);
+
   updatePlaceholder();
 
   let currentX = 0;
@@ -46,6 +50,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
     }
+
+    fileInput.value = '';
 
     // Reset and hide the slider
     progressSlider.value = "0";
@@ -122,7 +128,6 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.onload = (e) => {
       const content = (e.target as FileReader).result as string;
       editor.setValue(content); // Set content in Ace Editor
-      fileInput.value = ''; // Reset the file input after setting the content
     };
     reader.readAsText(file);
   }
