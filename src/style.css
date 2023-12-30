@@ -70,11 +70,11 @@ button {
   font-family: inherit;
   background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: background-color 0.25s;
 }
 
 button:hover {
-  border-color: #646cff;
+  background-color: #646cff;
 }
 
 button:focus,
@@ -140,12 +140,22 @@ button:focus-visible {
   margin: 5px;
 }
 
-#backdrop {
-  position: absolute;
-  width: 100%;
-  background-color: lightblue;
-  opacity: 0.5;
-  pointer-events: none;
-  display: none;
-  /* Initially hidden */
+input[type="file"]::file-selector-button {
+  border: 2px solid #6c5ce7;
+  padding: 0.2em 0.4em;
+  border-radius: 0.2em;
+  background-color: #1a1a1a;
+  transition: 0.25s;
+}
+
+input[type="file"]::-ms-browse:hover {
+  background-color: #646cff;
+}
+
+input[type="file"]::-webkit-file-upload-button:hover {
+  background-color: #646cff;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: #646cff;
 }
