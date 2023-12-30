@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const editor = ace.edit("gcodeEditor");
   editor.setTheme("ace/theme/github_dark");
   editor.session.setMode("ace/mode/plain_text");
+  updatePlaceholder();
 
   let currentX = 0;
   let currentZ = 0;
@@ -41,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   clearButton.addEventListener('click', () => {
     editor.setValue(''); // Clear the editor
-
+    updatePlaceholder();
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
     }
@@ -90,6 +91,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  function updatePlaceholder() {
+    // Get the current content of the editor
+    const content = editor.getValue();
+    // Check if the content is empty and set the placeholder
+    if (content === '') {
+      editor.setValue('Paste your gcode here or click choose file to upload');
+      // Move the cursor to the start to avoid the placeholder text being immediately deleted
+      editor.gotoLine(1, 0);
+      // If the editor is in focus, clear the placeholder (simulate the placeholder behavior)
+      editor.on('focus', function () {
+        if (editor.getValue() === 'Paste your gcode here or click choose file to upload') {
+          editor.setValue('');
+        }
+      });
+    }
+  }
+
   function updateSliderLabel(command: GCodeCommand | undefined) {
     if (command?.lineNumber !== undefined) {
       editor.gotoLine(command.lineNumber, 0, true); // Highlight the line in the editor
@@ -104,6 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.onload = (e) => {
       const content = (e.target as FileReader).result as string;
       editor.setValue(content); // Set content in Ace Editor
+      fileInput.value = ''; // Reset the file input after setting the content
     };
     reader.readAsText(file);
   }
