@@ -36,12 +36,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let currentX = 0;
   let currentZ = 0;
-  let previsousCanvasX = 0;
-  let previsousCanvasZ = 0;
+  let previousCanvasX = 0;
+  let previousCanvasZ = 0;
+  let initialOffsetX = 0;
+  let initialOffsetZ = 0;
+  let offSetFromScreenEdgeZ = 1;
   let canvasX = 0;
   let canvasZ = 0;
   let scaleFactor = 20;
   let drawableCommands: GCodeCommand[] = [];
+  let commands: GCodeCommand[] = [];
 
 
   clearButton.addEventListener('click', () => {
@@ -72,8 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
   simulateButton.addEventListener('click', () => {
     const content = editor.getValue();
     if (content) {
-      parseGCode(content);
-      draw(drawableCommands);
+      commands = parseGCode(content);
+      draw(commands, drawableCommands);
 
       sliderContainer.style.display = 'block';
       displayOptionsContainer.style.display = 'block';
@@ -90,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (scaledValue < drawableCommands.length) {
           const command = drawableCommands[scaledValue];
-          draw(drawableCommands, scaledValue);
+          draw(commands, drawableCommands, scaledValue);
           updateSliderLabel(command);
         }
       };
@@ -180,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleCheckboxChange() {
     progressSlider.value = '0';
-    draw(drawableCommands, drawableCommands.length); // Redraw the entire set of commands
+    draw(commands, drawableCommands, drawableCommands.length); // Redraw the entire set of commands
   }
 
   function calculateDynamicScaleFactor(commands: GCodeCommand[], canvasWidth: number, canvasHeight: number): number {
@@ -219,43 +223,59 @@ document.addEventListener("DOMContentLoaded", () => {
     return scale;
   }
 
-  function draw(commands: GCodeCommand[], progress?: number) {
+  function draw(commands: GCodeCommand[], drawableCommands: GCodeCommand[], progress?: number) {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     currentX = 0;
     currentZ = 0;
-    previsousCanvasX = canvas.height;
-    previsousCanvasZ = canvas.width;
 
-    const maxCount = progress !== undefined ? Math.min(progress + 1, commands.length) : commands.length;
+    // Apply the initial absolute offset
+    for (const command of commands) {
+      if (!command.isRelative) {
+        if (command.x !== undefined) {
+          initialOffsetX = command.x * scaleFactor;
+        }
+        if (command.z !== undefined) {
+          initialOffsetZ = command.z * scaleFactor;
+        }
+      }
+      else if (command.isRelative) {
+        break;
+      }
+    }
+
+    previousCanvasX = (canvas.height / 2) - initialOffsetX;
+    previousCanvasZ = canvas.width - initialOffsetZ - offSetFromScreenEdgeZ;
+
+    const maxCount = progress !== undefined ? Math.min(progress + 1, drawableCommands.length) : drawableCommands.length;
 
     for (let i = 0; i < maxCount; i++) {
-      drawCommand(commands[i]);
+      drawCommand(drawableCommands[i]);
     }
   }
 
-  function drawCommand(command: GCodeCommand) {
+  function drawCommand(drawableCommands: GCodeCommand) {
     if (!ctx) return;
     ctx.lineWidth = 2;
-    if (command.isRelative) {
-      currentX += command.x ?? 0;
-      currentZ += command.z ?? 0;
+    if (drawableCommands.isRelative) {
+      currentX += drawableCommands.x ?? 0;
+      currentZ += drawableCommands.z ?? 0;
     }
 
-    canvasX = canvas.height - (currentX * scaleFactor);
-    canvasZ = canvas.width - (currentZ * scaleFactor);
+    canvasX = (canvas.height / 2) - initialOffsetX - (currentX * scaleFactor);
+    canvasZ = canvas.width - initialOffsetZ - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
 
-    if ((command.isCut && showCuts.checked) || (!command.isCut && showNonCuts.checked)) {
+    if ((drawableCommands.isCut && showCuts.checked) || (!drawableCommands.isCut && showNonCuts.checked)) {
       ctx.beginPath();
-      ctx.strokeStyle = command.isCut ? cutLineColour : nonCutLineColour;
-      ctx.moveTo(previsousCanvasZ, previsousCanvasX);
+      ctx.strokeStyle = drawableCommands.isCut ? cutLineColour : nonCutLineColour;
+      ctx.moveTo(previousCanvasZ, previousCanvasX);
       ctx.lineTo(canvasZ, canvasX);
       ctx.stroke();
     }
 
-    previsousCanvasX = canvasX;
-    previsousCanvasZ = canvasZ;
+    previousCanvasX = canvasX;
+    previousCanvasZ = canvasZ;
   }
 });
