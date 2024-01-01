@@ -8,31 +8,63 @@
 </head>
 
 <body>
-    <canvas id="gcodeCanvas" width="800" height="600" style="background-color: #242424;"></canvas>
-    <br />
+    <div class="main-container">
+        <div class="controls-container">
+            <div id="gcodeContainer" style="position: relative;">
+                <div id="gcodeEditor" style="height: 200px; width: 100%;"></div>
+            </div>
+            <div class="innerContainer">
+                <input type="file" id="fileInput" accept=".txt,.gcode">
+            </div>
+            <div class="innerContainer">
+                <button id="simulateButton">Simulate</button>
+                <button id="clearButton">Clear</button>
+            </div>
+            <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
+                <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
+                <div id="sliderLabel" style="text-align: center;"><br>Drag to see moves</div>
+            </div>
+            <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
+                <input type="checkbox" id="showCuts" checked> Show Cut Moves
+                </label>
+                <label>
+                    <input type="checkbox" id="showNonCuts" checked>
+                    Show Non-Cut Moves
+                </label>
+            </div>
+            <div class="innerContainer" id="loadAndSave" style="display: none;">
+                <hr>
+                <div class="innerContainer toolbar">
+                    <input type="text" class="saveGCodeNameInput" placeholder="name of save"></input>
+                    <button class="saveGCodeButton" title="Save GCode to local browser storage">Save local</button>
+                </div>
+                <div class="innerContainer toolbar">
+                    <select class="loadGCodeSelect"></select>
+                    <button class="loadGCodeButton" title="Load GCode from local browser storage">Load</button>
+                    <button class="deleteGCodeButton" title="Delete GCode from local browser storage">Delete</button>
+                </div>
+                <hr>
+            </div>
 
-    <div id="controlsContainer">
-        <div id="gcodeContainer" style="position: relative;">
-            <div id="gcodeEditor" style="height: 200px; width: 100%;"></div>
+            <div id="gcodeSenderContainer" class="innerContainer" style="display: none;">
+
+                <span>Send GCode to CNC</span>
+
+                <div class="innerContainer">
+                    <button id="gcodeSenderButton" title="Send GCode to CNC">Send</button>
+                    <button id="stopButton" style="display: none;">Stop</button>
+                </div>
+            </div>
+
+            <div id="gcodeResponseContainer" style="display: none;">
+                <div id="gcodeResponseHeader">GCode Responses</div>
+                <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
+                <div class="senderError" style="display: none;"></div>
+                <progress max="1" style="display: none;"></progress>
+            </div>
         </div>
-        <div class="innerContainer">
-            <input type="file" id="fileInput" accept=".txt,.gcode">
-        </div>
-        <div class="innerContainer">
-            <button id="simulateButton">Simulate</button>
-            <button id="clearButton">Clear</button>
-        </div>
-        <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
-            <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
-            <div id="sliderLabel" style="text-align: center;"></div>
-        </div>
-        <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
-            <input type="checkbox" id="showCuts" checked> Show Cut Moves
-            </label>
-            <label>
-                <input type="checkbox" id="showNonCuts" checked>
-                Show Non-Cut Moves
-            </label>
+        <div class="canvas-container">
+            <canvas id="gcodeCanvas" width="800" height="600" style="background-color: #242424;"></canvas>
         </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

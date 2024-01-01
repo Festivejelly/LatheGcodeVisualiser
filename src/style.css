@@ -21,11 +21,6 @@ a:hover {
   color: #535bf2;
 }
 
-body {
-  place-items: center;
-  display: grid;
-}
-
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
@@ -97,25 +92,52 @@ button:focus-visible {
   }
 }
 
+.main-container {
+  display: flex;
+  align-items: start;
+}
+
+.controls-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 5px;
+  width: 800px;
+  max-width: 1280px;
+  text-align: center;
+  border: 1px solid #ccc;
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  margin: 5px;
+}
+
 .innerContainer {
   margin: 5px;
   align-items: center;
   width: auto;
 }
 
-#controlsContainer {
+.innerContainer.toolbar {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  width: 800px;
-  max-width: 1280px;
-  text-align: center;
+  gap: 5px;
+  padding: 2px;
+  /* Adjust the space between elements */
+}
+
+.saveGCodeNameInput,
+.loadGCodeSelect {
+  flex-grow: 1;
+  /* Allow input fields to grow and fill available space */
 }
 
 #gcodeCanvas {
-  border: 0px;
+  border: 1px solid #ccc;
 }
 
 #gcodeInput {
@@ -137,7 +159,31 @@ button:focus-visible {
 #gcodeContainer {
   position: relative;
   width: 100%;
-  margin: 5px;
+}
+
+#gcodeSenderContainer {
+  display: block;
+}
+
+.save-group,
+.load-group,
+.import-export-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar input[type="text"],
+.toolbar select {
+  max-width: 200px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  margin: 0;
+  padding: .375rem .75rem;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 input[type="file"]::file-selector-button {
@@ -158,4 +204,47 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 input[type="file"]::file-selector-button:hover {
   background-color: #646cff;
+}
+
+.bottom-container {
+  margin: 5px;
+}
+
+#gcodeResponseContainer {
+  border: 1px solid #ccc;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.senderError {
+  display: none;
+  /* Initially hidden */
+  color: white;
+  /* Text color */
+  background-color: red;
+  /* Background color */
+  padding: 10px;
+  /* Some padding */
+  border-radius: 5px;
+  /* Rounded corners */
+  animation: flashError 1s infinite;
+  /* Apply the animation */
+}
+
+@keyframes flashError {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  /* Fully visible */
+  50% {
+    opacity: 0;
+  }
+
+  /* Completely transparent */
 }

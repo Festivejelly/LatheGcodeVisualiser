@@ -1,3 +1,8 @@
+import { GCode } from './gcode.ts';
+
+export const editor = ace.edit("gcodeEditor");
+export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
+
 type GCodeCommand = {
   x?: number;
   z?: number;
@@ -23,14 +28,43 @@ document.addEventListener("DOMContentLoaded", () => {
   const sliderContainer = document.getElementById('sliderContainer') as HTMLDivElement;
   const displayOptionsContainer = document.getElementById('displayOptionsContainer') as HTMLDivElement;
   const clearButton = document.getElementById('clearButton') as HTMLButtonElement;
+  const saveGCodeNameInput = document.querySelector<HTMLInputElement>('.saveGCodeNameInput')!;
+  const loadSelect = document.querySelector<HTMLSelectElement>('.loadGCodeSelect')!;
+  const loadButton = document.querySelector<HTMLButtonElement>('.loadGCodeButton')!;
+  const saveButton = document.querySelector<HTMLButtonElement>('.saveGCodeButton')!;
+  const deleteButton = document.querySelector<HTMLButtonElement>('.deleteGCodeButton')!;
+  const saveGCodeContainer = document.getElementById('loadAndSave') as HTMLDivElement;
+  const gcodeSenderContainer = document.getElementById('gcodeSenderContainer') as HTMLDivElement;
+  const gcodeResponseContainer = document.getElementById('gcodeResponseContainer') as HTMLDivElement;
+  const gcodeSenderButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
 
+  saveButton.addEventListener('click', () => saveGCode());
+  loadButton.addEventListener('click', () => loadGCode());
+  deleteButton.addEventListener('click', () => deleteGCode());
+
+  new GCode();
+
+  updateLoadSelect();
 
   // Initialize the Ace Editor
-  const editor = ace.edit("gcodeEditor");
+
   editor.setTheme("ace/theme/github_dark");
   editor.session.setMode("ace/mode/plain_text");
   //dont show print margin
   editor.setShowPrintMargin(false);
+
+  gcodeResponseEditor.setTheme("ace/theme/monokai"); // Set the theme to match your style
+  gcodeResponseEditor.session.setMode("ace/mode/text"); // Set mode to plain text or appropriate mode
+  gcodeResponseEditor.setReadOnly(true);
+  gcodeResponseEditor.setShowPrintMargin(false);
+
+  gcodeResponseEditor.getSession().on('change', () => {
+    // Wait for the change to render
+    setTimeout(() => {
+      var lastRow = gcodeResponseEditor.getSession().getLength();
+      gcodeResponseEditor.scrollToLine(lastRow, true, true, function () { });
+    }, 0); // Using 0ms timeout which works in most cases
+  });
 
   updatePlaceholder();
 
@@ -61,6 +95,9 @@ document.addEventListener("DOMContentLoaded", () => {
     progressSlider.value = "0";
     sliderContainer.style.display = 'none';
     displayOptionsContainer.style.display = 'none';
+    saveGCodeContainer.style.display = 'none';
+    gcodeSenderContainer.style.display = 'none';
+    gcodeResponseContainer.style.display = 'none';
   });
 
   fileInput.addEventListener('change', (event) => {
@@ -88,6 +125,10 @@ document.addEventListener("DOMContentLoaded", () => {
       showCuts.addEventListener('change', handleCheckboxChange);
       showNonCuts.addEventListener('change', handleCheckboxChange);
 
+      gcodeSenderButton.addEventListener('click', () => {
+        gcodeResponseContainer.style.display = 'block';
+      });
+
       progressSlider.oninput = () => {
         if (!ctx) return; // Ensure ctx is not null
         const scaledValue = Math.floor(parseInt(progressSlider.value));
@@ -98,8 +139,75 @@ document.addEventListener("DOMContentLoaded", () => {
           updateSliderLabel(command);
         }
       };
+
+      saveGCodeContainer.style.display = 'block';
+      gcodeSenderContainer.style.display = 'block';
+      gcodeResponseContainer.style.display = 'none';
     }
   });
+
+  function saveGCode() {
+    const saveName = saveGCodeNameInput.value.trim();
+    if (!saveName) return; // Handle empty name case
+    const prefixedName = `gCode-${saveName}`;
+    localStorage.setItem(prefixedName, editor.getValue());
+    updateLoadSelect(prefixedName);
+
+    saveGCodeNameInput.value = '';
+  }
+
+  function loadGCode() {
+    const selectedName = loadSelect.value;
+    const gCode = localStorage.getItem(selectedName);
+    if (gCode) {
+      editor.setValue(gCode);
+    }
+  }
+
+  function deleteGCode() {
+    const selectedName = loadSelect.value;
+    localStorage.removeItem(selectedName);
+    updateLoadSelect();
+  }
+
+  function updateLoadSelect(selectedName?: string) {
+    loadSelect.innerHTML = '';
+
+    let hasSavedItems = false;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      // Exclude 'latheCode' from the dropdown options
+      if (key && key !== 'latheCode' && key.startsWith('gCode-')) {
+        hasSavedItems = true;
+        const option = document.createElement('option');
+        const displayName = key.replace('gCode-', '');
+        option.value = key;
+        option.textContent = displayName;
+        loadSelect.appendChild(option);
+
+        if (key === selectedName) {
+          option.selected = true;
+        }
+      }
+    }
+
+    // If no saved items, add a placeholder
+    if (!hasSavedItems) {
+      const placeholderOption = document.createElement('option');
+      placeholderOption.textContent = 'No items saved';
+      placeholderOption.disabled = true; // Make it non-selectable
+      loadSelect.appendChild(placeholderOption);
+    } else {
+      // Sort the keys alphabetically if there are saved items
+      const sortedOptions = Array.from(loadSelect.options)
+        .sort((a, b) => a.text.localeCompare(b.text));
+
+      loadSelect.innerHTML = '';
+      sortedOptions.forEach(option => {
+        loadSelect.appendChild(option);
+      });
+    }
+  }
 
   function updatePlaceholder() {
     // Get the current content of the editor
