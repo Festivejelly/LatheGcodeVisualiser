@@ -33,7 +33,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const loadButton = document.querySelector<HTMLButtonElement>('.loadGCodeButton')!;
   const saveButton = document.querySelector<HTMLButtonElement>('.saveGCodeButton')!;
   const deleteButton = document.querySelector<HTMLButtonElement>('.deleteGCodeButton')!;
-  const saveGCodeContainer = document.getElementById('loadAndSave') as HTMLDivElement;
   const gcodeSenderContainer = document.getElementById('gcodeSenderContainer') as HTMLDivElement;
   const gcodeResponseContainer = document.getElementById('gcodeResponseContainer') as HTMLDivElement;
   const gcodeSenderButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
@@ -57,6 +56,10 @@ document.addEventListener("DOMContentLoaded", () => {
   gcodeResponseEditor.session.setMode("ace/mode/text"); // Set mode to plain text or appropriate mode
   gcodeResponseEditor.setReadOnly(true);
   gcodeResponseEditor.setShowPrintMargin(false);
+
+  gcodeSenderButton.addEventListener('click', () => {
+    gcodeResponseContainer.style.display = 'block';
+  });
 
   gcodeResponseEditor.getSession().on('change', () => {
     // Wait for the change to render
@@ -95,8 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
     progressSlider.value = "0";
     sliderContainer.style.display = 'none';
     displayOptionsContainer.style.display = 'none';
-    saveGCodeContainer.style.display = 'none';
-    gcodeSenderContainer.style.display = 'none';
     gcodeResponseContainer.style.display = 'none';
   });
 
@@ -125,10 +126,6 @@ document.addEventListener("DOMContentLoaded", () => {
       showCuts.addEventListener('change', handleCheckboxChange);
       showNonCuts.addEventListener('change', handleCheckboxChange);
 
-      gcodeSenderButton.addEventListener('click', () => {
-        gcodeResponseContainer.style.display = 'block';
-      });
-
       progressSlider.oninput = () => {
         if (!ctx) return; // Ensure ctx is not null
         const scaledValue = Math.floor(parseInt(progressSlider.value));
@@ -140,9 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       };
 
-      saveGCodeContainer.style.display = 'block';
       gcodeSenderContainer.style.display = 'block';
-      gcodeResponseContainer.style.display = 'none';
     }
   });
 
@@ -300,6 +295,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let cumulativeZ = 0;
     let maxX = 0;
     let maxZ = 0;
+    let minX = 0; // new variable to track the minimum X value
+    let minZ = 0; // new variable to track the minimum Z value
 
     commands.forEach(command => {
       if (command.isRelative) {
@@ -313,23 +310,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
       maxX = Math.max(maxX, Math.abs(cumulativeX));
       maxZ = Math.max(maxZ, Math.abs(cumulativeZ));
+      minX = Math.min(minX, cumulativeX); // update minX
+      minZ = Math.min(minZ, cumulativeZ); // update minZ
     });
 
     // Object size in mm
-    const objectSizeX = maxX; // maxX is radius-like, so diameter is maxX * 2
-    const objectSizeZ = maxZ; // same for Z
+    const objectSizeX = maxX; // calculate objectSizeX as the difference between maxX and minX
+    const objectSizeZ = maxZ - minZ; // calculate objectSizeZ as the difference between maxZ and minZ
 
-    // Base scale: 20 pixels per mm for small objects
-    let baseScale = 40; // 20 pixels per mm
+    // Base scale: 40 pixels per mm for small objects
+    let baseScale = 40; // 40 pixels per mm
+
+    // Adjust base scale for larger objects
+    const xZeroLocation = canvasHeight / 2;
+
+    const screenEdgeMargin = 1; // extra margin to ensure the object fits within the canvas
 
     // Adjust scale for larger objects to fit within canvas
-    const scaleX = canvasWidth / objectSizeX;
-    const scaleZ = canvasHeight / objectSizeZ;
+    const scaleX = xZeroLocation / objectSizeX - screenEdgeMargin;
+    const scaleZ = canvasWidth / objectSizeZ - screenEdgeMargin;
 
     // Choose the smaller scale factor to ensure the object fits within the canvas
     let scale = Math.min(scaleX, scaleZ, baseScale);
     return scale;
-  }
+}
 
   function draw(commands: GCodeCommand[], drawableCommands: GCodeCommand[], progress?: number) {
     if (!ctx) return;
