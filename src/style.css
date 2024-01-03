@@ -1,250 +1,255 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color-scheme: light dark;
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #242424;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+    font-weight: 500;
+    color: #646cff;
+    text-decoration: inherit;
 }
 
 a:hover {
-  color: #535bf2;
+    color: #535bf2;
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+    font-size: 3.2em;
+    line-height: 1.1;
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem;
+    text-align: center;
 }
 
 .logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+    height: 6em;
+    padding: 1.5em;
+    will-change: filter;
+    transition: filter 300ms;
 }
 
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+    filter: drop-shadow(0 0 2em #646cffaa);
 }
 
 .logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #3178c6aa);
+    filter: drop-shadow(0 0 2em #3178c6aa);
 }
 
 .card {
-  padding: 2em;
+    padding: 2em;
 }
 
 .read-the-docs {
-  color: #888;
+    color: #888;
 }
 
 button {
-  border-radius: 3px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: background-color 0.25s;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    padding: 0.6em 1.2em;
+    font-size: 1em;
+    font-weight: 500;
+    font-family: inherit;
+    background-color: #1a1a1a;
+    cursor: pointer;
+    transition: background-color 0.25s;
 }
 
 button:hover {
-  background-color: #646cff;
+    background-color: #646cff;
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+    outline: 4px auto -webkit-focus-ring-color;
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-
-  a:hover {
-    color: #747bff;
-  }
-
-  button {
-    background-color: #f9f9f9;
-  }
+     :root {
+        color: #213547;
+        background-color: #ffffff;
+    }
+    a:hover {
+        color: #747bff;
+    }
+    button {
+        background-color: #f9f9f9;
+    }
 }
 
 .main-container {
-  display: flex;
-  align-items: start;
+    display: flex;
+    align-items: start;
 }
 
 .controls-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: 5px;
-  width: 800px;
-  max-width: 1280px;
-  text-align: center;
-  border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 5px;
+    width: 800px;
+    max-width: 1280px;
+    text-align: center;
+    border: 1px solid #ccc;
 }
 
 .canvas-container {
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  margin: 5px;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    margin: 5px;
 }
 
 .innerContainer {
-  margin: 5px;
-  align-items: center;
-  width: auto;
+    margin: 5px;
+    align-items: center;
+    width: auto;
 }
 
 .innerContainer.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px;
-  /* Adjust the space between elements */
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px;
+    /* Adjust the space between elements */
 }
 
 .saveGCodeNameInput,
 .loadGCodeSelect {
-  flex-grow: 1;
-  /* Allow input fields to grow and fill available space */
+    flex-grow: 1;
+    /* Allow input fields to grow and fill available space */
 }
 
 #gcodeCanvas {
-  border: 1px solid #ccc;
+    border: 1px solid #ccc;
 }
 
 #gcodeInput {
-  position: relative;
-  background: transparent;
-  width: 100%;
-  height: 240px;
-  /* Adjust as needed */
-  font-family: monospace;
-  /* Ensures consistent character width */
-  font-size: 13px;
-  line-height: 1.5;
-  /* Adjust based on your font size */
-  -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
-  box-sizing: border-box;
+    position: relative;
+    background: transparent;
+    width: 100%;
+    height: 240px;
+    /* Adjust as needed */
+    font-family: monospace;
+    /* Ensures consistent character width */
+    font-size: 13px;
+    line-height: 1.5;
+    /* Adjust based on your font size */
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 #gcodeContainer {
-  position: relative;
-  width: 100%;
+    position: relative;
+    width: 100%;
 }
 
 #gcodeSenderContainer {
-  display: block;
+    display: block;
 }
 
 .save-group,
 .load-group,
 .import-export-group {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
 }
 
 .toolbar input[type="text"],
 .toolbar select {
-  max-width: 200px;
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  margin: 0;
-  padding: .375rem .75rem;
-  font-size: 1rem;
-  line-height: 1.5;
+    max-width: 200px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    margin: 0;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
 }
 
 input[type="file"]::file-selector-button {
-  border: 2px solid #6c5ce7;
-  padding: 0.2em 0.4em;
-  border-radius: 0.2em;
-  background-color: #1a1a1a;
-  transition: 0.25s;
+    border: 2px solid #6c5ce7;
+    padding: 0.2em 0.4em;
+    border-radius: 0.2em;
+    background-color: #1a1a1a;
+    transition: 0.25s;
 }
 
 input[type="file"]::-ms-browse:hover {
-  background-color: #646cff;
+    background-color: #646cff;
 }
 
 input[type="file"]::-webkit-file-upload-button:hover {
-  background-color: #646cff;
+    background-color: #646cff;
 }
 
 input[type="file"]::file-selector-button:hover {
-  background-color: #646cff;
+    background-color: #646cff;
 }
 
 .bottom-container {
-  margin: 5px;
+    margin: 5px;
 }
 
 #gcodeResponseContainer {
-  border: 1px solid #ccc;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 5px;
+    border: 1px solid #ccc;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 5px;
 }
 
 .senderError {
-  display: none;
-  /* Initially hidden */
-  color: white;
-  /* Text color */
-  background-color: red;
-  /* Background color */
-  padding: 10px;
-  /* Some padding */
-  border-radius: 5px;
-  /* Rounded corners */
-  animation: flashError 1s infinite;
-  /* Apply the animation */
+    display: none;
+    /* Initially hidden */
+    color: white;
+    /* Text color */
+    background-color: red;
+    /* Background color */
+    padding: 10px;
+    /* Some padding */
+    border-radius: 5px;
+    /* Rounded corners */
+    animation: flashError 1s infinite;
+    /* Apply the animation */
 }
 
 @keyframes flashError {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    /* Fully visible */
+    50% {
+        opacity: 0;
+    }
+    /* Completely transparent */
+}
 
-  0%,
-  100% {
-    opacity: 1;
-  }
+#helpText ul {
+    /* Styles for the unordered list */
+}
 
-  /* Fully visible */
-  50% {
-    opacity: 0;
-  }
-
-  /* Completely transparent */
+#helpText li {
+    /* Styles for list items */
+    margin-bottom: 10px;
+    /* Space between items */
 }
