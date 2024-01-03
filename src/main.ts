@@ -1,4 +1,5 @@
 import { GCode } from './gcode.ts';
+import { exampleGcode } from './example.ts';
 
 export const editor = ace.edit("gcodeEditor");
 export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
@@ -36,6 +37,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const gcodeSenderContainer = document.getElementById('gcodeSenderContainer') as HTMLDivElement;
   const gcodeResponseContainer = document.getElementById('gcodeResponseContainer') as HTMLDivElement;
   const gcodeSenderButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
+  const exampleElement = document.getElementById('exampleCode') as HTMLAnchorElement;
+
+  //modal
+  const helpModal = document.getElementById("helpModal") as HTMLDivElement;
+  const helpBtn = document.getElementById("helpButton") as HTMLButtonElement;
+  const helpSpan = document.getElementById("closeHelpModal") as HTMLSpanElement;
+
+  //modal event listeners
+  helpBtn.onclick = function () {
+    helpModal.style.display = "block";
+  }
+
+  helpSpan.onclick = function () {
+    helpModal.style.display = "none";
+  }
+
+  window.onclick = function (event) {
+    if (event.target == helpModal) {
+      helpModal.style.display = "none";
+    }
+  }
 
   saveButton.addEventListener('click', () => saveGCode());
   loadButton.addEventListener('click', () => loadGCode());
@@ -51,6 +73,8 @@ document.addEventListener("DOMContentLoaded", () => {
   editor.session.setMode("ace/mode/plain_text");
   //dont show print margin
   editor.setShowPrintMargin(false);
+
+  exampleElement.addEventListener('click', () => loadExample());
 
   gcodeResponseEditor.setTheme("ace/theme/monokai"); // Set the theme to match your style
   gcodeResponseEditor.session.setMode("ace/mode/text"); // Set mode to plain text or appropriate mode
@@ -389,5 +413,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     previousCanvasX = canvasX;
     previousCanvasZ = canvasZ;
+  }
+
+  function loadExample() {
+    editor.setValue(exampleGcode);
   }
 });
