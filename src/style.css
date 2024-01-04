@@ -108,10 +108,17 @@ button:focus-visible {
 }
 
 .canvas-container {
-    width: 100%;
-    height: 100%;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     margin: 5px;
+    border: 1px solid #ccc;
+}
+
+.canvas-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .innerContainer {
@@ -135,7 +142,8 @@ button:focus-visible {
 }
 
 #gcodeCanvas {
-    border: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    background-color: #242424;
 }
 
 #gcodeInput {
@@ -252,4 +260,70 @@ input[type="file"]::file-selector-button:hover {
     /* Styles for list items */
     margin-bottom: 10px;
     /* Space between items */
+}
+
+#helpText a {
+    color: #f95959;
+    /* Softer blue for links */
+}
+
+.help-modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.help-modal-content {
+    position: relative;
+    background-color: #242424;
+    margin: 15% auto;
+    padding: 20px;
+    border: 2px solid #6c5ce7;
+    width: 30%;
+}
+
+.zoom-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: #242424;
+}
+
+.zoom-modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px auto;
+    padding: 20px;
+    border: 1px solid #888;
+}
+
+.close-modal {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding-right: 10px;
+    cursor: pointer;
+    font-size: 35px;
+}
+
+#sliderAndButtonContainer {
+    display: flex;
+    justify-content: center;
+    /* This centers the slider and button horizontally */
+    align-items: center;
+    /* This aligns the slider and button vertically */
+    gap: 10px;
+    /* This adds space between the slider and the button */
 }

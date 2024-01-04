@@ -75,6 +75,20 @@ export class Sender {
         return commandPrefixes.some(prefix => command[0].startsWith(prefix));
     }
 
+    async connect() {
+        try {
+            if (!this.port) {
+                await this.selectPort();
+            } else {
+                this.closePort();
+            }
+
+        } catch (error) {
+            console.log(error);
+        }
+        this.statusChangeCallback();
+    }
+
     async start(text: string) {
         if (!text) return;
 

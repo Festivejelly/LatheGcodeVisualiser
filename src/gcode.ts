@@ -8,6 +8,7 @@ export class GCode {
     private stopButton: HTMLButtonElement;
     private senderError: HTMLDivElement;
     private runProgress: HTMLProgressElement;
+    private connectButton: HTMLButtonElement;
 
     private sender: Sender | null = null;
 
@@ -15,8 +16,14 @@ export class GCode {
 
         this.senderError = document.querySelector<HTMLDivElement>('.senderError')!;
         this.runProgress = document.getElementsByTagName('progress')[0];
+        this.connectButton = document.getElementById('connectButton') as HTMLButtonElement;
 
         this.sendButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
+
+        this.connectButton.addEventListener('click', () => {
+            if (!this.sender) this.sender = new Sender(() => this.senderStatusChange());
+            this.sender.connect();
+        });
 
         this.sendButton.addEventListener('click', () => {
             if (!this.sender) this.sender = new Sender(() => this.senderStatusChange());
@@ -35,6 +42,13 @@ export class GCode {
     private senderStatusChange() {
         if (!this.sender) return;
         const status = this.sender.getStatus();
+        if (status.condition === 'disconnected') {
+            this.sendButton.style.display = 'none';
+            return;
+        }else{  
+            this.sendButton.style.display = 'inline-block';
+        }
+
         const isRun = status.condition === 'run';
         if (this.runProgress) {
             this.runProgress.value = status.progress;

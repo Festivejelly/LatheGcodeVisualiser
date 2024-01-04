@@ -4,29 +4,39 @@ import { exampleGcode } from './example.ts';
 export const editor = ace.edit("gcodeEditor");
 export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
 
+enum MovementType {
+  Cut,
+  Travel,
+  Retract
+}
+
 type GCodeCommand = {
   x?: number;
   z?: number;
   isRelative: boolean;
-  isCut?: boolean;
+  movementType?: MovementType;
   lineNumber?: number; // Line number in the original G-code file
   originalLine?: string; // Original line text from the G-code file
 };
 
 const cutLineColour = '#DC143C'
-const nonCutLineColour = '#6B8E23'
+const travelLineColour = '#6B8E23'
+const retractLineColour = '#FFA500'
 
 document.addEventListener("DOMContentLoaded", () => {
-  const canvas = document.getElementById('gcodeCanvas') as HTMLCanvasElement;
-  const ctx = canvas.getContext('2d');
+  const standardCanvas = document.getElementById('gcodeCanvas') as HTMLCanvasElement;
+  const zoomCanvas = document.getElementById('zoomCanvas') as HTMLCanvasElement;
+  let ctx: CanvasRenderingContext2D | null = null;
   const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-  //const gcodeInput = document.getElementById('gcodeInput') as HTMLTextAreaElement;
   const simulateButton = document.getElementById('simulateButton') as HTMLButtonElement;
   const showCuts = document.getElementById('showCuts') as HTMLInputElement;
   const showNonCuts = document.getElementById('showNonCuts') as HTMLInputElement;
   const sliderLabel = document.getElementById('sliderLabel') as HTMLDivElement;
+  const zoomSliderLabel = document.getElementById('zoomSliderLabel') as HTMLDivElement;
   const progressSlider = document.getElementById('progressSlider') as HTMLInputElement;
+  const zoomProgressSlider = document.getElementById('zoomProgressSlider') as HTMLInputElement;
   const sliderContainer = document.getElementById('sliderContainer') as HTMLDivElement;
+  //const zoomSliderContainer = document.getElementById('zoomSliderContainer') as HTMLDivElement;
   const displayOptionsContainer = document.getElementById('displayOptionsContainer') as HTMLDivElement;
   const clearButton = document.getElementById('clearButton') as HTMLButtonElement;
   const saveGCodeNameInput = document.querySelector<HTMLInputElement>('.saveGCodeNameInput')!;
@@ -39,12 +49,48 @@ document.addEventListener("DOMContentLoaded", () => {
   const gcodeSenderButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
   const exampleElement = document.getElementById('exampleCode') as HTMLAnchorElement;
 
-  //modal
+  //modals
   const helpModal = document.getElementById("helpModal") as HTMLDivElement;
   const helpBtn = document.getElementById("helpButton") as HTMLButtonElement;
   const helpSpan = document.getElementById("closeHelpModal") as HTMLSpanElement;
+  const zoomModal = document.getElementById("zoomModal") as HTMLDivElement;
+  const zoomButton = document.getElementById("zoomButton") as HTMLButtonElement;
+  const zoomSpan = document.getElementById("closeZoomModal") as HTMLSpanElement;
+  const zoomCloseButton = document.getElementById("zoomCloseButton") as HTMLButtonElement;
 
-  //modal event listeners
+  zoomCanvas.width = window.visualViewport!.width - 100;
+  zoomCanvas.height = window.visualViewport!.height - 150;
+
+  //on widnow resize, resize the zoom canvas
+  window.addEventListener('resize', function () {
+    zoomCanvas.width = window.visualViewport!.width - 100;
+    zoomCanvas.height = window.visualViewport!.height - 150;
+
+    //set the zoom slider to the start
+    zoomProgressSlider.value = zoomProgressSlider.min;
+
+    //redraw the zoom canvas
+    drawToCanvas(zoomCanvas);
+
+  });
+
+  //zoom modal event listeners
+  zoomButton.onclick = function () {
+    zoomModal.style.display = 'block';
+
+    //draw the zoomed in canvas
+    drawToCanvas(zoomCanvas);
+  };
+
+  zoomSpan.onclick = function () {
+    zoomModal.style.display = "none";
+  }
+
+  zoomCloseButton.onclick = function () {
+    zoomModal.style.display = "none";
+  }
+
+  //help modal event listeners
   helpBtn.onclick = function () {
     helpModal.style.display = "block";
   }
@@ -56,6 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
   window.onclick = function (event) {
     if (event.target == helpModal) {
       helpModal.style.display = "none";
+    }
+    if (event.target == zoomModal) {
+      zoomModal.style.display = "none";
     }
   }
 
@@ -99,27 +148,50 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentZ = 0;
   let previousCanvasX = 0;
   let previousCanvasZ = 0;
-  let initialOffsetX = 0;
-  let initialOffsetZ = 0;
-  let offSetFromScreenEdgeZ = 1;
+  let absX = 0;
+  let absZ = 0;
+  let offSetFromScreenEdgeZ = 5;
   let canvasX = 0;
   let canvasZ = 0;
-  let scaleFactor = 20;
   let drawableCommands: GCodeCommand[] = [];
-  let commands: GCodeCommand[] = [];
+
+  progressSlider.oninput = () => {
+    const progress = Math.floor(parseInt(progressSlider.value));
+
+    if (progress < drawableCommands.length) {
+      const command = drawableCommands[progress];
+      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, standardCanvas);
+      draw(standardCanvas, drawableCommands, scaleFactor, progress);
+      updateSliderLabel(command);
+    }
+  };
+
+  zoomProgressSlider.oninput = () => {
+    const progress = Math.floor(parseInt(zoomProgressSlider.value));
+
+    if (progress < drawableCommands.length) {
+      const command = drawableCommands[progress];
+      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, zoomCanvas);
+      draw(zoomCanvas, drawableCommands, scaleFactor, progress);
+      updateZoomSliderLabel(command);
+    }
+  };
 
 
   clearButton.addEventListener('click', () => {
     editor.setValue(''); // Clear the editor
     updatePlaceholder();
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    }
+    
+    const ctx = standardCanvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, standardCanvas.width, standardCanvas.height); // Clear the canvas
+    
 
     fileInput.value = '';
 
     // Reset and hide the slider
     progressSlider.value = "0";
+    zoomProgressSlider.value = "0";
     sliderContainer.style.display = 'none';
     displayOptionsContainer.style.display = 'none';
     gcodeResponseContainer.style.display = 'none';
@@ -136,34 +208,34 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   simulateButton.addEventListener('click', () => {
+    drawToCanvas(standardCanvas);
+  });
+
+  function drawToCanvas(canvas?: HTMLCanvasElement) {
+    if (!canvas) return; // Ensure cavnas is not null
+
     const content = editor.getValue();
     if (content) {
-      commands = parseGCode(content);
-      draw(commands, drawableCommands);
+      parseGCode(content);
+
+      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, canvas);
+      draw(canvas, drawableCommands, scaleFactor);
 
       sliderContainer.style.display = 'block';
       displayOptionsContainer.style.display = 'block';
 
-      progressSlider.max = drawableCommands.length.toString();
-      progressSlider.value = progressSlider.min; // Start the slider at the beginning
-
       showCuts.addEventListener('change', handleCheckboxChange);
       showNonCuts.addEventListener('change', handleCheckboxChange);
 
-      progressSlider.oninput = () => {
-        if (!ctx) return; // Ensure ctx is not null
-        const scaledValue = Math.floor(parseInt(progressSlider.value));
+      progressSlider.max = (drawableCommands.length - 1).toString();
+      progressSlider.value = progressSlider.min; // Start the slider at the beginning
 
-        if (scaledValue < drawableCommands.length) {
-          const command = drawableCommands[scaledValue];
-          draw(commands, drawableCommands, scaledValue);
-          updateSliderLabel(command);
-        }
-      };
+      zoomProgressSlider.max = (drawableCommands.length - 1).toString();
+      zoomProgressSlider.value = zoomProgressSlider.min; // Start the slider at the beginning
 
       gcodeSenderContainer.style.display = 'block';
     }
-  });
+  }
 
   function saveGCode() {
     const saveName = saveGCodeNameInput.value.trim();
@@ -254,6 +326,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function updateZoomSliderLabel(command: GCodeCommand | undefined) {
+    if (command?.lineNumber !== undefined) {
+      editor.gotoLine(command.lineNumber, 0, true); // Highlight the line in the editor
+      zoomSliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}` || '';
+    } else {
+      zoomSliderLabel.innerHTML = '';
+    }
+  }
+
   function readFile(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -269,15 +350,23 @@ document.addEventListener("DOMContentLoaded", () => {
     drawableCommands = [];
     const lines = data.split('\n');
     lines.forEach((line, index) => {
-      const command: GCodeCommand = { isRelative: isRelative, isCut: line.includes('; cut') };
+      const movementType: MovementType = line.includes('; cut') ? MovementType.Cut : line.includes('; retract') ? MovementType.Retract : MovementType.Travel;
+
+      const command: GCodeCommand = { isRelative: isRelative, movementType };
       const parts = line.match(/([GXYZF])([0-9.-]+)/g);
 
       parts?.forEach(part => {
         const value = parseFloat(part.slice(1));
         switch (part[0]) {
           case 'G':
-            if (value === 90) command.isRelative = false;
-            if (value === 91) command.isRelative = true;
+            if (value === 90) {
+              command.isRelative = false;
+              isRelative = false;
+            }
+            if (value === 91) {
+              command.isRelative = true;
+              isRelative = true;
+            }
             break;
           case 'X':
             command.x = value;
@@ -288,124 +377,140 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      if (command.x !== undefined || command.z !== undefined) {
+      const newCommand: GCodeCommand = {
+        ...command,
+        lineNumber: index + 1,
+        originalLine: line
+      };
 
-        const newCommand: GCodeCommand = {
-          ...command,
-          lineNumber: index + 1,
-          originalLine: line
-        };
-
-        commands.push(newCommand);
-        if (command.isRelative) {
-          drawableCommands.push(newCommand); // Map the command index to the line number
-        }
+      if ((command.z !== undefined) || (command.x !== undefined)) {
+        drawableCommands.push(newCommand);
       }
+      commands.push(newCommand);
 
-      // Update the relative positioning mode for subsequent commands
-      isRelative = command.isRelative;
     });
-    scaleFactor = calculateDynamicScaleFactor(drawableCommands, canvas.width, canvas.height);
     return commands;
   }
 
   function handleCheckboxChange() {
     progressSlider.value = '0';
-    draw(commands, drawableCommands, drawableCommands.length); // Redraw the entire set of commands
+    const scaleFactor = calculateDynamicScaleFactor(drawableCommands, standardCanvas);
+    draw(standardCanvas, drawableCommands, scaleFactor, drawableCommands.length); // Redraw the entire set of commands
   }
 
-  function calculateDynamicScaleFactor(commands: GCodeCommand[], canvasWidth: number, canvasHeight: number): number {
-    let cumulativeX = 0;
-    let cumulativeZ = 0;
+  function calculateDynamicScaleFactor(commands: GCodeCommand[], canvas: HTMLCanvasElement): number {
+    let cumulativeXRelative = 0;
+    let cumulativeZRelative = 0;
+    let largestXAbs = 0;
+    let largestZAbs = 0;
     let maxX = 0;
     let maxZ = 0;
     let minX = 0; // new variable to track the minimum X value
     let minZ = 0; // new variable to track the minimum Z value
+    let baseScale = 0;
+
+    if (canvas.id === 'zoomCanvas') {
+      // Base scale: 40 pixels per mm for small objects
+      baseScale = 80; // 40 pixels per mm
+    } else {
+      baseScale = 40;
+    }
 
     commands.forEach(command => {
       if (command.isRelative) {
         if (command.x !== undefined) {
-          cumulativeX += command.x;
+          cumulativeXRelative += command.x;
         }
         if (command.z !== undefined) {
-          cumulativeZ += command.z;
+          cumulativeZRelative += command.z;
+        }
+      } else {
+        // find the largest X and Z values
+        if (command.x !== undefined) {
+          largestXAbs = Math.min(largestXAbs, command.x);
+        }
+        if (command.z !== undefined) {
+          largestZAbs = Math.max(largestZAbs, command.z);
         }
       }
 
-      maxX = Math.max(maxX, Math.abs(cumulativeX));
-      maxZ = Math.max(maxZ, Math.abs(cumulativeZ));
-      minX = Math.min(minX, cumulativeX); // update minX
-      minZ = Math.min(minZ, cumulativeZ); // update minZ
+      //find the largest X and Z values based on the cumulative values of Absolute and relative movements
+      const sizeX = cumulativeXRelative += largestXAbs;
+      const sizeZ = cumulativeZRelative += largestZAbs;
+
+      largestXAbs = 0;
+      largestZAbs = 0;
+
+      maxX = Math.max(maxX, Math.abs(sizeX));
+      maxZ = Math.max(maxZ, Math.abs(sizeZ));
+      minX = Math.min(minX, sizeX); // update minX
+      minZ = Math.min(minZ, sizeZ); // update minZ
     });
 
     // Object size in mm
     const objectSizeX = maxX; // calculate objectSizeX as the difference between maxX and minX
     const objectSizeZ = maxZ - minZ; // calculate objectSizeZ as the difference between maxZ and minZ
 
-    // Base scale: 40 pixels per mm for small objects
-    let baseScale = 40; // 40 pixels per mm
-
     // Adjust base scale for larger objects
-    const xZeroLocation = canvasHeight / 2;
+    const xZeroLocation = canvas.height / 2;
 
     const screenEdgeMargin = 1; // extra margin to ensure the object fits within the canvas
 
     // Adjust scale for larger objects to fit within canvas
     const scaleX = xZeroLocation / objectSizeX - screenEdgeMargin;
-    const scaleZ = canvasWidth / objectSizeZ - screenEdgeMargin;
+    const scaleZ = canvas.width / objectSizeZ - screenEdgeMargin;
 
     // Choose the smaller scale factor to ensure the object fits within the canvas
     let scale = Math.min(scaleX, scaleZ, baseScale);
     return scale;
-}
+  }
 
-  function draw(commands: GCodeCommand[], drawableCommands: GCodeCommand[], progress?: number) {
+  function draw(canvas: HTMLCanvasElement, drawableCommands: GCodeCommand[], scalingFactor: number, progress?: number) {
+    ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     currentX = 0;
     currentZ = 0;
+    absX = 0;
+    absZ = 0;
+    previousCanvasX = 0;
+    previousCanvasZ = 0;
 
-    // Apply the initial absolute offset
-    for (const command of commands) {
-      if (!command.isRelative) {
-        if (command.x !== undefined) {
-          initialOffsetX = command.x * scaleFactor;
-        }
-        if (command.z !== undefined) {
-          initialOffsetZ = command.z * scaleFactor;
-        }
-      }
-      else if (command.isRelative) {
-        break;
-      }
-    }
-
-    previousCanvasX = (canvas.height / 2) - initialOffsetX;
-    previousCanvasZ = canvas.width - initialOffsetZ - offSetFromScreenEdgeZ;
+    // These values will always be the ABS Zero from the start of the program
+    previousCanvasX = (canvas.height / 2);
+    previousCanvasZ = canvas.width - offSetFromScreenEdgeZ;
 
     const maxCount = progress !== undefined ? Math.min(progress + 1, drawableCommands.length) : drawableCommands.length;
 
     for (let i = 0; i < maxCount; i++) {
-      drawCommand(drawableCommands[i]);
+      drawCommand(canvas, drawableCommands[i], scalingFactor);
     }
   }
 
-  function drawCommand(drawableCommands: GCodeCommand) {
+  function drawCommand(canvas: HTMLCanvasElement, drawableCommand: GCodeCommand, scaleFactor: number) {
+    ctx = canvas.getContext('2d');
     if (!ctx) return;
+
     ctx.lineWidth = 2;
-    if (drawableCommands.isRelative) {
-      currentX += drawableCommands.x ?? 0;
-      currentZ += drawableCommands.z ?? 0;
+    if (drawableCommand.isRelative) {
+      currentX += drawableCommand.x ?? 0;
+      currentZ += drawableCommand.z ?? 0;
+    }
+    else {
+      currentX = drawableCommand.x ?? absX;
+      currentZ = drawableCommand.z ?? absZ;
+      absX = currentX;
+      absZ = currentZ;
     }
 
-    canvasX = (canvas.height / 2) - initialOffsetX - (currentX * scaleFactor);
-    canvasZ = canvas.width - initialOffsetZ - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
+    canvasX = (canvas.height / 2) - (currentX * scaleFactor);
+    canvasZ = canvas.width - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
 
-    if ((drawableCommands.isCut && showCuts.checked) || (!drawableCommands.isCut && showNonCuts.checked)) {
+    if ((drawableCommand.movementType == MovementType.Cut && showCuts.checked) || (drawableCommand.movementType == MovementType.Travel && showNonCuts.checked) || drawableCommand.movementType == MovementType.Retract && showNonCuts.checked) {
       ctx.beginPath();
-      ctx.strokeStyle = drawableCommands.isCut ? cutLineColour : nonCutLineColour;
+      ctx.strokeStyle = drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
       ctx.moveTo(previousCanvasZ, previousCanvasX);
       ctx.lineTo(canvasZ, canvasX);
       ctx.stroke();

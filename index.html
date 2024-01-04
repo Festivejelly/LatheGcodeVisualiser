@@ -52,7 +52,8 @@
                 <span>Send GCode to Nano ELS H4</span>
 
                 <div class="innerContainer">
-                    <button id="gcodeSenderButton" title="Send GCode to CNC">Send</button>
+                    <button id="connectButton" title="Connect to Nano ELS H4">Connect</button>
+                    <button id="gcodeSenderButton" title="Send GCode to CNC" style="display: none;">Send</button>
                     <button id="stopButton" style="display: none;">Stop</button>
                 </div>
             </div>
@@ -65,28 +66,44 @@
             </div>
         </div>
         <div class="canvas-container">
-            <canvas id="gcodeCanvas" width="800" height="600" style="background-color: #242424;"></canvas>
+            <canvas id="gcodeCanvas" width="800" height="600"></canvas>
+            <div class="innerContainer"><button id="zoomButton" title="Zoom in">Zoom In</button></div>
         </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
 
-    <div id="helpModal" style="display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-        <div style="background-color: #737373; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 30%;">
-            <span id="closeHelpModal" style="color: #aaaaaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+    <div id="helpModal" class="help-modal">
+        <div class="help-modal-content">
+            <span id="closeHelpModal" class="close-modal">&times;</span>
             <div id="helpText">
                 <div>This tool is designed to be used in cunjunction with LatheCode:</div>
-                <div><a href="https://kachurovskiy.github.io/lathecode/" target="_blank" style="color: #750909;">https://kachurovskiy.github.io/lathecode/</a></div>
-                <ul style="list-style-type: disc; padding-left: 20px;">
+                <div><a href="https://kachurovskiy.github.io/lathecode/ " target="_blank ">https://kachurovskiy.github.io/lathecode/</a></div>
+                <ul style="list-style-type: disc; padding-left: 20px; ">
                     <li>Use LatheCode to generate the G-code, then paste it into this tool.</li>
-                    <li>You can also write the G-code by hand for simple operations such as boring or grooving. <a href="#" id="exampleCode" style="color: #750909;">Click here</a> to load an example.</li>
-                    <li>Click "Simulate" to plot the moves onto the canvas. Any lines marked with "; cut" will show in red.</li>
+                    <li>You can also write the G-code by hand for simple operations such as boring or grooving. <a href="# " id="exampleCode">Click here</a> to load an example.</li>
+                    <li>Click "Simulate " to plot the moves onto the canvas. Any lines marked with "; cut " will show in red.
+                    </li>
                     <li>All other moves will be considered travel moves and will show in green.</li>
                     <li>This tool only simulates the relative moves, so when writing by hand be sure to set the initial absolute position.</li>
                     <li>Any G-code you paste or write can be saved into the browser's local storage. This is useful for saving common operations.</li>
-                    <li>When you're ready, you can send the G-code directly to the Nano ELS H4 by clicking "Send."</li>
+                    <li>When you're ready, you can send the G-code directly to the Nano ELS H4 by clicking "Send. "</li>
                     <li>More functionality to come soon! Version 0.1</li>
-                    <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser" target="_blank" style="color: #750909;">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
+                    <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser " target="_blank ">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
                 </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="zoomModal" class="zoom-modal">
+        <div class="zoom-modal-content" style="background-color: #242424;">
+            <span id="closeZoomModal" class="close-modal">&times;</span>
+            <canvas id="zoomCanvas" width="1600 " height="1200 "></canvas>
+            <div id="sliderAndButtonContainer">
+                <div id="zoomSliderContainer" class="innerContainer" style="width: 400px;">
+                    <input type="range" id="zoomProgressSlider" min="0" max="100" value="0" style="width: 100%;">
+                    <div id="zoomSliderLabel" style="text-align: center;"><br>Drag to see moves</div>
+                </div>
+                <button id="zoomCloseButton">Close</button>
             </div>
         </div>
     </div>
