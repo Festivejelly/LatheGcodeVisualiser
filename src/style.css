@@ -327,3 +327,41 @@ input[type="file"]::file-selector-button:hover {
     gap: 10px;
     /* This adds space between the slider and the button */
 }
+
+.text-red {
+    color: #DC143C;
+    /* Red */
+}
+
+.text-green {
+    color: #6B8E23;
+    /* Green */
+}
+
+.text-orange {
+    color: #FFA500;
+    /* Orange */
+}
+
+.line {
+    display: inline-block;
+    vertical-align: middle;
+    width: 20px;
+    /* Width of the line */
+    height: 2px;
+    /* Height of the line */
+    margin-right: 5px;
+    /* Space between the line and the text */
+}
+
+.red-line {
+    border-top: 2px solid #DC143C;
+}
+
+.green-line {
+    border-top: 2px solid #6B8E23;
+}
+
+.orange-line {
+    border-top: 2px solid #FFA500;
+}
