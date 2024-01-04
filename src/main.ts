@@ -24,16 +24,19 @@ const travelLineColour = '#6B8E23'
 const retractLineColour = '#FFA500'
 
 document.addEventListener("DOMContentLoaded", () => {
-  const canvas = document.getElementById('gcodeCanvas') as HTMLCanvasElement;
-  const ctx = canvas.getContext('2d');
+  const standardCanvas = document.getElementById('gcodeCanvas') as HTMLCanvasElement;
+  const zoomCanvas = document.getElementById('zoomCanvas') as HTMLCanvasElement;
+  let ctx: CanvasRenderingContext2D | null = null;
   const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-  //const gcodeInput = document.getElementById('gcodeInput') as HTMLTextAreaElement;
   const simulateButton = document.getElementById('simulateButton') as HTMLButtonElement;
   const showCuts = document.getElementById('showCuts') as HTMLInputElement;
   const showNonCuts = document.getElementById('showNonCuts') as HTMLInputElement;
   const sliderLabel = document.getElementById('sliderLabel') as HTMLDivElement;
+  const zoomSliderLabel = document.getElementById('zoomSliderLabel') as HTMLDivElement;
   const progressSlider = document.getElementById('progressSlider') as HTMLInputElement;
+  const zoomProgressSlider = document.getElementById('zoomProgressSlider') as HTMLInputElement;
   const sliderContainer = document.getElementById('sliderContainer') as HTMLDivElement;
+  //const zoomSliderContainer = document.getElementById('zoomSliderContainer') as HTMLDivElement;
   const displayOptionsContainer = document.getElementById('displayOptionsContainer') as HTMLDivElement;
   const clearButton = document.getElementById('clearButton') as HTMLButtonElement;
   const saveGCodeNameInput = document.querySelector<HTMLInputElement>('.saveGCodeNameInput')!;
@@ -46,12 +49,48 @@ document.addEventListener("DOMContentLoaded", () => {
   const gcodeSenderButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
   const exampleElement = document.getElementById('exampleCode') as HTMLAnchorElement;
 
-  //modal
+  //modals
   const helpModal = document.getElementById("helpModal") as HTMLDivElement;
   const helpBtn = document.getElementById("helpButton") as HTMLButtonElement;
   const helpSpan = document.getElementById("closeHelpModal") as HTMLSpanElement;
+  const zoomModal = document.getElementById("zoomModal") as HTMLDivElement;
+  const zoomButton = document.getElementById("zoomButton") as HTMLButtonElement;
+  const zoomSpan = document.getElementById("closeZoomModal") as HTMLSpanElement;
+  const zoomCloseButton = document.getElementById("zoomCloseButton") as HTMLButtonElement;
 
-  //modal event listeners
+  zoomCanvas.width = window.visualViewport!.width - 100;
+  zoomCanvas.height = window.visualViewport!.height - 150;
+
+  //on widnow resize, resize the zoom canvas
+  window.addEventListener('resize', function () {
+    zoomCanvas.width = window.visualViewport!.width - 100;
+    zoomCanvas.height = window.visualViewport!.height - 150;
+
+    //set the zoom slider to the start
+    zoomProgressSlider.value = zoomProgressSlider.min;
+
+    //redraw the zoom canvas
+    drawToCanvas(zoomCanvas);
+
+  });
+
+  //zoom modal event listeners
+  zoomButton.onclick = function () {
+    zoomModal.style.display = 'block';
+
+    //draw the zoomed in canvas
+    drawToCanvas(zoomCanvas);
+  };
+
+  zoomSpan.onclick = function () {
+    zoomModal.style.display = "none";
+  }
+
+  zoomCloseButton.onclick = function () {
+    zoomModal.style.display = "none";
+  }
+
+  //help modal event listeners
   helpBtn.onclick = function () {
     helpModal.style.display = "block";
   }
@@ -63,6 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
   window.onclick = function (event) {
     if (event.target == helpModal) {
       helpModal.style.display = "none";
+    }
+    if (event.target == zoomModal) {
+      zoomModal.style.display = "none";
     }
   }
 
@@ -111,21 +153,45 @@ document.addEventListener("DOMContentLoaded", () => {
   let offSetFromScreenEdgeZ = 5;
   let canvasX = 0;
   let canvasZ = 0;
-  let scaleFactor = 20;
   let drawableCommands: GCodeCommand[] = [];
+
+  progressSlider.oninput = () => {
+    const progress = Math.floor(parseInt(progressSlider.value));
+
+    if (progress < drawableCommands.length) {
+      const command = drawableCommands[progress];
+      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, standardCanvas);
+      draw(standardCanvas, drawableCommands, scaleFactor, progress);
+      updateSliderLabel(command);
+    }
+  };
+
+  zoomProgressSlider.oninput = () => {
+    const progress = Math.floor(parseInt(zoomProgressSlider.value));
+
+    if (progress < drawableCommands.length) {
+      const command = drawableCommands[progress];
+      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, zoomCanvas);
+      draw(zoomCanvas, drawableCommands, scaleFactor, progress);
+      updateZoomSliderLabel(command);
+    }
+  };
 
 
   clearButton.addEventListener('click', () => {
     editor.setValue(''); // Clear the editor
     updatePlaceholder();
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    }
+    
+    const ctx = standardCanvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, standardCanvas.width, standardCanvas.height); // Clear the canvas
+    
 
     fileInput.value = '';
 
     // Reset and hide the slider
     progressSlider.value = "0";
+    zoomProgressSlider.value = "0";
     sliderContainer.style.display = 'none';
     displayOptionsContainer.style.display = 'none';
     gcodeResponseContainer.style.display = 'none';
@@ -142,10 +208,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   simulateButton.addEventListener('click', () => {
+    drawToCanvas(standardCanvas);
+  });
+
+  function drawToCanvas(canvas?: HTMLCanvasElement) {
+    if (!canvas) return; // Ensure cavnas is not null
+
     const content = editor.getValue();
     if (content) {
       parseGCode(content);
-      draw(drawableCommands);
+
+      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, canvas);
+      draw(canvas, drawableCommands, scaleFactor);
 
       sliderContainer.style.display = 'block';
       displayOptionsContainer.style.display = 'block';
@@ -156,20 +230,12 @@ document.addEventListener("DOMContentLoaded", () => {
       progressSlider.max = (drawableCommands.length - 1).toString();
       progressSlider.value = progressSlider.min; // Start the slider at the beginning
 
-      progressSlider.oninput = () => {
-        if (!ctx) return; // Ensure ctx is not null
-        const scaledValue = Math.floor(parseInt(progressSlider.value));
-
-        if (scaledValue < drawableCommands.length) {
-          const command = drawableCommands[scaledValue];
-          draw(drawableCommands, scaledValue);
-          updateSliderLabel(command);
-        }
-      };
+      zoomProgressSlider.max = (drawableCommands.length - 1).toString();
+      zoomProgressSlider.value = zoomProgressSlider.min; // Start the slider at the beginning
 
       gcodeSenderContainer.style.display = 'block';
     }
-  });
+  }
 
   function saveGCode() {
     const saveName = saveGCodeNameInput.value.trim();
@@ -260,6 +326,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function updateZoomSliderLabel(command: GCodeCommand | undefined) {
+    if (command?.lineNumber !== undefined) {
+      editor.gotoLine(command.lineNumber, 0, true); // Highlight the line in the editor
+      zoomSliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}` || '';
+    } else {
+      zoomSliderLabel.innerHTML = '';
+    }
+  }
+
   function readFile(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -314,16 +389,16 @@ document.addEventListener("DOMContentLoaded", () => {
       commands.push(newCommand);
 
     });
-    scaleFactor = calculateDynamicScaleFactor(drawableCommands, canvas.width, canvas.height);
     return commands;
   }
 
   function handleCheckboxChange() {
     progressSlider.value = '0';
-    draw(drawableCommands, drawableCommands.length); // Redraw the entire set of commands
+    const scaleFactor = calculateDynamicScaleFactor(drawableCommands, standardCanvas);
+    draw(standardCanvas, drawableCommands, scaleFactor, drawableCommands.length); // Redraw the entire set of commands
   }
 
-  function calculateDynamicScaleFactor(commands: GCodeCommand[], canvasWidth: number, canvasHeight: number): number {
+  function calculateDynamicScaleFactor(commands: GCodeCommand[], canvas: HTMLCanvasElement): number {
     let cumulativeXRelative = 0;
     let cumulativeZRelative = 0;
     let largestXAbs = 0;
@@ -332,6 +407,14 @@ document.addEventListener("DOMContentLoaded", () => {
     let maxZ = 0;
     let minX = 0; // new variable to track the minimum X value
     let minZ = 0; // new variable to track the minimum Z value
+    let baseScale = 0;
+
+    if (canvas.id === 'zoomCanvas') {
+      // Base scale: 40 pixels per mm for small objects
+      baseScale = 80; // 40 pixels per mm
+    } else {
+      baseScale = 40;
+    }
 
     commands.forEach(command => {
       if (command.isRelative) {
@@ -368,24 +451,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const objectSizeX = maxX; // calculate objectSizeX as the difference between maxX and minX
     const objectSizeZ = maxZ - minZ; // calculate objectSizeZ as the difference between maxZ and minZ
 
-    // Base scale: 40 pixels per mm for small objects
-    let baseScale = 40; // 40 pixels per mm
-
     // Adjust base scale for larger objects
-    const xZeroLocation = canvasHeight / 2;
+    const xZeroLocation = canvas.height / 2;
 
     const screenEdgeMargin = 1; // extra margin to ensure the object fits within the canvas
 
     // Adjust scale for larger objects to fit within canvas
     const scaleX = xZeroLocation / objectSizeX - screenEdgeMargin;
-    const scaleZ = canvasWidth / objectSizeZ - screenEdgeMargin;
+    const scaleZ = canvas.width / objectSizeZ - screenEdgeMargin;
 
     // Choose the smaller scale factor to ensure the object fits within the canvas
     let scale = Math.min(scaleX, scaleZ, baseScale);
     return scale;
   }
 
-  function draw(drawableCommands: GCodeCommand[], progress?: number) {
+  function draw(canvas: HTMLCanvasElement, drawableCommands: GCodeCommand[], scalingFactor: number, progress?: number) {
+    ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -404,12 +485,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const maxCount = progress !== undefined ? Math.min(progress + 1, drawableCommands.length) : drawableCommands.length;
 
     for (let i = 0; i < maxCount; i++) {
-      drawCommand(drawableCommands[i]);
+      drawCommand(canvas, drawableCommands[i], scalingFactor);
     }
   }
 
-  function drawCommand(drawableCommand: GCodeCommand) {
+  function drawCommand(canvas: HTMLCanvasElement, drawableCommand: GCodeCommand, scaleFactor: number) {
+    ctx = canvas.getContext('2d');
     if (!ctx) return;
+
     ctx.lineWidth = 2;
     if (drawableCommand.isRelative) {
       currentX += drawableCommand.x ?? 0;
