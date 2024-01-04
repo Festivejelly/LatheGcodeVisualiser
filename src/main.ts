@@ -4,17 +4,24 @@ import { exampleGcode } from './example.ts';
 export const editor = ace.edit("gcodeEditor");
 export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
 
+enum MovementType {
+  Cut,
+  Travel,
+  Retract
+}
+
 type GCodeCommand = {
   x?: number;
   z?: number;
   isRelative: boolean;
-  isCut?: boolean;
+  movementType?: MovementType;
   lineNumber?: number; // Line number in the original G-code file
   originalLine?: string; // Original line text from the G-code file
 };
 
 const cutLineColour = '#DC143C'
-const nonCutLineColour = '#6B8E23'
+const travelLineColour = '#6B8E23'
+const retractLineColour = '#FFA500'
 
 document.addEventListener("DOMContentLoaded", () => {
   const canvas = document.getElementById('gcodeCanvas') as HTMLCanvasElement;
@@ -99,14 +106,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentZ = 0;
   let previousCanvasX = 0;
   let previousCanvasZ = 0;
-  let initialOffsetX = 0;
-  let initialOffsetZ = 0;
-  let offSetFromScreenEdgeZ = 1;
+  let absX = 0;
+  let absZ = 0;
+  let offSetFromScreenEdgeZ = 5;
   let canvasX = 0;
   let canvasZ = 0;
   let scaleFactor = 20;
   let drawableCommands: GCodeCommand[] = [];
-  let commands: GCodeCommand[] = [];
 
 
   clearButton.addEventListener('click', () => {
@@ -138,17 +144,17 @@ document.addEventListener("DOMContentLoaded", () => {
   simulateButton.addEventListener('click', () => {
     const content = editor.getValue();
     if (content) {
-      commands = parseGCode(content);
-      draw(commands, drawableCommands);
+      parseGCode(content);
+      draw(drawableCommands);
 
       sliderContainer.style.display = 'block';
       displayOptionsContainer.style.display = 'block';
 
-      progressSlider.max = drawableCommands.length.toString();
-      progressSlider.value = progressSlider.min; // Start the slider at the beginning
-
       showCuts.addEventListener('change', handleCheckboxChange);
       showNonCuts.addEventListener('change', handleCheckboxChange);
+
+      progressSlider.max = (drawableCommands.length - 1).toString();
+      progressSlider.value = progressSlider.min; // Start the slider at the beginning
 
       progressSlider.oninput = () => {
         if (!ctx) return; // Ensure ctx is not null
@@ -156,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (scaledValue < drawableCommands.length) {
           const command = drawableCommands[scaledValue];
-          draw(commands, drawableCommands, scaledValue);
+          draw(drawableCommands, scaledValue);
           updateSliderLabel(command);
         }
       };
@@ -269,15 +275,23 @@ document.addEventListener("DOMContentLoaded", () => {
     drawableCommands = [];
     const lines = data.split('\n');
     lines.forEach((line, index) => {
-      const command: GCodeCommand = { isRelative: isRelative, isCut: line.includes('; cut') };
+      const movementType: MovementType = line.includes('; cut') ? MovementType.Cut : line.includes('; retract') ? MovementType.Retract : MovementType.Travel;
+
+      const command: GCodeCommand = { isRelative: isRelative, movementType };
       const parts = line.match(/([GXYZF])([0-9.-]+)/g);
 
       parts?.forEach(part => {
         const value = parseFloat(part.slice(1));
         switch (part[0]) {
           case 'G':
-            if (value === 90) command.isRelative = false;
-            if (value === 91) command.isRelative = true;
+            if (value === 90) {
+              command.isRelative = false;
+              isRelative = false;
+            }
+            if (value === 91) {
+              command.isRelative = true;
+              isRelative = true;
+            }
             break;
           case 'X':
             command.x = value;
@@ -288,22 +302,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      if (command.x !== undefined || command.z !== undefined) {
+      const newCommand: GCodeCommand = {
+        ...command,
+        lineNumber: index + 1,
+        originalLine: line
+      };
 
-        const newCommand: GCodeCommand = {
-          ...command,
-          lineNumber: index + 1,
-          originalLine: line
-        };
-
-        commands.push(newCommand);
-        if (command.isRelative) {
-          drawableCommands.push(newCommand); // Map the command index to the line number
-        }
+      if ((command.z !== undefined) || (command.x !== undefined)) {
+        drawableCommands.push(newCommand);
       }
+      commands.push(newCommand);
 
-      // Update the relative positioning mode for subsequent commands
-      isRelative = command.isRelative;
     });
     scaleFactor = calculateDynamicScaleFactor(drawableCommands, canvas.width, canvas.height);
     return commands;
@@ -311,12 +320,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleCheckboxChange() {
     progressSlider.value = '0';
-    draw(commands, drawableCommands, drawableCommands.length); // Redraw the entire set of commands
+    draw(drawableCommands, drawableCommands.length); // Redraw the entire set of commands
   }
 
   function calculateDynamicScaleFactor(commands: GCodeCommand[], canvasWidth: number, canvasHeight: number): number {
-    let cumulativeX = 0;
-    let cumulativeZ = 0;
+    let cumulativeXRelative = 0;
+    let cumulativeZRelative = 0;
+    let largestXAbs = 0;
+    let largestZAbs = 0;
     let maxX = 0;
     let maxZ = 0;
     let minX = 0; // new variable to track the minimum X value
@@ -325,17 +336,32 @@ document.addEventListener("DOMContentLoaded", () => {
     commands.forEach(command => {
       if (command.isRelative) {
         if (command.x !== undefined) {
-          cumulativeX += command.x;
+          cumulativeXRelative += command.x;
         }
         if (command.z !== undefined) {
-          cumulativeZ += command.z;
+          cumulativeZRelative += command.z;
+        }
+      } else {
+        // find the largest X and Z values
+        if (command.x !== undefined) {
+          largestXAbs = Math.min(largestXAbs, command.x);
+        }
+        if (command.z !== undefined) {
+          largestZAbs = Math.max(largestZAbs, command.z);
         }
       }
 
-      maxX = Math.max(maxX, Math.abs(cumulativeX));
-      maxZ = Math.max(maxZ, Math.abs(cumulativeZ));
-      minX = Math.min(minX, cumulativeX); // update minX
-      minZ = Math.min(minZ, cumulativeZ); // update minZ
+      //find the largest X and Z values based on the cumulative values of Absolute and relative movements
+      const sizeX = cumulativeXRelative += largestXAbs;
+      const sizeZ = cumulativeZRelative += largestZAbs;
+
+      largestXAbs = 0;
+      largestZAbs = 0;
+
+      maxX = Math.max(maxX, Math.abs(sizeX));
+      maxZ = Math.max(maxZ, Math.abs(sizeZ));
+      minX = Math.min(minX, sizeX); // update minX
+      minZ = Math.min(minZ, sizeZ); // update minZ
     });
 
     // Object size in mm
@@ -357,33 +383,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // Choose the smaller scale factor to ensure the object fits within the canvas
     let scale = Math.min(scaleX, scaleZ, baseScale);
     return scale;
-}
+  }
 
-  function draw(commands: GCodeCommand[], drawableCommands: GCodeCommand[], progress?: number) {
+  function draw(drawableCommands: GCodeCommand[], progress?: number) {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     currentX = 0;
     currentZ = 0;
+    absX = 0;
+    absZ = 0;
+    previousCanvasX = 0;
+    previousCanvasZ = 0;
 
-    // Apply the initial absolute offset
-    for (const command of commands) {
-      if (!command.isRelative) {
-        if (command.x !== undefined) {
-          initialOffsetX = command.x * scaleFactor;
-        }
-        if (command.z !== undefined) {
-          initialOffsetZ = command.z * scaleFactor;
-        }
-      }
-      else if (command.isRelative) {
-        break;
-      }
-    }
-
-    previousCanvasX = (canvas.height / 2) - initialOffsetX;
-    previousCanvasZ = canvas.width - initialOffsetZ - offSetFromScreenEdgeZ;
+    // These values will always be the ABS Zero from the start of the program
+    previousCanvasX = (canvas.height / 2);
+    previousCanvasZ = canvas.width - offSetFromScreenEdgeZ;
 
     const maxCount = progress !== undefined ? Math.min(progress + 1, drawableCommands.length) : drawableCommands.length;
 
@@ -392,20 +408,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function drawCommand(drawableCommands: GCodeCommand) {
+  function drawCommand(drawableCommand: GCodeCommand) {
     if (!ctx) return;
     ctx.lineWidth = 2;
-    if (drawableCommands.isRelative) {
-      currentX += drawableCommands.x ?? 0;
-      currentZ += drawableCommands.z ?? 0;
+    if (drawableCommand.isRelative) {
+      currentX += drawableCommand.x ?? 0;
+      currentZ += drawableCommand.z ?? 0;
+    }
+    else {
+      currentX = drawableCommand.x ?? absX;
+      currentZ = drawableCommand.z ?? absZ;
+      absX = currentX;
+      absZ = currentZ;
     }
 
-    canvasX = (canvas.height / 2) - initialOffsetX - (currentX * scaleFactor);
-    canvasZ = canvas.width - initialOffsetZ - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
+    canvasX = (canvas.height / 2) - (currentX * scaleFactor);
+    canvasZ = canvas.width - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
 
-    if ((drawableCommands.isCut && showCuts.checked) || (!drawableCommands.isCut && showNonCuts.checked)) {
+    if ((drawableCommand.movementType == MovementType.Cut && showCuts.checked) || (drawableCommand.movementType == MovementType.Travel && showNonCuts.checked) || drawableCommand.movementType == MovementType.Retract && showNonCuts.checked) {
       ctx.beginPath();
-      ctx.strokeStyle = drawableCommands.isCut ? cutLineColour : nonCutLineColour;
+      ctx.strokeStyle = drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
       ctx.moveTo(previousCanvasZ, previousCanvasX);
       ctx.lineTo(canvasZ, canvasX);
       ctx.stroke();
