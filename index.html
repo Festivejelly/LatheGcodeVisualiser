@@ -81,13 +81,16 @@
                 <ul style="list-style-type: disc; padding-left: 20px; ">
                     <li>Use LatheCode to generate the G-code, then paste it into this tool.</li>
                     <li>You can also write the G-code by hand for simple operations such as boring or grooving. <a href="# " id="exampleCode">Click here</a> to load an example.</li>
-                    <li>Click "Simulate " to plot the moves onto the canvas. Any lines marked with "; cut " will show in red.
-                    </li>
+                    <li>Click "Simulate" to plot the moves onto the canvas.</li>
+                    <li>movement lines marked with "; cut" will show in <span class="line red-line"></span><span class="text-red">red</span>.</li>
+                    <li>movement lines marked with "; travel" will show in <span class="line green-line"></span><span class="text-green">green</span>.</li>
+                    <li>movement lines marked with "; retract" will show in <span class="line orange-line"></span><span class="text-orange">orange</span>.</li>
+                    <li>movement lines not marked will default to <span class="line green-line"></span><span class="text-green">green</span>.</li>
                     <li>All other moves will be considered travel moves and will show in green.</li>
                     <li>This tool only simulates the relative moves, so when writing by hand be sure to set the initial absolute position.</li>
                     <li>Any G-code you paste or write can be saved into the browser's local storage. This is useful for saving common operations.</li>
-                    <li>When you're ready, you can send the G-code directly to the Nano ELS H4 by clicking "Send. "</li>
-                    <li>More functionality to come soon! Version 0.1</li>
+                    <li>When you're ready, you can send the G-code to the Nano ELS H4 by clicking "Send."</li>
+                    <li>More functionality to come soon! Version 0.2</li>
                     <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser " target="_blank ">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
                 </ul>
             </div>
