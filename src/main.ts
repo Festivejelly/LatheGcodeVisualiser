@@ -3,6 +3,7 @@ import { exampleGcode } from './example.ts';
 
 export const editor = ace.edit("gcodeEditor");
 export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
+export const gcodeSenderEditor = ace.edit("gcodeSenderEditor");
 
 enum MovementType {
   Cut,
@@ -45,8 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveButton = document.querySelector<HTMLButtonElement>('.saveGCodeButton')!;
   const deleteButton = document.querySelector<HTMLButtonElement>('.deleteGCodeButton')!;
   const gcodeSenderContainer = document.getElementById('gcodeSenderContainer') as HTMLDivElement;
-  const gcodeResponseContainer = document.getElementById('gcodeResponseContainer') as HTMLDivElement;
-  const gcodeSenderButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
   const exampleElement = document.getElementById('exampleCode') as HTMLAnchorElement;
 
   //modals
@@ -57,6 +56,46 @@ document.addEventListener("DOMContentLoaded", () => {
   const zoomButton = document.getElementById("zoomButton") as HTMLButtonElement;
   const zoomSpan = document.getElementById("closeZoomModal") as HTMLSpanElement;
   const zoomCloseButton = document.getElementById("zoomCloseButton") as HTMLButtonElement;
+
+  const simulationTab = document.getElementById('simulationTab') as HTMLLIElement;
+  const controlTab = document.getElementById('controlTab') as HTMLLIElement;
+  const simulationContent = document.getElementById('simulationContainer') as HTMLDivElement;
+  const controlContent = document.getElementById('controlsContainer') as HTMLDivElement;
+  const incrementButtons = document.querySelectorAll('#latheControls .increment-btn') as NodeListOf<HTMLButtonElement>;
+  const moveDistanceInput = document.getElementById('moveDistance') as HTMLInputElement;
+
+
+
+  // Jog buttons
+
+  incrementButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      // Remove active class from all buttons
+      incrementButtons.forEach(function (button) {
+        button.classList.remove('active');
+      });
+
+      // Add active class to the clicked button
+      this.classList.add('active');
+
+      var incrementValue = this.dataset.increment;
+      moveDistanceInput.value = incrementValue as string;
+      console.log('Jog increment set to:', incrementValue);
+      // Additional code to adjust jog distance based on incrementValue
+    });
+  });
+
+  simulationTab.addEventListener('click', () => {
+    simulationContent.style.display = 'flex';
+    controlContent.style.display = 'none';
+    editor.setValue(gcodeSenderEditor.getValue());
+  });
+
+  controlTab.addEventListener('click', () => {
+    simulationContent.style.display = 'none';
+    controlContent.style.display = 'flex';
+    gcodeSenderEditor.setValue(editor.getValue());
+  });
 
   zoomCanvas.width = window.visualViewport!.width - 100;
   zoomCanvas.height = window.visualViewport!.height - 150;
@@ -120,8 +159,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   editor.setTheme("ace/theme/github_dark");
   editor.session.setMode("ace/mode/plain_text");
-  //dont show print margin
   editor.setShowPrintMargin(false);
+
+  gcodeSenderEditor.setTheme("ace/theme/github_dark");
+  gcodeSenderEditor.session.setMode("ace/mode/plain_text");
+  gcodeSenderEditor.setShowPrintMargin(false);
 
   exampleElement.addEventListener('click', () => loadExample());
 
@@ -129,10 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
   gcodeResponseEditor.session.setMode("ace/mode/text"); // Set mode to plain text or appropriate mode
   gcodeResponseEditor.setReadOnly(true);
   gcodeResponseEditor.setShowPrintMargin(false);
-
-  gcodeSenderButton.addEventListener('click', () => {
-    gcodeResponseContainer.style.display = 'block';
-  });
 
   gcodeResponseEditor.getSession().on('change', () => {
     // Wait for the change to render
@@ -179,13 +217,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   clearButton.addEventListener('click', () => {
+    gcodeSenderEditor.setValue('');
     editor.setValue(''); // Clear the editor
     updatePlaceholder();
-    
+
     const ctx = standardCanvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, standardCanvas.width, standardCanvas.height); // Clear the canvas
-    
+
 
     fileInput.value = '';
 
@@ -194,7 +233,6 @@ document.addEventListener("DOMContentLoaded", () => {
     zoomProgressSlider.value = "0";
     sliderContainer.style.display = 'none';
     displayOptionsContainer.style.display = 'none';
-    gcodeResponseContainer.style.display = 'none';
   });
 
   fileInput.addEventListener('change', (event) => {
@@ -252,6 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const gCode = localStorage.getItem(selectedName);
     if (gCode) {
       editor.setValue(gCode);
+      gcodeSenderEditor.setValue(gCode);
     }
   }
 
@@ -340,6 +379,7 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.onload = (e) => {
       const content = (e.target as FileReader).result as string;
       editor.setValue(content); // Set content in Ace Editor
+      gcodeSenderEditor.setValue(content); // Set content in Ace Editor
     };
     reader.readAsText(file);
   }

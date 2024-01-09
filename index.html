@@ -5,110 +5,166 @@
     <title>G-Code Visualizer</title>
     <link rel="stylesheet" href="/src/style.css">
     <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 
 <body>
-    <div class="main-container">
-        <div class="controls-container">
-            <div id="gcodeContainer" style="position: relative;">
-                <div id="gcodeEditor" style="height: 200px; width: 100%;"></div>
-            </div>
-            <div class="innerContainer">
-                <input type="file" id="fileInput" accept=".txt,.gcode">
-            </div>
-            <div class="innerContainer">
-                <button id="simulateButton">Simulate</button>
-                <button id="clearButton">Clear</button>
-                <button id="helpButton">How to use</button>
-            </div>
-            <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
-                <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
-                <div id="sliderLabel" style="text-align: center;"><br>Drag to see moves</div>
-            </div>
-            <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
-                <input type="checkbox" id="showCuts" checked> Show Cut Moves
-                </label>
-                <label>
-                    <input type="checkbox" id="showNonCuts" checked>
-                    Show Non-Cut Moves
-                </label>
-            </div>
-            <div class="innerContainer" id="loadAndSave">
-                <hr>
-                <div class="innerContainer toolbar">
-                    <input type="text" class="saveGCodeNameInput" placeholder="name of save"></input>
-                    <button class="saveGCodeButton" title="Save GCode to local browser storage">Save local</button>
+
+    <div id="mainContainer" class="main-container">
+        <div class="menu">
+            <ul>
+                <li id="simulationTab">Simulation</li>
+                <li id="controlTab">Control</li>
+            </ul>
+        </div>
+
+        <div id="simulationContainer" class="main-container">
+            <div id="simulationContent" class="controls-container">
+                <div id="gcodeContainer" style="position: relative;">
+                    <div id="gcodeEditor" style="height: 200px; width: 100%;"></div>
                 </div>
-                <div class="innerContainer toolbar">
-                    <select class="loadGCodeSelect"></select>
-                    <button class="loadGCodeButton" title="Load GCode from local browser storage">Load</button>
-                    <button class="deleteGCodeButton" title="Delete GCode from local browser storage">Delete</button>
-                </div>
-                <hr>
-            </div>
-
-            <div id="gcodeSenderContainer" class="innerContainer">
-
-                <span>Send GCode to Nano ELS H4</span>
-
                 <div class="innerContainer">
-                    <button id="connectButton" title="Connect to Nano ELS H4">Connect</button>
-                    <button id="gcodeSenderButton" title="Send GCode to CNC" style="display: none;">Send</button>
-                    <button id="stopButton" style="display: none;">Stop</button>
+                    <input type="file" id="fileInput" accept=".txt,.gcode">
+                </div>
+                <div class="innerContainer">
+                    <button id="simulateButton">Simulate</button>
+                    <button id="clearButton">Clear</button>
+                    <button id="helpButton">How to use</button>
+                </div>
+                <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
+                    <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
+                    <div id="sliderLabel" style="text-align: center;"><br>Drag to see moves</div>
+                </div>
+                <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
+                    <input type="checkbox" id="showCuts" checked> Show Cut Moves
+                    </label>
+                    <label>
+                        <input type="checkbox" id="showNonCuts" checked>
+                        Show Non-Cut Moves
+                    </label>
+                </div>
+                <div class="innerContainer" id="loadAndSave">
+                    <hr>
+                    <div class="innerContainer toolbar">
+                        <input type="text" class="saveGCodeNameInput" placeholder="name of save"></input>
+                        <button class="saveGCodeButton" title="Save GCode to local browser storage">Save local</button>
+                    </div>
+                    <div class="innerContainer toolbar">
+                        <select class="loadGCodeSelect"></select>
+                        <button class="loadGCodeButton" title="Load GCode from local browser storage">Load</button>
+                        <button class="deleteGCodeButton" title="Delete GCode from local browser storage">Delete</button>
+                    </div>
+                    <hr>
                 </div>
             </div>
 
-            <div id="gcodeResponseContainer" style="display: none;">
-                <div id="gcodeResponseHeader">GCode Responses</div>
-                <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
-                <div class="senderError" style="display: none;"></div>
-                <progress max="1" style="display: none;"></progress>
+            <div class="canvas-container">
+                <canvas id="gcodeCanvas" width="800" height="600"></canvas>
+                <div class="innerContainer"><button id="zoomButton" title="Zoom in">Zoom In</button></div>
             </div>
-        </div>
-        <div class="canvas-container">
-            <canvas id="gcodeCanvas" width="800" height="600"></canvas>
-            <div class="innerContainer"><button id="zoomButton" title="Zoom in">Zoom In</button></div>
-        </div>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
 
-    <div id="helpModal" class="help-modal">
-        <div class="help-modal-content">
-            <span id="closeHelpModal" class="close-modal">&times;</span>
-            <div id="helpText">
-                <div>This tool is designed to be used in cunjunction with LatheCode:</div>
-                <div><a href="https://kachurovskiy.github.io/lathecode/ " target="_blank ">https://kachurovskiy.github.io/lathecode/</a></div>
-                <ul style="list-style-type: disc; padding-left: 20px; ">
-                    <li>Use LatheCode to generate the G-code, then paste it into this tool.</li>
-                    <li>You can also write the G-code by hand for simple operations such as boring or grooving. <a href="# " id="exampleCode">Click here</a> to load an example.</li>
-                    <li>Click "Simulate" to plot the moves onto the canvas.</li>
-                    <li>movement lines marked with "; cut" will show in <span class="line red-line"></span><span class="text-red">red</span>.</li>
-                    <li>movement lines marked with "; travel" will show in <span class="line green-line"></span><span class="text-green">green</span>.</li>
-                    <li>movement lines marked with "; retract" will show in <span class="line orange-line"></span><span class="text-orange">orange</span>.</li>
-                    <li>movement lines not marked will default to <span class="line green-line"></span><span class="text-green">green</span>.</li>
-                    <li>All other moves will be considered travel moves and will show in green.</li>
-                    <li>Any G-code you paste or write can be saved into the browser's local storage. This is useful for saving common operations.</li>
-                    <li>When you're ready, you can send the G-code to the Nano ELS H4 by clicking "Send."</li>
-                    <li>More functionality to come soon! Version 0.2</li>
-                    <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser " target="_blank ">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
-                </ul>
-            </div>
         </div>
-    </div>
+        <div id="controlsContainer" class="main-container" style="display: none;">
+            <div id="controlsContent" class="controls-container">
+                <div id="gcodeSenderContainer" class="innerContainer">
 
-    <div id="zoomModal" class="zoom-modal">
-        <div class="zoom-modal-content" style="background-color: #242424;">
-            <span id="closeZoomModal" class="close-modal">&times;</span>
-            <canvas id="zoomCanvas" width="1600 " height="1200 "></canvas>
-            <div id="sliderAndButtonContainer">
-                <div id="zoomSliderContainer" class="innerContainer" style="width: 400px;">
-                    <input type="range" id="zoomProgressSlider" min="0" max="100" value="0" style="width: 100%;">
-                    <div id="zoomSliderLabel" style="text-align: center;"><br>Drag to see moves</div>
+                    <span>Send GCode to Nano ELS H4</span>
+
+                    <div class="innerContainer">
+                        <button id="connectButton" title="Connect to Nano ELS H4">Connect</button>
+                        <button id="gcodeSenderButton" title="Send GCode to CNC" style="display: none;">Send</button>
+                        <button id="stopButton" style="display: none;">Stop</button>
+                    </div>
                 </div>
-                <button id="zoomCloseButton">Close</button>
+
+                <div id="latheControls">
+                    <div id="jogControls">
+                        <span id="fastText">Fast</span>
+                        <span id="slowText">Slow</span>
+
+                        <!-- Fast arrows -->
+                        <button class="arrow fast jog-btn" id="fastForward"><i class="fas fa-arrow-up"></i></button>
+                        <button class="arrow fast jog-btn" id="fastBackward"><i class="fas fa-arrow-down"></i></button>
+                        <button class="arrow fast jog-btn" id="fastLeft"><i class="fas fa-arrow-left"></i></button>
+                        <button class="arrow fast jog-btn" id="fastRight"><i class="fas fa-arrow-right"></i></button>
+                        <!-- Slow arrows -->
+                        <button class="arrow slow jog-btn" id="slowForward"><i class="fas fa-arrow-up"></i></button>
+                        <button class="arrow slow jog-btn" id="slowBackward"><i class="fas fa-arrow-down"></i></button>
+                        <button class="arrow slow jog-btn" id="slowLeft"><i class="fas fa-arrow-left"></i></button>
+                        <button class="arrow slow jog-btn" id="slowRight"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                    <div id="incrementControls">
+                        <button class="increment-btn" data-increment="0.01">0.01</button>
+                        <button class="increment-btn" data-increment="0.1">0.1</button>
+                        <button class="increment-btn" data-increment="1">1</button>
+                        <button class="increment-btn" data-increment="10">10</button>
+                    </div>
+                    <div id="feedrateControls" class="innerContentCentre control-inputs">
+                        <label for="fastFeedrate">Fast Feedrate:</label>
+                        <input type="text" id="fastFeedrate" name="fastFeedrate" value="200">
+                        <label for="slowFeedrate">Slow Feedrate:</label>
+                        <input type="text" id="slowFeedrate" name="slowFeedrate" value="50">
+                    </div>
+                    <div id="distanceControl" class="innerContentCentre control-inputs">
+                        <label for="moveDistance">Move Distance (mm):</label>
+                        <input type="text" id="moveDistance" name="moveDistance" value="1">
+                    </div>
+                </div>
+
+                <div id="gcodeResponseContainer" style="display: none;">
+                    <div id="gcodeResponseHeader">GCode Responses</div>
+                    <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
+                    <div class="senderError" style="display: none;"></div>
+                    <div id="senderProgressContainer">
+                        <span id="senderProgressLabel" style="display: none;">Progress...</span>
+                        <progress id="senderProgress" max="1" style="display: none;"></progress>
+                    </div>
+                </div>
+            </div>
+            <div class="controls-container">
+                <div id="gcodeSenderContainer" style="position: relative;">
+                    <span>GCode to Send</span>
+                    <div id="gcodeSenderEditor" style="height: 200px; width: 100%;"></div>
+                </div>
+            </div>
+            <script type="module" src="/src/main.ts"></script>
+        </div>
+        <div id="helpModal" class="help-modal">
+            <div class="help-modal-content">
+                <span id="closeHelpModal" class="close-modal">&times;</span>
+                <div id="helpText">
+                    <div>This tool is designed to be used in cunjunction with LatheCode:</div>
+                    <div><a href="https://kachurovskiy.github.io/lathecode/ " target="_blank ">https://kachurovskiy.github.io/lathecode/</a></div>
+                    <ul style="list-style-type: disc; padding-left: 20px; ">
+                        <li>Use LatheCode to generate the G-code, then paste it into this tool.</li>
+                        <li>You can also write the G-code by hand for simple operations such as boring or grooving. <a href="# " id="exampleCode">Click here</a> to load an example.</li>
+                        <li>Click "Simulate" to plot the moves onto the canvas.</li>
+                        <li>movement lines marked with "; cut" will show in <span class="line red-line"></span><span class="text-red">red</span>.</li>
+                        <li>movement lines marked with "; travel" will show in <span class="line green-line"></span><span class="text-green">green</span>.</li>
+                        <li>movement lines marked with "; retract" will show in <span class="line orange-line"></span><span class="text-orange">orange</span>.</li>
+                        <li>movement lines not marked will default to <span class="line green-line"></span><span class="text-green">green</span>.</li>
+                        <li>All other moves will be considered travel moves and will show in green.</li>
+                        <li>Any G-code you paste or write can be saved into the browser's local storage. This is useful for saving common operations.</li>
+                        <li>When you're ready, you can send the G-code to the Nano ELS H4 by clicking "Send."</li>
+                        <li>More functionality to come soon! Version 0.2</li>
+                        <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser " target="_blank ">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
-    </div>
+        <div id="zoomModal" class="zoom-modal">
+            <div class="zoom-modal-content" style="background-color: #242424;">
+                <span id="closeZoomModal" class="close-modal">&times;</span>
+                <canvas id="zoomCanvas" width="1600 " height="1200 "></canvas>
+                <div id="sliderAndButtonContainer">
+                    <div id="zoomSliderContainer" class="innerContainer" style="width: 400px;">
+                        <input type="range" id="zoomProgressSlider" min="0" max="100" value="0" style="width: 100%;">
+                        <div id="zoomSliderLabel" style="text-align: center;"><br>Drag to see moves</div>
+                    </div>
+                    <button id="zoomCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
 </body>
 
 </html>
