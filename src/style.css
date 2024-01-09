@@ -365,3 +365,180 @@ input[type="file"]::file-selector-button:hover {
 .orange-line {
     border-top: 2px solid #FFA500;
 }
+
+#latheControls #jogControls {
+    display: grid;
+    grid-template-columns: repeat(5, 60px);
+    grid-template-rows: repeat(5, 60px);
+    justify-content: center;
+    align-items: center;
+    place-items: center;
+}
+
+#latheControls .jog-btn {
+    /* existing styles */
+    width: 50px;
+    height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #f0ad4e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    line-height: 50px;
+    font-size: 24px;
+    padding: 0px;
+}
+
+#latheControls .fast {
+    background-color: #f0ad4e;
+}
+
+#latheControls .slow {
+    background-color: #5bc0de;
+}
+
+#latheControls .jog-btn:hover {
+    background-color: #e0e0e0;
+}
+
+#fastForward {
+    grid-column: 3;
+    grid-row: 1;
+}
+
+#fastText {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+#slowText {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+#fastLeft {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+#fastBackward {
+    grid-column: 3;
+    grid-row: 5;
+}
+
+#fastRight {
+    grid-column: 5;
+    grid-row: 3;
+}
+
+#slowForward {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+#slowLeft {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+#slowBackward {
+    grid-column: 3;
+    grid-row: 4;
+}
+
+#slowRight {
+    grid-column: 4;
+    grid-row: 3;
+}
+
+.menu ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.menu li {
+    cursor: pointer;
+    padding: 10px;
+    background-color: #242424;
+    border-bottom: 1px solid #6c5ce7;
+}
+
+.menu li:hover {
+    background-color: #6c5ce7;
+}
+
+.content {
+    margin-left: 200px;
+    padding: 20px;
+}
+
+#senderProgressContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#senderProgressLabel {
+    margin-right: 10px;
+}
+
+.innerContentCentre {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px;
+}
+
+#gcodeSenderContainer {
+    position: relative;
+    width: 100%;
+}
+
+#gcodeSenderEditor {
+    border-bottom: 1px solid #ccc;
+    background-color: #242424;
+}
+
+#latheControls #incrementControls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0 20px 0;
+}
+
+#latheControls .increment-btn {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    background-color: #f0ad4e;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#latheControls .increment-btn:hover,
+#latheControls .increment-btn.active {
+    background-color: #6c5ce7;
+}
+
+.control-inputs input[type="text"] {
+    max-width: 200px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    margin: 0;
+    padding: .375rem .75rem;
+}
+
+.control-inputs label {
+    display: block;
+    margin-right: 5px;
+}
+
+#latheControls label {
+    white-space: nowrap;
+    margin-right: 10px;
+    display: inline-block;
+    min-width: 120px;
+}

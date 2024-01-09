@@ -2,13 +2,14 @@ import { gcodeResponseEditor } from './main';
 
 export class SenderStatus {
     constructor(
+        readonly isConnected: boolean,
         readonly condition: 'disconnected' | 'idle' | 'run',
         readonly error: string,
         readonly progress: number,
         readonly z: number,
         readonly x: number,
         readonly feed: number,
-        readonly rpm: number) { }
+        readonly rpm: number,) { }
 }
 
 export class Sender {
@@ -27,20 +28,23 @@ export class Sender {
     private x = 0;
     private feed = 0;
     private rpm = 0;
-    //private keyCodes: string[] = [];
+    private isDisconnecting = false;
+    private lastStatus: SenderStatus | null = null;
 
     constructor(readonly statusChangeCallback: () => void) { }
 
     getStatus() {
-        return {
-            condition: this.port ? (this.isOn ? 'run' : 'idle') : 'disconnected',
-            error: this.error,
-            progress: this.lines.length ? this.lineIndex / this.lines.length : 0,
-            z: this.z,
-            x: this.x,
-            feed: this.feed,
-            rpm: this.rpm,
-        }
+        this.lastStatus = new SenderStatus(
+            this.port !== null,
+            this.isOn ? 'run' : 'idle',
+            this.error,
+            this.lines.length ? this.lineIndex / this.lines.length : 0,
+            this.z,
+            this.x,
+            this.feed,
+            this.rpm
+        );
+        return this.lastStatus;
     }
 
     private setStatus(s: string) {
@@ -67,18 +71,30 @@ export class Sender {
 
     private setError(e: string) {
         this.error = e;
+        appendLineToResponseEditor(e);
         this.statusChangeCallback();
     }
 
-    private isCommand(command: string[]) {
-        const commandPrefixes = ['!', '~', '?', '='];
-        return commandPrefixes.some(prefix => command[0].startsWith(prefix));
+    isConnected() {
+        return this.lastStatus !== null && this.lastStatus.isConnected;
     }
 
     async connect() {
         try {
             if (!this.port) {
                 await this.selectPort();
+
+                await this.askForStatus();
+                if (!(await waitForTrue(() => this.statusReceived))) {
+                    this.setError('Device is not reponding, is it in GCODE mode?');
+                    return;
+                }
+                this.isDisconnecting = false;
+                this.isOn = false; //idle
+                this.setError('');
+                this.waitForOkOrError = false;
+                this.unparsedResponse = '';
+
             } else {
                 this.closePort();
             }
@@ -89,34 +105,39 @@ export class Sender {
         this.statusChangeCallback();
     }
 
+    async disconnect() {
+        this.isDisconnecting = true;
+        if (this.port)
+            this.closePort();
+    }
+
+    getDisconnectingStatus() {
+        return this.isDisconnecting;
+    }
+
     async start(text: string) {
         if (!text) return;
 
-        this.lines = text.split('\n');
-
-        if (!this.isCommand(this.lines) && !this.rpm) {
-            this.setError('Spindle is not running, turn it on first');
-            return;
-        }
-        if (this.isOn) {
-            this.stop();
-        }
-        if (!this.port) {
-            await this.selectPort();
-            if (!this.port) return;
-        }
-        await this.askForStatus();
-        if (!(await waitForTrue(() => this.statusReceived))) {
-            this.setError('Device is not reponding, is it in GCODE mode?');
-            return;
-        }
-
-
-        this.lineIndex = 0;
         this.isOn = true;
-        this.setError('');
+        this.lines = text.split('\n');
+        this.lineIndex = 0;
         this.waitForOkOrError = false;
-        this.unparsedResponse = '';
+        this.write('~');
+        this.writeCurrentLine();
+        this.statusChangeCallback();
+    }
+
+    async sendCommand(command: string) {
+        this.isOn = true;
+
+        let commandArray = new Array(3);
+        commandArray[0] = 'G91';
+        commandArray[1] = command;
+        commandArray[2] = 'G90';
+
+        this.lines = commandArray
+        this.lineIndex = 0;
+        this.waitForOkOrError = false;
         this.write('~');
         this.writeCurrentLine();
         this.statusChangeCallback();
@@ -262,21 +283,42 @@ export class Sender {
 
     private async closePort() {
         if (!this.port) return;
+
         clearTimeout(this.readTimeout);
-        this.readTimeout = 0;
+
+        // Attempt to cancel the reader and release the lock
         if (this.reader) {
-            if (this.reader.releaseLock) this.reader.releaseLock();
+            try {
+                await this.reader.cancel();
+                this.reader.releaseLock();
+            } catch (e) {
+                console.error("Error cancelling reader: ", e);
+            }
             this.reader = null;
         }
+
+        // Attempt to close the writer and release the lock
         if (this.writer) {
-            if (this.writer.releaseLock) this.writer.releaseLock();
+            try {
+                await this.writer.close();
+                this.writer.releaseLock();
+            } catch (e) {
+                console.error("Error closing writer: ", e);
+            }
             this.writer = null;
         }
+
+        // Wait for a moment to allow the port to process the lock release
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Finally, try to close the port
         try {
             await this.port.close();
         } catch (e) {
-            // Ignore close errors.
+            console.error("Error closing port: ", e);
         }
+
+
         this.port = null;
         this.statusReceived = false;
         this.z = 0;
