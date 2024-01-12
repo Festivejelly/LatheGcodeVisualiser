@@ -13,6 +13,7 @@ export class GCode {
     private isConnected: boolean = false;
     private gcodeResponseContainer: HTMLDivElement;
     private jogButtons: NodeListOf<HTMLButtonElement>;
+    private toolButtons: NodeListOf<HTMLButtonElement>;
     private sender: Sender | null;
 
     constructor() {
@@ -31,6 +32,7 @@ export class GCode {
         slowFeedrateInput = document.getElementById('slowFeedrate') as HTMLInputElement;
 
         this.jogButtons = document.querySelectorAll('#latheControls .jog-btn') as NodeListOf<HTMLButtonElement>;
+        this.toolButtons = document.querySelectorAll('#latheControls .tool-btn') as NodeListOf<HTMLButtonElement>;
 
         this.sendButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
 
@@ -92,6 +94,43 @@ export class GCode {
                 let command = `${axis}${positiveModifier}${distance} F${feedrate}`;
                 if (sender) {
                     sender.sendCommand(command);
+                }
+            });
+        });
+
+        this.toolButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                let toolId = this.id;
+                let tCommand = 'T';
+
+                if(toolId == 'tool0') {
+                    tCommand += '0';
+                } else if(toolId == 'tool1') {
+                    tCommand += '1';
+                } else if(toolId == 'tool2') {
+                    tCommand += '2';
+                } else if(toolId == 'tool3') {
+                    tCommand += '3';
+                }
+
+                //remove selected class from all other tool buttons that are not the one that was just clicked
+                let toolButtons = document.querySelectorAll('#latheControls .tool-btn') as NodeListOf<HTMLButtonElement>;
+                toolButtons.forEach(function (btn) {
+                    if(btn.id != toolId) {
+                        btn.classList.remove('tool-selected');
+                    }
+                    else {
+                        btn.classList.add('tool-selected');
+                    }
+                });
+
+
+                let commandArray = new Array(2);
+                commandArray[0] = 'G91';
+                commandArray[1] = tCommand;
+
+                if (sender) {
+                    sender.sendCommands(commandArray);
                 }
             });
         });

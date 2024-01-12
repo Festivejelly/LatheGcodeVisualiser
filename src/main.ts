@@ -180,6 +180,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 0); // Using 0ms timeout which works in most cases
   });
 
+  gcodeSenderEditor.on('focus', () => {
+    if (gcodeSenderEditor.getValue() === 'Paste your gcode here or click choose file to upload') {
+      gcodeSenderEditor.setValue('');
+    }
+  });
+
   updatePlaceholder();
 
   let currentX = 0;
