@@ -135,7 +135,17 @@ export class Sender {
         commandArray[1] = command;
         commandArray[2] = 'G90';
 
-        this.lines = commandArray
+        this.lines = commandArray;
+        this.lineIndex = 0;
+        this.waitForOkOrError = false;
+        this.write('~');
+        this.writeCurrentLine();
+        this.statusChangeCallback();
+    }
+
+    async sendCommands(commands: string[]) {
+        this.isOn = true;
+        this.lines = commands;
         this.lineIndex = 0;
         this.waitForOkOrError = false;
         this.write('~');

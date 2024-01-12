@@ -252,10 +252,6 @@ input[type="file"]::file-selector-button:hover {
     /* Completely transparent */
 }
 
-#helpText ul {
-    /* Styles for the unordered list */
-}
-
 #helpText li {
     /* Styles for list items */
     margin-bottom: 10px;
@@ -368,7 +364,7 @@ input[type="file"]::file-selector-button:hover {
 
 #latheControls #jogControls {
     display: grid;
-    grid-template-columns: repeat(5, 60px);
+    grid-template-columns: repeat(9, 60px);
     grid-template-rows: repeat(5, 60px);
     justify-content: center;
     align-items: center;
@@ -391,6 +387,32 @@ input[type="file"]::file-selector-button:hover {
     padding: 0px;
 }
 
+#latheControls .tool-btn {
+    /* existing styles */
+    width: 50px;
+    height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #f0ad4e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    line-height: 50px;
+    font-size: 24px;
+    padding: 0px;
+}
+
+#latheControls .tool {
+    background-color: #f0ad4e;
+    border: none;
+}
+
+#latheControls .tool-selected {
+    background-color: #6c5ce7;
+    border: 2px solid white;
+}
+
 #latheControls .fast {
     background-color: #f0ad4e;
 }
@@ -400,57 +422,82 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #latheControls .jog-btn:hover {
-    background-color: #e0e0e0;
+    background-color: #6c5ce7;
 }
 
 #fastForward {
-    grid-column: 3;
+    grid-column: 5;
     grid-row: 1;
 }
 
 #fastText {
-    grid-column: 2;
+    grid-column: 4;
     grid-row: 1;
 }
 
 #slowText {
-    grid-column: 2;
+    grid-column: 4;
     grid-row: 2;
 }
 
 #fastLeft {
-    grid-column: 1;
+    grid-column: 3;
     grid-row: 3;
 }
 
 #fastBackward {
-    grid-column: 3;
+    grid-column: 5;
     grid-row: 5;
 }
 
 #fastRight {
-    grid-column: 5;
+    grid-column: 7;
     grid-row: 3;
 }
 
 #slowForward {
-    grid-column: 3;
+    grid-column: 5;
     grid-row: 2;
 }
 
 #slowLeft {
-    grid-column: 2;
+    grid-column: 4;
     grid-row: 3;
 }
 
 #slowBackward {
-    grid-column: 3;
+    grid-column: 5;
     grid-row: 4;
 }
 
 #slowRight {
-    grid-column: 4;
+    grid-column: 6;
     grid-row: 3;
+}
+
+#toolText {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+#tool0 {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+#tool1 {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+#tool2 {
+    grid-column: 1;
+    grid-row: 4;
+}
+
+#tool3 {
+    grid-column: 1;
+    grid-row: 5;
 }
 
 .menu ul {
