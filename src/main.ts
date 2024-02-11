@@ -1,9 +1,11 @@
 import { GCode } from './gcode.ts';
 import { exampleGcode } from './example.ts';
+import './planner';
 
 export const editor = ace.edit("gcodeEditor");
 export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
 export const gcodeSenderEditor = ace.edit("gcodeSenderEditor");
+export let gCode: GCode;
 
 enum MovementType {
   Cut,
@@ -24,7 +26,11 @@ const cutLineColour = '#DC143C'
 const travelLineColour = '#6B8E23'
 const retractLineColour = '#FFA500'
 
+
 document.addEventListener("DOMContentLoaded", () => {
+
+  gCode = new GCode();
+
   const standardCanvas = document.getElementById('gcodeCanvas') as HTMLCanvasElement;
   const zoomCanvas = document.getElementById('zoomCanvas') as HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D | null = null;
@@ -51,16 +57,18 @@ document.addEventListener("DOMContentLoaded", () => {
   //modals
   const helpModal = document.getElementById("helpModal") as HTMLDivElement;
   const helpBtn = document.getElementById("helpButton") as HTMLButtonElement;
-  const helpSpan = document.getElementById("closeHelpModal") as HTMLSpanElement;
+  const helpClose = document.getElementById("closeHelpModal") as HTMLSpanElement;
   const zoomModal = document.getElementById("zoomModal") as HTMLDivElement;
   const zoomButton = document.getElementById("zoomButton") as HTMLButtonElement;
-  const zoomSpan = document.getElementById("closeZoomModal") as HTMLSpanElement;
+  const zoomCloseX = document.getElementById("closeZoomModal") as HTMLSpanElement;
   const zoomCloseButton = document.getElementById("zoomCloseButton") as HTMLButtonElement;
 
   const simulationTab = document.getElementById('simulationTab') as HTMLLIElement;
   const controlTab = document.getElementById('controlTab') as HTMLLIElement;
+  const plannerTab = document.getElementById('plannerTab') as HTMLLIElement;
   const simulationContent = document.getElementById('simulationContainer') as HTMLDivElement;
   const controlContent = document.getElementById('controlsContainer') as HTMLDivElement;
+  const plannerContent = document.getElementById('plannerContainer') as HTMLDivElement;
   const incrementButtons = document.querySelectorAll('#latheControls .increment-btn') as NodeListOf<HTMLButtonElement>;
   const moveDistanceInput = document.getElementById('moveDistance') as HTMLInputElement;
 
@@ -88,13 +96,21 @@ document.addEventListener("DOMContentLoaded", () => {
   simulationTab.addEventListener('click', () => {
     simulationContent.style.display = 'flex';
     controlContent.style.display = 'none';
+    plannerContent.style.display = 'none';
     editor.setValue(gcodeSenderEditor.getValue());
   });
 
   controlTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
     controlContent.style.display = 'flex';
+    plannerContent.style.display = 'none';
     gcodeSenderEditor.setValue(editor.getValue());
+  });
+
+  plannerTab.addEventListener('click', () => {
+    simulationContent.style.display = 'none';
+    controlContent.style.display = 'none';
+    plannerContent.style.display = 'flex';
   });
 
   zoomCanvas.width = window.visualViewport!.width - 100;
@@ -121,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
     drawToCanvas(zoomCanvas);
   };
 
-  zoomSpan.onclick = function () {
+  zoomCloseX.onclick = function () {
     zoomModal.style.display = "none";
   }
 
@@ -134,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
     helpModal.style.display = "block";
   }
 
-  helpSpan.onclick = function () {
+  helpClose.onclick = function () {
     helpModal.style.display = "none";
   }
 
@@ -150,8 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
   saveButton.addEventListener('click', () => saveGCode());
   loadButton.addEventListener('click', () => loadGCode());
   deleteButton.addEventListener('click', () => deleteGCode());
-
-  new GCode();
 
   updateLoadSelect();
 

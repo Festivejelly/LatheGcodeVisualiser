@@ -13,6 +13,8 @@ export class SenderStatus {
 }
 
 export class Sender {
+    private static instance: Sender | null = null;
+    private listeners: (() => void)[] = [];
     private port: SerialPort | null = null;
     private readTimeout = 0;
     private reader: ReadableStreamDefaultReader<string> | null = null;
@@ -31,7 +33,14 @@ export class Sender {
     private isDisconnecting = false;
     private lastStatus: SenderStatus | null = null;
 
-    constructor(readonly statusChangeCallback: () => void) { }
+    public static getInstance(): Sender {
+        if (!Sender.instance) {
+            Sender.instance = new Sender();
+        }
+        return Sender.instance;
+    }
+
+    constructor() { }
 
     getStatus() {
         this.lastStatus = new SenderStatus(
@@ -45,6 +54,14 @@ export class Sender {
             this.rpm
         );
         return this.lastStatus;
+    }
+
+    public addStatusChangeListener(listener: () => void): void {
+        this.listeners.push(listener);
+    }
+
+    private notifyStatusChange() {
+        this.listeners.forEach(listener => listener());
     }
 
     private setStatus(s: string) {
@@ -66,13 +83,13 @@ export class Sender {
                 this.rpm = Number(coords[1]);
             }
         }
-        this.statusChangeCallback();
+        this.notifyStatusChange();
     }
 
     private setError(e: string) {
         this.error = e;
         appendLineToResponseEditor(e);
-        this.statusChangeCallback();
+        this.notifyStatusChange();
     }
 
     isConnected() {
@@ -102,7 +119,7 @@ export class Sender {
         } catch (error) {
             console.log(error);
         }
-        this.statusChangeCallback();
+        this.notifyStatusChange();
     }
 
     async disconnect() {
@@ -124,7 +141,7 @@ export class Sender {
         this.waitForOkOrError = false;
         this.write('~');
         this.writeCurrentLine();
-        this.statusChangeCallback();
+        this.notifyStatusChange();
     }
 
     async sendCommand(command: string) {
@@ -140,7 +157,7 @@ export class Sender {
         this.waitForOkOrError = false;
         this.write('~');
         this.writeCurrentLine();
-        this.statusChangeCallback();
+        this.notifyStatusChange();
     }
 
     async sendCommands(commands: string[]) {
@@ -150,7 +167,7 @@ export class Sender {
         this.waitForOkOrError = false;
         this.write('~');
         this.writeCurrentLine();
-        this.statusChangeCallback();
+        this.notifyStatusChange();
     }
 
     async stop() {
@@ -158,7 +175,7 @@ export class Sender {
         if (!this.isOn) return;
         this.isOn = false;
         this.askForStatus();
-        this.statusChangeCallback();
+        this.notifyStatusChange();
     }
 
 
@@ -225,7 +242,7 @@ export class Sender {
             this.unparsedResponse = '';
             this.waitForOkOrError = false;
             this.lineIndex++;
-            this.statusChangeCallback();
+            this.notifyStatusChange();
             if (this.isOn) await this.writeCurrentLine();
         }
     }
@@ -238,12 +255,12 @@ export class Sender {
             this.port = await navigator.serial.requestPort();
         } else {
             this.error = 'This browser does not support Serial API, try Chrome or Edge';
-            this.statusChangeCallback();
+            this.notifyStatusChange();
         }
         if (this.port) {
             try {
                 await this.port.open({ baudRate: 115200 });
-                this.statusChangeCallback();
+                this.notifyStatusChange();
                 this.readSoon();
             } catch (e) {
                 this.setError(`Unable to open port - likely some other app is using it - try closing Arduino IDE.\n${e}`);
