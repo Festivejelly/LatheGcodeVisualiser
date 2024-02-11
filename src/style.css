@@ -66,6 +66,7 @@ button {
     background-color: #1a1a1a;
     cursor: pointer;
     transition: background-color 0.25s;
+    border: 2px solid white;
 }
 
 button:hover {
@@ -125,6 +126,14 @@ button:focus-visible {
     margin: 5px;
     align-items: center;
     width: auto;
+}
+
+.modal-pad {
+    padding-top: 10px;
+}
+
+.modal-pad-bottom {
+    padding-bottom: 10px;
 }
 
 .innerContainer.toolbar {
@@ -588,4 +597,246 @@ input[type="file"]::file-selector-button:hover {
     margin-right: 10px;
     display: inline-block;
     min-width: 120px;
+}
+
+
+/* Planner section */
+
+.planner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 5px;
+    width: 800px;
+    max-width: 1280px;
+    text-align: center;
+    border: 1px solid #ccc;
+}
+
+.planner-container h1 {
+    margin: 10px 0;
+}
+
+.planner-guidance {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 10px;
+    text-align: center;
+}
+
+.planner-guidance span {
+    display: block;
+    margin: 10px 0;
+    text-align: left;
+}
+
+#taskContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    padding: 20px;
+    padding-bottom: 20px;
+}
+
+.container-wrapper {
+    padding: 10px;
+}
+
+.container-wrapper-inner {
+    padding: 5px 0;
+}
+
+.container-wrapper-outer {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin: 10px;
+    background-color: #333;
+}
+
+.container-wrapper-delete {
+    min-height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed red;
+}
+
+#availableTasks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    align-items: start;
+    min-width: 450px;
+}
+
+#availableTasks .span-2-rows {
+    grid-row: span 3;
+    height: 100%;
+}
+
+#availableTasks div {
+    box-sizing: border-box;
+    padding: 5px;
+}
+
+#tasksToExecute {
+    min-height: 50px;
+    padding: 5px;
+    border: 2px dashed green;
+}
+
+#tasksToExecute div {
+    margin: 5px;
+}
+
+.task-to-execute {
+    text-align: left;
+}
+
+.task-to-execute i {
+    text-align: left;
+    margin-left: 5px;
+    cursor: help;
+}
+
+.available-task {
+    width: 150px;
+    user-select: none;
+}
+
+.available-task i {
+    margin-left: 5px;
+    cursor: help;
+}
+
+.task-manual {
+    background-color: #4c956c;
+}
+
+.task-gcode {
+    background-color: #386e97;
+}
+
+.task-container {
+    margin: 5px;
+}
+
+.task-container>div,
+.gu-mirror {
+    transition: opacity 0.4s ease-in-out;
+}
+
+.task-container>div {
+    padding: 5px;
+    cursor: move;
+    cursor: grab;
+    cursor: -moz-grab;
+    cursor: -webkit-grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-user-select: none;
+    /* Chrome, Safari, Opera */
+    -moz-user-select: none;
+    /* Firefox */
+    -ms-user-select: none;
+    /* Internet Explorer/Edge */
+    user-select: none;
+    /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+}
+
+.gu-mirror {
+    padding: 5px;
+    text-align: center;
+    cursor: grabbing;
+    cursor: -moz-grabbing;
+    cursor: -webkit-grabbing;
+}
+
+.task-container .ex-moved {
+    background-color: #e74c3c;
+}
+
+.task-container.ex-over {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.planner-save-text {
+    max-width: none !important;
+}
+
+.planner-save-button {
+    flex: auto;
+}
+
+.planner-load-select {
+    max-width: none !important;
+}
+
+.planner-load-delete-buttons {
+    width: 50%;
+}
+
+.planner-saving-label {
+    text-wrap: nowrap;
+}
+
+.no-marge {
+    margin: 0;
+}
+
+.task-modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.task-modal-content {
+    position: relative;
+    background-color: #242424;
+    margin: 15% auto;
+    padding: 20px;
+    border: 2px solid #6c5ce7;
+    max-width: 600px;
+    min-width: 600px;
+}
+
+.center-modal {
+    text-align: center;
+}
+
+.icon-tooltip {
+    position: relative;
+    cursor: pointer;
+}
+
+.icon-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 1;
+    background-color: black;
+    color: white;
+    padding: 5px;
+    border-radius: 4px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.icon-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
 }

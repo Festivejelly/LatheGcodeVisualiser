@@ -2,6 +2,7 @@ import { Sender } from './sender';
 import { gcodeResponseEditor } from './main';
 import { gcodeSenderEditor } from './main';
 
+
 export class GCode {
 
     private sendButton: HTMLButtonElement;
@@ -36,54 +37,53 @@ export class GCode {
 
         this.sendButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
 
-        let sender: Sender | null = null;
-        if (!sender) sender = new Sender(() => this.senderStatusChange());
-        this.sender = sender;
+        this.sender = Sender.getInstance();
+        this.sender.addStatusChangeListener(() => this.handleStatusChange());
 
-        this.jogButtons.forEach(function (btn) {
-            btn.addEventListener('click', function () {
+        this.jogButtons.forEach( (btn) => {
+            btn.addEventListener('click', () => {
 
                 let feedrate = "";
                 let axis = "";
                 let distance = "";
                 let positive = true;
 
-                if (this.id == 'fastForward') {
+                if (btn.id == 'fastForward') {
                     feedrate = fastFeedrateInput.value;
                     axis = 'X';
                     distance = moveDistanceInput.value;
                     positive = true;
-                } else if (this.id == 'slowForward') {
+                } else if (btn.id == 'slowForward') {
                     feedrate = slowFeedrateInput.value;
                     axis = 'X';
                     distance = moveDistanceInput.value;
                     positive = true;
-                } else if (this.id == 'fastBackward') {
+                } else if (btn.id == 'fastBackward') {
                     feedrate = fastFeedrateInput.value;
                     axis = 'X';
                     distance = moveDistanceInput.value;
                     positive = false;
-                } else if (this.id == 'slowBackward') {
+                } else if (btn.id == 'slowBackward') {
                     feedrate = slowFeedrateInput.value;
                     axis = 'X';
                     distance = moveDistanceInput.value;
                     positive = false;
-                } else if (this.id == 'fastLeft') {
+                } else if (btn.id == 'fastLeft') {
                     feedrate = fastFeedrateInput.value;
                     axis = 'Z';
                     distance = moveDistanceInput.value;
                     positive = true;
-                } else if (this.id == 'slowLeft') {
+                } else if (btn.id == 'slowLeft') {
                     feedrate = slowFeedrateInput.value;
                     axis = 'Z';
                     distance = moveDistanceInput.value;
                     positive = true;
-                } else if (this.id == 'fastRight') {
+                } else if (btn.id == 'fastRight') {
                     feedrate = fastFeedrateInput.value;
                     axis = 'Z';
                     distance = moveDistanceInput.value;
                     positive = false;
-                } else if (this.id == 'slowRight') {
+                } else if (btn.id == 'slowRight') {
                     feedrate = slowFeedrateInput.value;
                     axis = 'Z';
                     distance = moveDistanceInput.value;
@@ -92,15 +92,15 @@ export class GCode {
 
                 let positiveModifier = positive === true ? '' : '-';
                 let command = `${axis}${positiveModifier}${distance} F${feedrate}`;
-                if (sender) {
-                    sender.sendCommand(command);
+                if (this.sender) {
+                    this.sender.sendCommand(command);
                 }
             });
         });
 
-        this.toolButtons.forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                let toolId = this.id;
+        this.toolButtons.forEach((btn)  => {
+            btn.addEventListener('click', () => {
+                let toolId = btn.id;
                 let tCommand = 'T';
 
                 if(toolId == 'tool0') {
@@ -129,26 +129,25 @@ export class GCode {
                 commandArray[0] = 'G91';
                 commandArray[1] = tCommand;
 
-                if (sender) {
-                    sender.sendCommands(commandArray);
+                if (this.sender) {
+                    this.sender.sendCommands(commandArray);
                 }
             });
         });
 
-
         this.connectButton.addEventListener('click', () => {
             this.gcodeResponseContainer.style.display = 'block';
-            if (!this.isConnected && sender) sender.connect();
+            if (!this.isConnected && this.sender) this.sender.connect();
         });
 
         this.sendButton.addEventListener('click', () => {
-            if (sender) {
-                sender.start(gcodeSenderEditor.getValue());
+            if (this.sender) {
+                this.sender.start(gcodeSenderEditor.getValue());
             }
         });
 
         this.stopButton = document.getElementById('stopButton') as HTMLButtonElement;
-        this.stopButton.addEventListener('click', () => sender!.stop());
+        this.stopButton.addEventListener('click', () => this.sender!.stop());
         this.stopButton.style.display = 'none';
     }
 
@@ -156,8 +155,7 @@ export class GCode {
         //this.container.style.display = 'none';
     }
 
-
-    private senderStatusChange() {
+    private handleStatusChange() {
         if (!this.sender) return;
         const status = this.sender.getStatus();
         if (status.isConnected === false) {

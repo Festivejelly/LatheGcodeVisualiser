@@ -10,9 +10,13 @@
     },
     "devDependencies": {
         "@types/ace": "^0.0.52",
+        "@types/dragula": "^3.7.4",
         "typescript": "^5.2.2",
         "vite": "^5.0.8",
         "vite-plugin-singlefile": "^0.13.5",
         "vitest": "^0.31.4"
+    },
+    "dependencies": {
+        "dragula": "^3.7.3"
     }
 }

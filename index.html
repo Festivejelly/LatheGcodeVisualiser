@@ -15,6 +15,7 @@
             <ul>
                 <li id="simulationTab">Simulation</li>
                 <li id="controlTab">Control</li>
+                <li id="plannerTab">Planner</li>
             </ul>
         </div>
 
@@ -31,19 +32,9 @@
                     <button id="clearButton">Clear</button>
                     <button id="helpButton">How to use</button>
                 </div>
-                <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
-                    <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
-                    <div id="sliderLabel" style="text-align: center;"><br>Drag to see moves</div>
-                </div>
-                <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
-                    <input type="checkbox" id="showCuts" checked> Show Cut Moves
-                    </label>
-                    <label>
-                        <input type="checkbox" id="showNonCuts" checked>
-                        Show Non-Cut Moves
-                    </label>
-                </div>
+
                 <div class="innerContainer" id="loadAndSave">
+
                     <hr>
                     <div class="innerContainer toolbar">
                         <input type="text" class="saveGCodeNameInput" placeholder="name of save"></input>
@@ -60,6 +51,18 @@
 
             <div class="canvas-container">
                 <canvas id="gcodeCanvas" width="800" height="600"></canvas>
+                <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
+                    <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
+                    <div id="sliderLabel" style="text-align: center;"><br>Drag to see moves</div>
+                </div>
+                <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
+                    <input type="checkbox" id="showCuts" checked> Show Cut Moves
+                    </label>
+                    <label>
+                        <input type="checkbox" id="showNonCuts" checked>
+                        Show Non-Cut Moves
+                    </label>
+                </div>
                 <div class="innerContainer"><button id="zoomButton" title="Zoom in">Zoom In</button></div>
             </div>
 
@@ -134,6 +137,267 @@
                 </div>
             </div>
             <script type="module" src="/src/main.ts"></script>
+        </div>
+        <div id="plannerContainer" class="main-container" style="display: none;">
+            <div id="plannerContent" class="planner-container">
+                <div class="innerContainer">
+                    <h1>Planner</h1>
+                    <div class="planner-guidance">
+                        <span>Use this tool to create a job of tasks to execute. This can be manual, gcode or a
+                            combination
+                            of the two.
+                            When you click execute the job wizard will execute the tasks one after another. Each task
+                            with require confirmation to start.</span>
+                    </div>
+                </div>
+                <div class="innerContainer">
+                    <h1>Device status</h1>
+                    <button id="plannerConnectButton">Connect</button>
+                </div>
+                <div id="taskContainer">
+                    <div class="container-wrapper-outer">
+                        <div class="container-wrapper">
+                            <h2>Current Job</h2>
+                            <div id="tasksToExecute" class="task-container">
+                            </div>
+                        </div>
+                        <div class="container-wrapper">
+                            <button id="executeJobButton">Execute Job</button>
+                        </div>
+                        <hr>
+                        <div class="container-wrapper">
+                            <div class="innerContainer" id="loadAndSaveJob">
+                                <span class="planner-saving-label">Load and save jobs</span>
+                                <div class="innerContainer toolbar">
+                                    <input id="saveJobNameInput" type="text" class="planner-save-text" placeholder="Name of Job"></input>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <button id="saveJobButton" class="planner-save-button" title="Save Job to local browser storage">Save
+                                        local</button>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <select id="jobLoadSelect" class="planner-load-select">
+                                    </select>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <button id="loadJobToExecute" class="planner-load-delete-buttons" title="Load Job from local browser storage">Load</button>
+                                    <button id="deleteJobToExecute" class="planner-load-delete-buttons" title="Delete Job from local browser storage">Delete</button>
+                                </div>
+                                <div class="container-wrapper-inner">
+                                    <hr>
+                                </div>
+                                <span class="planner-saving-label">Import and export Job to JSON</span>
+                                <div class="innerContainer toolbar">
+                                    <button id="importJobToExecute" class="planner-load-delete-buttons" title="Import Job from JSON file">Import</button>
+                                    <button id="exportJobToExecute" class="planner-load-delete-buttons" title="Export Job to JSON">Export</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container-wrapper-outer">
+                        <div class="container-wrapper">
+                            <h2>Available Tasks</h2>
+                            <div id="availableTasks" class="task-container">
+                            </div>
+                        </div>
+                        <div class="container-wrapper">
+                            <div class="container-wrapper-inner">
+                                <span>Drag here to delete</span>
+                            </div>
+                            <div id="deleteTasks" class="container-wrapper-delete">
+                            </div>
+                        </div>
+                        <div class="container-wrapper">
+                            <button id="addNewTaskButton">Add New Task</button>
+                        </div>
+                        <div class="container-wrapper-inner">
+                            <hr class="no-marge">
+                        </div>
+                        <div class="container-wrapper">
+                            <div class="innerContainer" id="loadAndSaveAvailableTasks">
+                                <div class="container-wrapper-inner">
+                                    <span class="planner-saving-label">Load and save task collections</span>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <input type="text" class="planner-save-text" placeholder="Task collection name"></input>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <button class="planner-save-button" title="Save Task to local browser storage">Save
+                                        local</button>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <select class="planner-load-select">
+                                        <option value="" disabled selected>Select your option</option>
+                                    </select>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <button id="loadTaskCollection" class="planner-load-delete-buttons" title="Load selected collection">Load collection</button>
+                                    <button id="deletetaskCollection" class="planner-load-delete-buttons" title="Delete selected collection">Delete collection</button>
+                                </div>
+                                <div class="container-wrapper-inner">
+                                    <hr>
+                                </div>
+                                <span class="planner-saving-label">Import and export tasks via JSON</span>
+                                <div class="innerContainer toolbar">
+                                    <button id="importAvailableTasks" class="planner-load-delete-buttons" title="Import tasks from JSON file">Import</button>
+                                    <button id="exportAvailableTask" class="planner-load-delete-buttons" title="Export tasks to JSON">Export</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Not Connected warning -->
+        <div id="notConnectedModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Not Connected</h2>
+                <div class="modal-pad-bottom">
+                    <span>Please connect to the controller before executing jobs</span>
+                </div>
+                <div class="modal-pad">
+                    <button id="notConnectedCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+        <!-- Manual Task Modal -->
+        <div id="manualTaskModal" class="task-modal">
+            <div class="task-modal-content">
+                <h2>Manual Task Instructions</h2>
+                <hr>
+                <div>
+                    <span id="manualTaskName"></span>
+                </div>
+                <div class="modal-pad">
+                    <textarea id="manualTaskInstructions" name="manualTaskInstructions" rows="4" cols="50" disabled></textarea>
+                </div>
+                <div class="modal-pad">
+                    <button id="cancelManualTask">Cancel</button>
+                    <button id="completeManualTask">Mark Complete</button>
+                </div>
+            </div>
+        </div>
+        <!-- Gcode Task Modal -->
+        <div id="cncTaskModal" class="task-modal">
+            <div class="task-modal-content">
+                <h2>CNC Task Gcode</h2>
+                <hr>
+                <div>
+                    <span id="cncTaskName"></span>
+                </div>
+                <div class="modal-pad">
+                    <textarea id="cncTaskGcode" name="cncTaskGcode" rows="4" cols="50" disabled></textarea>
+                </div>
+                <div class="modal-pad">
+                    <button id="cancelCncTask">Cancel</button>
+                    <button id="executeGcode">Execute Gcode</button>
+                </div>
+                <div class="modal-pad">
+                    <button id="completeCncTask" disabled>Mark Complete</button>
+                </div>
+                <div id="cncTaskSenderProgressContainer" class="modal-pad">
+                    <span id="cncTaskSenderProgressLabel">Execution in progress...</span>
+                    <progress id="cncTaskSenderProgress" max="1"></progress>
+                </div>
+            </div>
+        </div>
+        <!-- All tasks Complete Modal -->
+        <div id="completeTaskModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>All Tasks Complete</h2>
+                <div class="modal-pad">
+                    <button id="completeTaskCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+        <!-- Job Cancelled Modal -->
+        <div id="jobCancelledModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Job Cancelled</h2>
+                <div>
+                    <button id="jobCancelledCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="overideOrCreateNewModal" class="task-modal">
+            <div class="task-modal-content">
+                <span id="closeOverideOrCreateNewModal" class="close-modal">&times;</span>
+                <div>
+                    <div>This job has tasks that conflict with the available tasks</div>
+                    <div class="modal-pad">
+                        <textarea id="taskConflictText" name="taskConflictText" rows="4" cols="50" disabled></textarea>
+                    </div>
+                    <div>Would you like to overide the tasks or create new ones?</div>
+                    <div class="modal-pad">
+                        <button id="overideTaskOnImport">Overide Tasks</button>
+                        <button id="createNewTaskOnImport">Create New Tasks</button>
+                        <button id="cancelTaskImport">Cancel Import</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="newTaskModal" class="task-modal">
+            <div class="task-modal-content">
+                <span id="closeNewTaskModal" class="close-modal">&times;</span>
+                <div id="newTaskHelpText">
+                    <h2>Add a new task</h2>
+                    <hr>
+                    <div class="modal-pad">Task Name:</div>
+                    <div>
+                        <input type="text" id="newTaskName" name="newTaskName" placeholder="Enter task name...">
+                    </div>
+                    <div class="modal-pad">Task Type:</div>
+                    <div>
+                        <select id="newTaskType" name="newTaskType">
+                            <option value="manual">Manual</option>
+                            <option value="gcode">GCode</option>
+                        </select>
+                    </div>
+                    <div class="modal-pad">Task Description:</div>
+                    <div>
+                        <textarea id="newTaskDescription" name="newTaskDescription" rows="4" cols="50" placeholder="Enter Description..."></textarea>
+                    </div>
+                    <div class="modal-pad">Task GCode:</div>
+                    <div>
+                        <textarea id="newTaskGcode" name="newTaskGcode" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
+                    </div>
+                    <div class="modal-pad">
+                        <button id="saveNewTaskButton">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="taskInfoModal" class="task-modal">
+            <div class="task-modal-content">
+                <span id="closeTaskInfoModal" class="close-modal">&times;</span>
+                <div id="newTaskHelpText">
+                    <h2>Task Info</h2>
+                    <hr>
+                    <div class="modal-pad">Task Name:</div>
+                    <div>
+                        <input type="text" id="taskInfoName" name="newTaskName" placeholder="Enter task name...">
+                    </div>
+                    <div class="modal-pad">Task Type:</div>
+                    <div>
+                        <select id="taskInfoType" name="newTaskType">
+                            <option value="manual">Manual</option>
+                            <option value="gcode">GCode</option>
+                        </select>
+                    </div>
+                    <div class="modal-pad">Task Description:</div>
+                    <div>
+                        <textarea id="taskInfoDescription" name="newTaskDescription" rows="4" cols="50" placeholder="Enter Description..."></textarea>
+                    </div>
+                    <div class="modal-pad">Task GCode:</div>
+                    <div>
+                        <textarea id="taskInfoGcode" name="newTaskGcode" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
+                    </div>
+
+                    <div class="modal-pad">
+                        <button id="overideExistingTask">Save Changes</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="helpModal" class="help-modal">
             <div class="help-modal-content">
