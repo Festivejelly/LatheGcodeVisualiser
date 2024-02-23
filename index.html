@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="/src/style.css">
     <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
 
 <body>
@@ -16,6 +17,7 @@
                 <li id="simulationTab">Simulation</li>
                 <li id="controlTab">Control</li>
                 <li id="plannerTab">Planner</li>
+                <li id="threadingTab">Threading</li>
             </ul>
         </div>
 
@@ -52,7 +54,7 @@
             </div>
 
             <div class="canvas-container">
-                <canvas id="gcodeCanvas" width="800" height="600"></canvas>
+                <canvas id="gcodeCanvas" width="785" height="600"></canvas>
                 <div id="sliderContainer" class="innerContainer" style="display: none; width: 400px;">
                     <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
                     <div id="sliderLabel" style="text-align: center;"><br>Drag to see moves</div>
@@ -157,9 +159,10 @@
                 <div class="innerContainer">
                     <h1>Planner</h1>
                     <div class="planner-guidance">
-                        <span>Use this tool to create a job of tasks to execute. This can be manual, gcode or a
+                        <span>Use this tool to create a job of tasks to execute. This can be manual, gcode, button press
+                            emulation or a
                             combination
-                            of the two.
+                            of them.
                             When you click execute the job wizard will execute the tasks one after another. Each task
                             with require confirmation to start.</span>
                     </div>
@@ -172,6 +175,7 @@
                     <div class="container-wrapper-outer">
                         <div class="container-wrapper">
                             <h2>Current Job</h2>
+                            <span>Drag an available task to below</span>
                             <div id="tasksToExecute" class="task-container">
                             </div>
                         </div>
@@ -181,21 +185,17 @@
                         <hr>
                         <div class="container-wrapper">
                             <div class="innerContainer" id="loadAndSaveJob">
-                                <span class="planner-saving-label">Load and save jobs</span>
-                                <div class="innerContainer toolbar">
-                                    <input id="saveJobNameInput" type="text" class="planner-save-text" placeholder="Name of Job"></input>
-                                </div>
                                 <div class="innerContainer toolbar">
                                     <button id="saveJobButton" class="planner-save-button" title="Save Job to local browser storage">Save
-                                        local</button>
-                                </div>
-                                <div class="innerContainer toolbar">
-                                    <select id="jobLoadSelect" class="planner-load-select">
-                                    </select>
+                                        Job</button>
                                 </div>
                                 <div class="innerContainer toolbar">
                                     <button id="loadJobToExecute" class="planner-load-delete-buttons" title="Load Job from local browser storage">Load</button>
                                     <button id="deleteJobToExecute" class="planner-load-delete-buttons" title="Delete Job from local browser storage">Delete</button>
+                                </div>
+                                <div class="innerContainer toolbar">
+                                    <select id="jobLoadSelect" class="planner-load-select">
+                                    </select>
                                 </div>
                                 <div class="container-wrapper-inner">
                                     <hr>
@@ -229,24 +229,21 @@
                         </div>
                         <div class="container-wrapper">
                             <div class="innerContainer" id="loadAndSaveAvailableTasks">
-                                <div class="container-wrapper-inner">
-                                    <span class="planner-saving-label">Load and save task collections</span>
+                                <div><span>Task Collections</span></div>
+                                <div class="innerContainer toolbar">
+                                    <button id='saveAvailableTaskCollection' class="planner-save-button" title="Save Task to local browser storage">Save tasks to a collection
+                                        <i class="far fa-save show-info icon-tooltip"
+                                            data-tooltip="Save to local machine"></i>
+                                    </button>
                                 </div>
                                 <div class="innerContainer toolbar">
-                                    <input type="text" class="planner-save-text" placeholder="Task collection name"></input>
-                                </div>
-                                <div class="innerContainer toolbar">
-                                    <button class="planner-save-button" title="Save Task to local browser storage">Save
-                                        local</button>
-                                </div>
-                                <div class="innerContainer toolbar">
-                                    <select class="planner-load-select">
-                                        <option value="" disabled selected>Select your option</option>
+                                    <select id="availableTaskCollections" class="planner-load-select">
+                                        <option value="" disabled>Select your option</option>
                                     </select>
                                 </div>
                                 <div class="innerContainer toolbar">
                                     <button id="loadTaskCollection" class="planner-load-delete-buttons" title="Load selected collection">Load collection</button>
-                                    <button id="deletetaskCollection" class="planner-load-delete-buttons" title="Delete selected collection">Delete collection</button>
+                                    <button id="deleteTaskCollection" class="planner-load-delete-buttons" title="Delete selected collection">Delete collection</button>
                                 </div>
                                 <div class="container-wrapper-inner">
                                     <hr>
@@ -254,13 +251,16 @@
                                 <span class="planner-saving-label">Import and export tasks via JSON</span>
                                 <div class="innerContainer toolbar">
                                     <button id="importAvailableTasks" class="planner-load-delete-buttons" title="Import tasks from JSON file">Import</button>
-                                    <button id="exportAvailableTask" class="planner-load-delete-buttons" title="Export tasks to JSON">Export</button>
+                                    <button id="exportAvailableTasks" class="planner-load-delete-buttons" title="Export tasks to JSON">Export</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+        <div id="threadingContainer" class="main-container" style="display: none;">
+            <div id="threadingContent" class="threading-container">Coming soon.</div>
         </div>
         <!-- Not Connected warning -->
         <div id="notConnectedModal" class="task-modal">
@@ -287,7 +287,7 @@
                 </div>
                 <div class="modal-pad">
                     <button id="cancelManualTask">Cancel</button>
-                    <button id="completeManualTask">Mark Complete</button>
+                    <button id="completeManualTask">Next Task --></button>
                 </div>
             </div>
         </div>
@@ -307,11 +307,33 @@
                     <button id="executeGcode">Execute Gcode</button>
                 </div>
                 <div class="modal-pad">
-                    <button id="completeCncTask" disabled>Mark Complete</button>
+                    <button id="completeCncTask" disabled>Next Task --></button>
                 </div>
                 <div id="cncTaskSenderProgressContainer" class="modal-pad">
                     <span id="cncTaskSenderProgressLabel">Execution in progress...</span>
                     <progress id="cncTaskSenderProgress" max="1"></progress>
+                </div>
+            </div>
+        </div>
+        <!-- key Emulation Task Modal -->
+        <div id="emulationTaskModal" class="task-modal">
+            <div class="task-modal-content">
+                <h2>Key Emulation Task</h2>
+                <hr>
+                <div>
+                    <span id="emulationTaskName"></span>
+                </div>
+                <div class="modal-pad">
+                    <ul id="emulationExecutionTasks">
+                        <!-- List items will be added here -->
+                    </ul>
+                    <div class="modal-pad">
+                        <button id="completeEmulationTask" disabled>Mark Complete</button>
+                    </div>
+                    <div id="emulationTaskSenderProgressContainer" class="modal-pad">
+                        <span id="emulationTaskSenderProgressLabel">Execution in progress...</span>
+                        <progress id="emulationTaskSenderProgress" max="1"></progress>
+                    </div>
                 </div>
             </div>
         </div>
@@ -333,29 +355,49 @@
                 </div>
             </div>
         </div>
-        <!-- overide modal-->
-        <div id="overideOrCreateNewModal" class="task-modal">
+        <!-- Save Job Modal -->
+        <div id="saveJobModal" class="task-modal">
             <div class="task-modal-content">
-                <span id="closeOverideOrCreateNewModal" class="close-modal">&times;</span>
+                <span id="saveJobModalClose" class="close-modal">&times;</span>
+                <h2>Save Job</h2>
+                <hr>
                 <div>
-                    <div>This job has tasks that conflict with the available tasks</div>
+                    <input id="saveJobNameInput" type="text" class="planner-save-text" placeholder="Name of Job"></input>
+                </div>
+                <div class="modal-pad">
+                    <button id="saveJobSaveButton">Save</button>
+                </div>
+            </div>
+        </div>
+        <!-- Save Collection -->
+        <div id="saveCollectionModal" class="task-modal">
+            <div class="task-modal-content">
+                <span id="saveCollectionModalClose" class="close-modal">&times;</span>
+                <div>
+                    <div>Which collection would you like to save the tasks to?</div>
                     <div class="modal-pad">
-                        <textarea id="taskConflictText" name="taskConflictText" rows="4" cols="50" disabled></textarea>
+                        <select id="saveCollectionModalToSaveTo" name="collectionToSaveToModal">
+                        </select>
                     </div>
-                    <div>Would you like to overide the tasks or create new ones?</div>
+                    <div id="newCollectionNameContainerModal" style="display: none;">
+                        <div class="modal-pad">New Collection Name:</div>
+                        <div>
+                            <input type="text" id="newCollectionNameModal" name="newCollectionNameModal" placeholder="Enter collection name...">
+                        </div>
+                    </div>
+
                     <div class="modal-pad">
-                        <button id="overideTaskOnImport">Overide Tasks</button>
-                        <button id="createNewTaskOnImport">Create New Tasks</button>
-                        <button id="cancelTaskImport">Cancel Import</button>
+                        <button id="saveAvailableTaskCollectionButtonModal">Save</button>
                     </div>
                 </div>
             </div>
         </div>
+        <!-- new task modal-->
         <div id="newTaskModal" class="task-modal">
             <div class="task-modal-content">
                 <span id="closeNewTaskModal" class="close-modal">&times;</span>
                 <div id="newTaskHelpText">
-                    <h2>Add a new task</h2>
+                    <h2 id="taskTextTitle">Add a new task</h2>
                     <hr>
                     <div class="modal-pad">Task Name:</div>
                     <div>
@@ -366,50 +408,203 @@
                         <select id="newTaskType" name="newTaskType">
                             <option value="manual">Manual</option>
                             <option value="gcode">GCode</option>
+                            <option value="emulation" disabled>Key Emulation</option>
                         </select>
                     </div>
                     <div class="modal-pad">Task Description:</div>
                     <div>
                         <textarea id="newTaskDescription" name="newTaskDescription" rows="4" cols="50" placeholder="Enter Description..."></textarea>
                     </div>
-                    <div class="modal-pad">Task GCode:</div>
+                    <div id="gcodeTaskContainer" style="display:none">
+                        <div class="modal-pad">Task GCode:</div>
+                        <div>
+                            <textarea id="newTaskGcode" name="newTaskGcode" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
+                        </div>
+                    </div>
+                    <div id="emulationOuterContainer" class="emulate-noselect" style="display:none">
+                        <div>
+                            <span>Use built in controller functions by emulating button presses
+                                Simply click the buttons you want to emulate to build up a sequence which will be
+                                displayed at the bottom. Each emulated press will have a 500ms delay between them.
+                                <br>
+                                <br>
+                                <i>Tip: Hover over the buttons for a description.</i>
+                            </span>
+                        </div>
+                        <div id="emulationInnerContainer">
+                            <div class="flexCol outerCol">
+                                <div id="numberContainer">
+                                    <div id="emulationNewTasksNumbers">
+                                        <button id="emulateKey9" data-button-key="B_9" class="standard-font material-symbols-outlined">
+                                            9
+                                        </button>
+                                        <button id="emulateKey8" data-button-key="B_8" class="standard-font material-symbols-outlined">
+                                            8
+                                        </button>
+                                        <button id="emulateKey7" data-button-key="B_7" class="standard-font material-symbols-outlined">
+                                            7
+                                        </button>
+                                        <button id="emulateKey6" data-button-key="B_6" class="standard-font material-symbols-outlined">
+                                            6
+                                        </button>
+                                        <button id="emulateKey5" data-button-key="B_5" class="standard-font material-symbols-outlined">
+                                            5
+                                        </button>
+                                        <button id="emulateKey4" data-button-key="B_4" class="standard-font material-symbols-outlined">
+                                            4
+                                        </button>
+                                        <button id="emulateKey3" data-button-key="B_3" class="standard-font material-symbols-outlined">
+                                            3
+                                        </button>
+                                        <button id="emulateKey2" data-button-key="B_2" class="standard-font material-symbols-outlined">
+                                            2
+                                        </button>
+                                        <button id="emulateKey1" data-button-key="B_1" class="standard-font material-symbols-outlined">
+                                            1
+                                        </button>
+                                        <button id="emulateKey0" data-button-key="B_0" class="standard-font material-symbols-outlined">
+                                            0
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flexCol middleCol">
+                                <div id="modeContainer">
+                                    <div id="emulationNewTasksMode">
+                                        <button id="emulateKeyBack" data-button-key="B_BACKSPACE" class="material-symbols-outlined">
+                                            backspace
+                                        </button>
+                                        <button id="emulateKeyGearbox" data-button-key="B_MODE_GEARS" class="material-symbols-outlined">
+                                            manufacturing
+                                        </button>
+                                        <button id="emulateKeyTurning" data-button-key="B_MODE_TURN" class="material-symbols-outlined">
+                                            reply
+                                        </button>
+                                        <button id="emulateKeyFacing" data-button-key="B_MODE_FACE" class="material-symbols-outlined">
+                                            turn_slight_left
+                                        </button>
+                                        <button id="emulateKeyCone" data-button-key="B_MODE_CONE" class="material-symbols-outlined">
+                                            arrow_forward_ios
+                                        </button>
+                                        <button id="emulateKeyParting" data-button-key="B_MODE_CUT" class="material-symbols-outlined">
+                                            publish
+                                        </button>
+                                        <button id="emulateKeyThreading" data-button-key="B_MODE_THREAD" class="material-symbols-outlined">
+                                            home_improvement_and_tools
+                                        </button>
+                                        <button id="emulateKeyMode" data-button-key="B_MODE_OTHER" class="standard-font material-symbols-outlined">
+                                            M
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="movementContainer">
+                                    <div id="emulationNewTasksMovement">
+                                        <button id="emulateKeyLeft" data-button-key="B_LEFT" class="material-symbols-outlined">
+                                            arrow_left_alt
+                                        </button>
+                                        <button id="emulateKeyRight" data-button-key="B_RIGHT" class="material-symbols-outlined">
+                                            arrow_right_alt
+                                        </button>
+                                        <button id="emulateKeyUp" data-button-key="B_UP" class="material-symbols-outlined">
+                                            arrow_upward_alt
+                                        </button>
+                                        <button id="emulateKeyDown" data-button-key="B_DOWN" class="material-symbols-outlined">
+                                            arrow_downward_alt
+                                        </button>
+                                        <button id="emulateKeyPlay" data-button-key="B_ON" class="material-symbols-outlined">
+                                            play_arrow
+                                        </button>
+                                        <button id="emulateKeyStop" data-button-key="B_OFF" class="material-symbols-outlined">
+                                            crop_square
+                                        </button>
+                                        <button id="emulateKeyStopLeft" data-button-key="B_STOPL" class="material-symbols-outlined">
+                                            keyboard_tab_rtl
+                                        </button>
+                                        <button id="emulateKeyStopRight" data-button-key="B_STOPR" class="material-symbols-outlined">
+                                            keyboard_tab
+                                        </button>
+                                        <button id="emulateKeyStopUp" data-button-key="B_STOPU" class="material-symbols-outlined">
+                                            vertical_align_top
+                                        </button>
+                                        <button id="emulateKeyStopDown" data-button-key="B_STOPD" class="material-symbols-outlined">
+                                            vertical_align_bottom
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flexCol outerCol">
+                                <div id="otherContainer">
+                                    <div id="emulationNewTasksOther">
+                                        <button id="emulateKeyZ" data-button-key="B_Z" class="standard-font material-symbols-outlined">
+                                            Z
+                                        </button>
+                                        <button id="emulateKeyX" data-button-key="B_X" class="standard-font material-symbols-outlined">
+                                            X
+                                        </button>
+                                        <button id="emulateKeyB" data-button-key="B_B" class="standard-font material-symbols-outlined">
+                                            B
+                                        </button>
+                                        <button id="emulateKeyA" data-button-key="B_A" class="standard-font material-symbols-outlined">
+                                            A
+                                        </button>
+                                        <button id="emulateKeyAngle" data-button-key="B_DISPL" class="material-symbols-outlined" title="Angle/Taco">
+                                            rotate_left
+                                        </button>
+                                        <button id="emulateKeySteps" data-button-key="B_STEPZ" class="material-symbols-outlined">
+                                            signal_cellular_alt
+                                        </button>
+                                        <button id="emulateKeySettings" data-button-key="B_SETTINGS" class="material-symbols-outlined">
+                                            settings
+                                        </button>
+                                        <button id="emulateKeyReverse" data-button-key="B_REVERSE" class="material-symbols-outlined">
+                                            sync_alt
+                                        </button>
+                                        <button id="emulateKeyMeasure" data-button-key="B_MEASURE" class="material-symbols-outlined">
+                                            space_bar
+                                        </button>
+                                        <button id="emulateKeyPlus" data-button-key="B_PLUS" class="standard-font material-symbols-outlined">
+                                            +
+                                        </button>
+                                        <button id="emulateKeyMinus" data-button-key="B_MINUS" class="standard-font material-symbols-outlined">
+                                            -
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <span>
+                                Emulated sequence: <i>Tip: Drag to reorder or delete</i>
+                            </span>
+                        </div>
+                        <div class="emulation-modal-pad-border">
+                            <div id="emulationNewTasks">
+                            </div>
+                        </div>
+                        <div class="modal-pad-bottom">
+                            <div id="emulatedTasksDelete" class="container-wrapper-inner">
+                                <span>
+                                    Drag here to delete
+                                </span>
+                            </div>
+                            <div id="emulatedButtonListDelete" class="container-wrapper-delete">
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-pad">Collection to save to:</div>
                     <div>
-                        <textarea id="newTaskGcode" name="newTaskGcode" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
+                        <select id="collectionToSaveTo" name="collectionToSaveTo">
+                        </select>
+                    </div>
+                    <div id="newCollectionNameContainer" style="display: none;">
+                        <div class="modal-pad">New Collection Name:</div>
+                        <div>
+                            <input type="text" id="newCollectionName" name="newCollectionName" placeholder="Enter collection name...">
+                        </div>
                     </div>
                     <div class="modal-pad">
                         <button id="saveNewTaskButton">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="taskInfoModal" class="task-modal">
-            <div class="task-modal-content">
-                <span id="closeTaskInfoModal" class="close-modal">&times;</span>
-                <div id="newTaskHelpText">
-                    <h2>Task Info</h2>
-                    <hr>
-                    <div class="modal-pad">Task Name:</div>
-                    <div>
-                        <input type="text" id="taskInfoName" name="newTaskName" placeholder="Enter task name...">
-                    </div>
-                    <div class="modal-pad">Task Type:</div>
-                    <div>
-                        <select id="taskInfoType" name="newTaskType">
-                            <option value="manual">Manual</option>
-                            <option value="gcode">GCode</option>
-                        </select>
-                    </div>
-                    <div class="modal-pad">Task Description:</div>
-                    <div>
-                        <textarea id="taskInfoDescription" name="newTaskDescription" rows="4" cols="50" placeholder="Enter Description..."></textarea>
-                    </div>
-                    <div class="modal-pad">Task GCode:</div>
-                    <div>
-                        <textarea id="taskInfoGcode" name="newTaskGcode" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
-                    </div>
-
-                    <div class="modal-pad">
-                        <button id="overideExistingTask">Save Changes</button>
                     </div>
                 </div>
             </div>
@@ -422,7 +617,9 @@
                     <div><a href="https://kachurovskiy.github.io/lathecode/ " target="_blank ">https://kachurovskiy.github.io/lathecode/</a></div>
                     <ul style="list-style-type: disc; padding-left: 20px; ">
                         <li>Use LatheCode to generate the G-code, then paste it into this tool.</li>
-                        <li>You can also write the G-code by hand for simple operations such as boring or grooving. <a href="# " id="exampleCode">Click here</a> to load an example.</li>
+                        <li>You can also write the G-code by hand for simple operations such as boring or grooving.
+                            <a href="# " id="exampleCode">Click here</a> to load an example.
+                        </li>
                         <li>Click "Simulate" to plot the moves onto the canvas.</li>
                         <li>movement lines marked with "; cut" will show in <span class="line red-line"></span><span class="text-red">red</span>.</li>
                         <li>movement lines marked with "; travel" will show in <span class="line green-line"></span><span class="text-green">green</span>.</li>
@@ -430,7 +627,8 @@
                         <li>movement lines not marked will default to <span class="line green-line"></span><span class="text-green">green</span>.</li>
                         <li>All other moves will be considered travel moves and will show in green.</li>
                         <li>Any G-code you paste or write can be saved into the browser's local storage. This is useful for saving common operations.</li>
-                        <li>When you're ready, you can send the G-code to the Nano ELS H4 by clicking "Send."</li>
+                        <li>When you're ready, you can send the G-code to the Nano ELS H4 by clicking "Send."
+                        </li>
                         <li>More functionality to come soon! Version 0.2</li>
                         <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser " target="_blank ">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
                     </ul>
@@ -450,6 +648,7 @@
                 </div>
             </div>
         </div>
+    </div>
 </body>
 
 </html>
