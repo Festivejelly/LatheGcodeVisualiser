@@ -635,6 +635,13 @@ document.addEventListener('DOMContentLoaded', () => {
     newTaskModal.style.display = 'block';
     collectionToSaveTo.value = localStorage.getItem('selectedTaskCollection') ?? 'default';
     taskTextTitle.textContent = 'Add a new task';
+
+    //clear name, description and gcode fields
+    newTaskName.value = '';
+    newTaskDescription.value = '';
+    newTaskGcode.value = '';
+    newCollectionName.value = '';
+    newTaskModal.removeAttribute('data-task-id')
   });
 
   // Save new task
@@ -751,12 +758,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
       }
     }
-
-    //clear name, description and gcode fields
-    newTaskName.value = '';
-    newTaskDescription.value = '';
-    newTaskGcode.value = '';
-    newCollectionName.value = '';
   });
 
   availableTasks.addEventListener('click', event => {
