@@ -457,7 +457,20 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadCurrentJob() {
     const jobData = localStorage.getItem('currentJob');
     if (jobData) {
-      const tasks = JSON.parse(jobData);
+      let tasks = JSON.parse(jobData);
+      const removedTasks: { collectionName: string; id: any; }[] = [];
+      tasks = tasks.filter((task: { collectionName: string; id: any; }) => {
+        const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
+        if (!collectionData) {
+          removedTasks.push(task);
+          return false;
+        }
+        return true;
+      });
+
+      //update the current job tasks that belong to a missing collection removed
+      localStorage.setItem('currentJob', JSON.stringify(tasks));
+
       tasks.forEach((task: { collectionName: string; id: any; }) => {
         const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
         if (collectionData) {
@@ -475,6 +488,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
+      if (removedTasks.length > 0) {
+        alert(`The following tasks were removed because their collection does not exist: ${removedTasks.map(task => task.id).join(', ')}`);
+      }
     }
   }
 
@@ -633,7 +649,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   addNewTask.addEventListener('click', () => {
     newTaskModal.style.display = 'block';
-    collectionToSaveTo.value = localStorage.getItem('selectedTaskCollection') ?? 'default';
     taskTextTitle.textContent = 'Add a new task';
 
     //clear name, description and gcode fields
@@ -642,10 +657,17 @@ document.addEventListener('DOMContentLoaded', () => {
     newTaskGcode.value = '';
     newCollectionName.value = '';
     newTaskModal.removeAttribute('data-task-id')
+
+    collectionToSaveTo.value = '';
   });
 
   // Save new task
   saveNewTaskButton.addEventListener('click', () => {
+
+    if (collectionToSaveTo.value === '') {
+      alert('Please select a collection.');
+      return;
+    }
 
     //validate the form
     if (collectionToSaveTo.value === 'new' && newCollectionName.value === '') {
@@ -758,6 +780,8 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
       }
     }
+
+    rebuildavailableTasksElements();
   });
 
   availableTasks.addEventListener('click', event => {
@@ -785,6 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newTaskType.value = taskData.type;
         newTaskDescription.value = taskData.description;
         newTaskGcode.value = taskData.gcode || '';
+        collectionToSaveTo.value = currentCollectionName || 'default';
         taskTextTitle.textContent = 'Edit Task';
 
         if (taskData.type === 'emulation') {
