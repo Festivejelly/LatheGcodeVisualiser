@@ -17,10 +17,15 @@ type GCodeCommand = {
   x?: number;
   z?: number;
   isRelative: boolean;
+  absolutePosition?: AbsolutePosition;
   movementType?: MovementType;
   lineNumber?: number; // Line number in the original G-code file
   originalLine?: string; // Original line text from the G-code file
 };
+
+type AbsolutePosition = { z: number, x: number };
+
+let absolutePosition: AbsolutePosition = { z: 0, x: 0 };
 
 const cutLineColour = '#DC143C'
 const travelLineColour = '#6B8E23'
@@ -38,6 +43,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const simulateButton = document.getElementById('simulateButton') as HTMLButtonElement;
   const showCuts = document.getElementById('showCuts') as HTMLInputElement;
   const showNonCuts = document.getElementById('showNonCuts') as HTMLInputElement;
+  const showCutsZoom = document.getElementById('showCutsZoom') as HTMLInputElement;
+  const showNonCutsZoom = document.getElementById('showNonCutsZoom') as HTMLInputElement;
   const sliderLabel = document.getElementById('sliderLabel') as HTMLDivElement;
   const zoomSliderLabel = document.getElementById('zoomSliderLabel') as HTMLDivElement;
   const progressSlider = document.getElementById('progressSlider') as HTMLInputElement;
@@ -298,6 +305,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       showCuts.addEventListener('change', handleCheckboxChange);
       showNonCuts.addEventListener('change', handleCheckboxChange);
+      showCutsZoom.addEventListener('change', handleCheckboxChangeZoom);
+      showNonCutsZoom.addEventListener('change', handleCheckboxChangeZoom);
 
       progressSlider.max = (drawableCommands.length - 1).toString();
       progressSlider.value = progressSlider.min; // Start the slider at the beginning
@@ -393,7 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateSliderLabel(command: GCodeCommand | undefined) {
     if (command?.lineNumber !== undefined) {
       editor.gotoLine(command.lineNumber, 0, true); // Highlight the line in the editor
-      sliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}` || '';
+      sliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}<br>Abs: X${command.absolutePosition?.x} Z${command.absolutePosition?.z}` || '';
     } else {
       sliderLabel.innerHTML = '';
     }
@@ -402,7 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateZoomSliderLabel(command: GCodeCommand | undefined) {
     if (command?.lineNumber !== undefined) {
       editor.gotoLine(command.lineNumber, 0, true); // Highlight the line in the editor
-      zoomSliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}` || '';
+      zoomSliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}<br>Abs: X${command.absolutePosition?.x} Z${command.absolutePosition?.z}` || '';
     } else {
       zoomSliderLabel.innerHTML = '';
     }
@@ -444,9 +453,19 @@ document.addEventListener("DOMContentLoaded", () => {
             break;
           case 'X':
             command.x = value;
+            if (!isRelative) {
+              absolutePosition.x = value;
+            } else {
+              absolutePosition.x += value;
+            }
             break;
           case 'Z':
             command.z = value;
+            if (!isRelative) {
+              absolutePosition.z = value;
+            } else {
+              absolutePosition.z += value;
+            }
             break;
         }
       });
@@ -454,7 +473,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const newCommand: GCodeCommand = {
         ...command,
         lineNumber: index + 1,
-        originalLine: line
+        originalLine: line,
+        absolutePosition: { ...absolutePosition } // Add the 'absolutePosition' property
       };
 
       if ((command.z !== undefined) || (command.x !== undefined)) {
@@ -467,9 +487,21 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleCheckboxChange() {
+    //sync checkboxes
+    showCutsZoom.checked = showCuts.checked;
+    showNonCutsZoom.checked = showNonCuts.checked;
     progressSlider.value = '0';
     const scaleFactor = calculateDynamicScaleFactor(drawableCommands, standardCanvas);
     draw(standardCanvas, drawableCommands, scaleFactor, drawableCommands.length); // Redraw the entire set of commands
+  }
+
+  function handleCheckboxChangeZoom() {
+    //sync checkboxes
+    showCuts.checked = showCutsZoom.checked;
+    showNonCuts.checked = showNonCutsZoom.checked;
+    zoomProgressSlider.value = '0';
+    const scaleFactor = calculateDynamicScaleFactor(drawableCommands, zoomCanvas);
+    draw(zoomCanvas, drawableCommands, scaleFactor, drawableCommands.length); // Redraw the entire set of commands
   }
 
   function calculateDynamicScaleFactor(commands: GCodeCommand[], canvas: HTMLCanvasElement): number {
@@ -567,6 +599,9 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    let drawCuts = showCuts.checked || showCutsZoom.checked;
+    let drawNonCuts = showNonCuts.checked || showNonCutsZoom.checked;
+
     ctx.lineWidth = 2;
     if (drawableCommand.isRelative) {
       currentX += drawableCommand.x ?? 0;
@@ -582,7 +617,7 @@ document.addEventListener("DOMContentLoaded", () => {
     canvasX = (canvas.height / 2) - (currentX * scaleFactor);
     canvasZ = canvas.width - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
 
-    if ((drawableCommand.movementType == MovementType.Cut && showCuts.checked) || (drawableCommand.movementType == MovementType.Travel && showNonCuts.checked) || drawableCommand.movementType == MovementType.Retract && showNonCuts.checked) {
+    if ((drawableCommand.movementType == MovementType.Cut && drawCuts) || (drawableCommand.movementType == MovementType.Travel && drawNonCuts) || drawableCommand.movementType == MovementType.Retract && drawNonCuts) {
       ctx.beginPath();
       ctx.strokeStyle = drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
       ctx.moveTo(previousCanvasZ, previousCanvasX);
