@@ -108,14 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
   sender.addStatusChangeListener(() => handleStatusChange());
 
   plannerContainer.addEventListener('containerVisible', () => {
+    updateAvailableTaskCollectionsSelect();
     rebuildavailableTasksElements();
+    loadCurrentJob();
+    updateTaskNumbers();
+    rebuildTaskElements();
+    updateJobLoadSelect();
   });
-
-  loadCurrentJob();
-  updateTaskNumbers();
-  rebuildTaskElements();
-  updateJobLoadSelect();
-  updateAvailableTaskCollectionsSelect();
 
   saveCollectionModalToSaveTo.addEventListener('change', () => {
     if (saveCollectionModalToSaveTo.value === 'new') {
@@ -456,8 +455,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadCurrentJob() {
     const jobData = localStorage.getItem('currentJob');
+    let tasks: { collectionName: string; id: any; }[] = [];
+
     if (jobData) {
-      let tasks = JSON.parse(jobData);
+      try {
+        tasks = JSON.parse(jobData);
+      } catch (e) {
+        console.warn('Error parsing current job data, clearing current job data...');
+        localStorage.setItem('currentJob', JSON.stringify([]));
+      }
+
       const removedTasks: { collectionName: string; id: any; }[] = [];
       tasks = tasks.filter((task: { collectionName: string; id: any; }) => {
         const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);

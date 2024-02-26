@@ -71,14 +71,6 @@
                     <input type="range" id="progressSlider" min="0" max="100" value="0" style="width: 100%;">
                     <div id="sliderLabel" style="text-align: center;"><br>Drag to see moves</div>
                 </div>
-                <div id="displayOptionsContainer" class="innerContainer" style="display: none;">
-                    <input type="checkbox" id="showCuts" checked> Show Cut Moves
-                    </label>
-                    <label>
-                        <input type="checkbox" id="showNonCuts" checked>
-                        Show Non-Cut Moves
-                    </label>
-                </div>
                 <div class="innerContainer"><button id="zoomButton" title="Zoom in">Zoom In</button></div>
             </div>
 
@@ -643,6 +635,14 @@
                     <div id="zoomSliderContainer" class="innerContainer" style="width: 400px;">
                         <input type="range" id="zoomProgressSlider" min="0" max="100" value="0" style="width: 100%;">
                         <div id="zoomSliderLabel" style="text-align: center;"><br>Drag to see moves</div>
+                    </div>
+                    <div id="displayOptionsContainerZoom" class="innerContainer">
+                        <input type="checkbox" id="showCutsZoom" checked> Show Cut Moves
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showNonCutsZoom" checked>
+                            Show Non-Cut Moves
+                        </label>
                     </div>
                     <button id="zoomCloseButton">Close</button>
                 </div>

@@ -345,11 +345,9 @@ input[type="file"]::file-selector-button:hover {
 #sliderAndButtonContainer {
     display: flex;
     justify-content: center;
-    /* This centers the slider and button horizontally */
     align-items: center;
-    /* This aligns the slider and button vertically */
     gap: 10px;
-    /* This adds space between the slider and the button */
+    flex-direction: column;
 }
 
 .text-red {
