@@ -30,7 +30,7 @@ let absolutePosition: AbsolutePosition = { z: 0, x: 0 };
 const cutLineColour = '#DC143C'
 const travelLineColour = '#6B8E23'
 const retractLineColour = '#FFA500'
-
+const currentLineColour = '#ADD8E6'
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -591,11 +591,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const maxCount = progress !== undefined ? Math.min(progress + 1, drawableCommands.length) : drawableCommands.length;
 
     for (let i = 0; i < maxCount; i++) {
-      drawCommand(canvas, drawableCommands[i], scalingFactor);
+      drawCommand(canvas, drawableCommands[i], scalingFactor, i === progress);
     }
   }
 
-  function drawCommand(canvas: HTMLCanvasElement, drawableCommand: GCodeCommand, scaleFactor: number) {
+  function drawCommand(canvas: HTMLCanvasElement, drawableCommand: GCodeCommand, scaleFactor: number, isCurrentLine: boolean) {
     ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -619,7 +619,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if ((drawableCommand.movementType == MovementType.Cut && drawCuts) || (drawableCommand.movementType == MovementType.Travel && drawNonCuts) || drawableCommand.movementType == MovementType.Retract && drawNonCuts) {
       ctx.beginPath();
-      ctx.strokeStyle = drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
+      ctx.strokeStyle = isCurrentLine ? currentLineColour : drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
       ctx.moveTo(previousCanvasZ, previousCanvasX);
       ctx.lineTo(canvasZ, canvasX);
       ctx.stroke();
