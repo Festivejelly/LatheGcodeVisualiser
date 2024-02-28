@@ -455,19 +455,19 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             break;
           case 'X':
-            command.x = value;
+            command.x = parseFloat(value.toFixed(3));
             if (!isRelative) {
-              absolutePosition.x = value;
+              absolutePosition.x = parseFloat(value.toFixed(3));
             } else {
-              absolutePosition.x += value;
+              absolutePosition.x = parseFloat((absolutePosition.x + value).toFixed(3));
             }
             break;
           case 'Z':
-            command.z = value;
+            command.z = parseFloat(value.toFixed(3));
             if (!isRelative) {
-              absolutePosition.z = value;
+              absolutePosition.z = parseFloat(value.toFixed(3));
             } else {
-              absolutePosition.z += value;
+              absolutePosition.z = parseFloat((absolutePosition.z + value).toFixed(3));
             }
             break;
         }
