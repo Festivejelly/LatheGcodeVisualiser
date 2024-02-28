@@ -220,30 +220,36 @@ export class Sender {
     };
 
     private async processResponse(response: string) {
-        this.unparsedResponse = (this.unparsedResponse + response).trimStart();
-        appendLineToResponseEditor(`command: ${response}`);
-        console.log(`response: "${response}"`);
 
-        // Cut out status message.
-        const statuses = this.unparsedResponse.match(/(<[^>]+>)/);
-        if (statuses && statuses.length > 1) {
-            statuses.shift();
-            for (const s of statuses) {
-                this.unparsedResponse = this.unparsedResponse.replace(s, '');
+        const lines = response.split('\r\n');
+
+        for (const line of lines) {
+            this.unparsedResponse = (this.unparsedResponse + line).trimStart();
+            appendLineToResponseEditor(`command: ${line}`);
+            console.log(`response: "${line}"`);
+    
+            // Cut out status message.
+            const statuses = this.unparsedResponse.match(/(<[^>]+>)/);
+            if (statuses && statuses.length > 1) {
+                statuses.shift();
+                for (const s of statuses) {
+                    this.unparsedResponse = this.unparsedResponse.replace(s, '');
+                }
+                this.setStatus(statuses.pop()!);
             }
-            this.setStatus(statuses.pop()!);
-        }
-
-        if (this.unparsedResponse.startsWith('error:')) {
-            this.setError(this.unparsedResponse);
+    
+            if (this.unparsedResponse.startsWith('error:')) {
+                this.setError(this.unparsedResponse);
+                this.unparsedResponse = '';
+                this.stop();
+            } else if (this.unparsedResponse.startsWith('ok')) {
+                this.unparsedResponse = '';
+                this.waitForOkOrError = false;
+                this.lineIndex++;
+                this.notifyStatusChange();
+                if (this.isOn) await this.writeCurrentLine();
+            }
             this.unparsedResponse = '';
-            this.stop();
-        } else if (this.unparsedResponse.startsWith('ok')) {
-            this.unparsedResponse = '';
-            this.waitForOkOrError = false;
-            this.lineIndex++;
-            this.notifyStatusChange();
-            if (this.isOn) await this.writeCurrentLine();
         }
     }
 

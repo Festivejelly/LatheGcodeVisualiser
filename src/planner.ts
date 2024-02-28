@@ -108,6 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
   sender.addStatusChangeListener(() => handleStatusChange());
 
   plannerContainer.addEventListener('containerVisible', () => {
+
+    tasksToExecute.innerHTML = '';
+
     updateAvailableTaskCollectionsSelect();
     rebuildavailableTasksElements();
     loadCurrentJob();
@@ -303,10 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
     emulationNewTasksList?.appendChild(clonedButton);
   }
 
-  function updateJobLoadSelect(cleanFirst: boolean = false) {
-    if (cleanFirst) {
-      jobLoadSelect.innerHTML = '';
-    }
+  function updateJobLoadSelect() {
+    jobLoadSelect.innerHTML = '';
+
     const savedJobs = Object.keys(localStorage).filter(key => key.includes('savedJob_'));
     savedJobs.forEach(job => {
       const jobName = job.replace('savedJob_', '');
@@ -315,6 +317,28 @@ document.addEventListener('DOMContentLoaded', () => {
       option.textContent = jobName;
       jobLoadSelect.appendChild(option);
     });
+
+    // select the job that is stored in the loadedJobName local storage variable
+    const loadedJobName = localStorage.getItem('loadedJobName');
+    let optionExists = false;
+
+    if (loadedJobName) {
+      // check if the option already exists in the dropdown
+      for (let i = 0; i < jobLoadSelect.options.length; i++) {
+        if (jobLoadSelect.options[i].value === loadedJobName) {
+          optionExists = true;
+          break;
+        }
+      }
+    }
+
+    // if the loadedJobName is empty or doesn't exist in the dropdown, select the first item
+    if (!loadedJobName || !optionExists) {
+      jobLoadSelect.selectedIndex = 0;
+    } else {
+      // select the option in the dropdown
+      jobLoadSelect.value = loadedJobName;
+    }
   }
 
   function updateAvailableTaskCollectionsSelect() {
@@ -389,17 +413,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isRun && lastTaskCompleted) {
       completeCncTaskButton.style.display = 'block';
       completeCncTaskButton.disabled = false;
-      lastTaskCompleted = false;
+      cncTaskSenderProgressLabel.innerText = "Task completed";
     } else if (isRun) {
       executeGcodeButton.disabled = true;
+      lastTaskCompleted = false;
+      cncTaskSenderProgressLabel.innerText = "Task in progress";
+    } else if (!isRun) {
       lastTaskCompleted = true;
+      completeCncTaskButton.style.display = 'none';
     }
 
     cncTaskSenderProgress.value = status.progress;
-    console.log(`Progress: ${status.progress}`);
 
     cncTaskSenderProgress.style.display = 'block';
     cncTaskSenderProgressLabel.style.display = 'block';
+
   }
 
   const emulatedTaskDrake = dragula([emulationNewTasksList, emulatedButtonListDelete], {
@@ -438,10 +466,10 @@ document.addEventListener('DOMContentLoaded', () => {
   drake.on('dragend', () => {
     updateTaskNumbers();
     rebuildTaskElements();
-    saveCurrentJob();
+    saveJob();
   });
 
-  function saveCurrentJob(name: string = 'currentJob') {
+  function saveJob(name: string = 'currentJob') {
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
     const jobData: { id: string | null, collectionName: string | null }[] = [];
     tasks.forEach(task => {
@@ -579,9 +607,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function rebuildavailableTasksElements() {
     availableTasks.innerHTML = '';
 
-    //get all tasks from selected collection, if there isnt one selected get tasks from local storage
-    const taskCollectionName = availableTaskCollections.value;
-    localStorage.setItem('selectedTaskCollection', taskCollectionName);
+    let taskCollectionName = localStorage.getItem('selectedTaskCollection')
+
+    if (taskCollectionName === null || taskCollectionName === '') {
+      taskCollectionName = availableTaskCollections.value;
+      localStorage.setItem('selectedTaskCollection', taskCollectionName);
+    }
+
     const taskCollection = localStorage.getItem(`taskCollection_${taskCollectionName}`);
 
     if (taskCollection) {
@@ -607,7 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newTask.classList.add('available-task');
         newTask.setAttribute('data-task-id', task.id.toString());
         newTask.setAttribute('data-task-name', task.name);
-        newTask.setAttribute('data-collection-name', taskCollectionName);
+        newTask.setAttribute('data-collection-name', taskCollectionName || '');
         newTask.textContent = task.name;
         const infoButton = document.createElement('i');
         infoButton.classList.add('fas', 'fa-info-circle', 'fa-fw', 'show-info', 'icon-tooltip');
@@ -863,11 +895,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function executeNextTask() {
     if (jobQueue.length === 0) {
-      console.log('All tasks completed');
       completeTaskModal.style.display = 'block';
       return;
     }
 
+    executeGcodeButton.disabled = false;
     const task = jobQueue.shift(); // Get the next task
 
     if (task && task.type === 'manual') {
@@ -878,6 +910,10 @@ document.addEventListener('DOMContentLoaded', () => {
       cncTaskName.textContent = `Task ${task.order}: ${task.name}`;
       cncTaskGcode.value = task.gcode ?? '';
       cncTaskModal.style.display = 'block';
+      const taskModalContent = cncTaskModal.querySelector('.task-modal-content') as HTMLElement; // Typecast to HTMLElement
+      if (taskModalContent) {
+        taskModalContent.style.backgroundColor = '';
+      }
       completeCncTaskButton.disabled = true;
       cncTaskSenderProgress.style.display = 'none';
       cncTaskSenderProgressLabel.style.display = 'none';
@@ -898,6 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cncTaskModal.style.display = 'none';
     jobQueue.length = 0;
     jobCancelledModal.style.display = 'block';
+    sender?.stop();
   }
 
   completeManualTaskButton.onclick = function () {
@@ -951,7 +988,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   saveJobButton.onclick = function () {
-
     saveJobModal.style.display = 'block';
   }
 
@@ -971,8 +1007,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    saveCurrentJob(`savedJob_${saveJobNameInput.value}`);
-    updateJobLoadSelect(true);
+    saveJob(`savedJob_${saveJobNameInput.value}`);
+    updateJobLoadSelect();
 
     saveJobModal.style.display = 'none';
     saveJobNameInput.value = '';
@@ -1010,13 +1046,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateTaskNumbers();
     rebuildTaskElements();
+
+    //store the loaded job name in local storage
+    localStorage.setItem('loadedJobName', jobName);
   }
 
   //delete selected job from local storage
   deleteJobToExecute.onclick = function () {
     const jobName = jobLoadSelect.value;
     localStorage.removeItem(`savedJob_${jobName}`);
-    updateJobLoadSelect(true);
+    updateJobLoadSelect();
+    rebuildTaskElements();
   }
 
   //import job from file
@@ -1055,10 +1095,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 skippedTasks.push({ id: task.id, collectionName: task.collectionName, reason: 'Collection not found' });
               }
             });
+
+            localStorage.setItem('loadedJobName', job.name);
+            saveJob(`savedJob_${job.name}`);
+            saveJob();
             updateTaskNumbers();
             rebuildTaskElements();
-            saveCurrentJob();
             rebuildavailableTasksElements();
+            updateJobLoadSelect();
             if (skippedTasks.length > 0) {
               const skippedTasksMessage = skippedTasks.map(task => `Task ${task.id} in collection ${task.collectionName} was skipped because ${task.reason}.`).join('\n');
               alert(`Could not import all tasks. The following tasks were skipped:\n${skippedTasksMessage}`);
@@ -1075,7 +1119,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentJob = localStorage.getItem('currentJob');
     if (currentJob) {
       const tasks = JSON.parse(currentJob);
+
+      const jobName = window.prompt('Enter a name for the job');
+      if (jobName === null || jobName === '') {
+        alert('Job name cannot be empty');
+        return;
+      }
+
       const job = {
+        name: jobName,
         tasks: [] as any[]
       };
 
@@ -1094,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'MyJob.json';
+      a.download = `${job.name}.json`;
       a.click();
       URL.revokeObjectURL(url);
     }
