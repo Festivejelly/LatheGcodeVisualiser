@@ -80,7 +80,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const incrementButtons = document.querySelectorAll('#latheControls .increment-btn') as NodeListOf<HTMLButtonElement>;
   const moveDistanceInput = document.getElementById('moveDistance') as HTMLInputElement;
 
-
+  if(!localStorage.getItem('helpModalShown')) {
+    helpModal.style.display = "block";
+    localStorage.setItem('helpModalShown', 'true');
+  }
 
   // Jog buttons
 
