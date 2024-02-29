@@ -160,21 +160,21 @@ document.addEventListener('DOMContentLoaded', () => {
       taskCollectionName = saveCollectionModalToSaveTo.value;
     }
 
-    const taskCollection = {
-      name: taskCollectionName,
-      tasks: [] as TaskData[]
-    };
+    // Get the selected task collection
+    const selectedTaskCollectionName = localStorage.getItem('selectedTaskCollection');
+    let taskCollection;
+    if (selectedTaskCollectionName) {
+        const selectedTaskCollection = localStorage.getItem(`taskCollection_${selectedTaskCollectionName}`);
+        if (selectedTaskCollection) {
+            taskCollection = JSON.parse(selectedTaskCollection);
+            // If the new collection name is the same as the selected one, no need to change it
+            if (taskCollectionName !== selectedTaskCollectionName) {
+                taskCollection.name = taskCollectionName;
+                localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
+            }
+        }
+    }
 
-    const tasks = availableTasks.querySelectorAll('.available-task');
-    tasks.forEach(task => {
-      const taskId = task.getAttribute('data-task-id');
-      const taskData = localStorage.getItem(`task_${taskId}`);
-      if (taskData) {
-        taskCollection.tasks.push(JSON.parse(taskData));
-      }
-    });
-
-    localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
     //update the select list
     const option = document.createElement('option');
     option.value = taskCollectionName;
@@ -192,6 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   loadTaskCollectionButton.onclick = function () {
+    const taskCollectionName = availableTaskCollections.value;
+    localStorage.setItem('selectedTaskCollection', taskCollectionName);
     rebuildavailableTasksElements();
   }
 
@@ -215,33 +217,38 @@ document.addEventListener('DOMContentLoaded', () => {
   //import task collection(s) from file
 
   importAvailableTasksButton.onclick = function () {
-
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
     input.multiple = true;
-    input.onchange = function (e) {
+    input.onchange = async function (e) {
       const files = (e.target as HTMLInputElement).files;
       if (files) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const contents = e.target?.result;
-          if (contents) {
-            const collections = JSON.parse(contents as string) as TaskCollection[];
-            collections.forEach(collection => {
-              const taskCollectionName = collection.name;
-              const taskCollection = localStorage.getItem(`taskCollection_${taskCollectionName}`);
-              //if task collection already exists then skip
-              if (taskCollection) {
-                return;
-              } else {
-                localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
-              }
-            });
-            updateAvailableTaskCollectionsSelect();
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const contents = e.target?.result;
+            if (contents) {
+              const collections = JSON.parse(contents as string) as TaskCollection[];
+              collections.forEach(collection => {
+                const taskCollectionName = collection.name;
+                const taskCollection = localStorage.getItem(`taskCollection_${taskCollectionName}`);
+                //if task collection already exists then prompt
+                if (taskCollection) {
+                  const shouldOverride = window.confirm(`Task collection ${taskCollectionName} already exists. Do you want to override it?`);
+                  if (shouldOverride) {
+                    localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
+                  }
+                } else {
+                  localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
+                }
+              });
+              updateAvailableTaskCollectionsSelect();
+            }
           }
+          reader.readAsText(file);
         }
-        reader.readAsText(files[0]);
       }
     }
     input.click();
