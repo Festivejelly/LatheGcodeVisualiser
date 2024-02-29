@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateJobLoadSelect() {
     jobLoadSelect.innerHTML = '';
 
-    const savedJobs = Object.keys(localStorage).filter(key => key.includes('savedJob_'));
+    const savedJobs = Object.keys(localStorage).filter(key => key.includes('savedJob_')).sort();
     savedJobs.forEach(job => {
       const jobName = job.replace('savedJob_', '');
       const option = document.createElement('option');
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
     collectionToSaveTo.appendChild(defaultOption.cloneNode(true));
     saveCollectionModalToSaveTo.appendChild(defaultOption.cloneNode(true));
 
-    const taskCollections = Object.keys(localStorage).filter(key => key.includes('taskCollection_'));
+    const taskCollections = Object.keys(localStorage).filter(key => key.includes('taskCollection_')).sort();
     taskCollections.forEach(collection => {
 
       if (collection === 'taskCollection_default') {
