@@ -219,38 +219,42 @@ export class Sender {
         await this.readFromPort();
     };
 
+    private remainingResponse = '';
+
     private async processResponse(response: string) {
 
-        const lines = response.split('\r\n');
-
-        for (const line of lines) {
-            this.unparsedResponse = (this.unparsedResponse + line).trimStart();
-            appendLineToResponseEditor(`command: ${line}`);
-            console.log(`response: "${line}"`);
+        this.unparsedResponse = (this.remainingResponse + response).trimStart();
+        this.remainingResponse = '';
+        appendLineToResponseEditor(`command: ${this.unparsedResponse}`);
+        console.log(`response: "${this.unparsedResponse}"`);
     
-            // Cut out status message.
-            const statuses = this.unparsedResponse.match(/(<[^>]+>)/);
-            if (statuses && statuses.length > 1) {
-                statuses.shift();
-                for (const s of statuses) {
-                    this.unparsedResponse = this.unparsedResponse.replace(s, '');
-                }
-                this.setStatus(statuses.pop()!);
+        // Cut out status message.
+        const statuses = this.unparsedResponse.match(/(<[^>]+>)/);
+        if (statuses && statuses.length > 1) {
+            statuses.shift();
+            for (const s of statuses) {
+                this.unparsedResponse = this.unparsedResponse.replace(s, '');
             }
-    
-            if (this.unparsedResponse.startsWith('error:')) {
-                this.setError(this.unparsedResponse);
-                this.unparsedResponse = '';
-                this.stop();
-            } else if (this.unparsedResponse.startsWith('ok')) {
-                this.unparsedResponse = '';
-                this.waitForOkOrError = false;
-                this.lineIndex++;
-                this.notifyStatusChange();
-                if (this.isOn) await this.writeCurrentLine();
-            }
-            this.unparsedResponse = '';
+            this.setStatus(statuses.pop()!);
         }
+    
+        if (this.unparsedResponse.startsWith('error:')) {
+            this.setError(this.unparsedResponse);
+            this.unparsedResponse = '';
+            this.stop();
+        } else if (this.unparsedResponse.startsWith('ok')) {
+            this.unparsedResponse = '';
+            this.waitForOkOrError = false;
+            this.lineIndex++;
+            this.notifyStatusChange();
+            if (this.isOn) await this.writeCurrentLine();
+        } else {
+            //some response is not complete, wait for the next chunk
+            this.remainingResponse = this.unparsedResponse;
+        }
+
+        this.unparsedResponse = '';
+        
     }
 
     private async selectPort() {
