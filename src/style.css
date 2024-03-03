@@ -390,8 +390,8 @@ input[type="file"]::file-selector-button:hover {
 
 #latheControls #jogControls {
     display: grid;
-    grid-template-columns: repeat(9, 60px);
-    grid-template-rows: repeat(5, 60px);
+    grid-template-columns: repeat(10, 60px);
+    grid-template-rows: repeat(6, 60px);
     justify-content: center;
     align-items: center;
     place-items: center;
@@ -451,54 +451,59 @@ input[type="file"]::file-selector-button:hover {
     background-color: #6c5ce7;
 }
 
-#fastForward {
-    grid-column: 5;
+#jogText {
+    grid-column: 6;
     grid-row: 1;
+}
+
+#fastForward {
+    grid-column: 6;
+    grid-row: 2;
 }
 
 #fastText {
-    grid-column: 4;
-    grid-row: 1;
+    grid-column: 5;
+    grid-row: 2;
 }
 
 #slowText {
-    grid-column: 4;
-    grid-row: 2;
+    grid-column: 5;
+    grid-row: 3;
 }
 
 #fastLeft {
-    grid-column: 3;
-    grid-row: 3;
+    grid-column: 4;
+    grid-row: 4;
 }
 
 #fastBackward {
-    grid-column: 5;
-    grid-row: 5;
+    grid-column: 6;
+    grid-row: 6;
 }
 
 #fastRight {
-    grid-column: 7;
-    grid-row: 3;
+    grid-column: 8;
+    grid-row: 4;
 }
 
 #slowForward {
-    grid-column: 5;
-    grid-row: 2;
-}
-
-#slowLeft {
-    grid-column: 4;
+    grid-column: 6;
     grid-row: 3;
 }
 
-#slowBackward {
+#slowLeft {
     grid-column: 5;
     grid-row: 4;
 }
 
-#slowRight {
+#slowBackward {
     grid-column: 6;
-    grid-row: 3;
+    grid-row: 5;
+}
+
+#slowRight {
+    grid-column: 7;
+    grid-row: 4;
 }
 
 #toolText {
@@ -524,6 +529,36 @@ input[type="file"]::file-selector-button:hover {
 #tool3 {
     grid-column: 1;
     grid-row: 5;
+}
+
+#tool4 {
+    grid-column: 1;
+    grid-row: 6;
+}
+
+#tool5 {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+#tool6 {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+#tool7 {
+    grid-column: 2;
+    grid-row: 4;
+}
+
+#tool8 {
+    grid-column: 2;
+    grid-row: 5;
+}
+
+#tool9 {
+    grid-column: 2;
+    grid-row: 6;
 }
 
 .menu ul {
@@ -569,16 +604,11 @@ input[type="file"]::file-selector-button:hover {
     width: 100%;
 }
 
-#gcodeSenderEditor {
-    border-bottom: 1px solid #ccc;
-    background-color: #242424;
-}
-
 #latheControls #incrementControls {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin: 10px 0 20px 0;
+    margin: 20px 0 20px 0;
 }
 
 #latheControls .increment-btn {
@@ -607,6 +637,16 @@ input[type="file"]::file-selector-button:hover {
 .control-inputs label {
     display: block;
     margin-right: 5px;
+}
+
+.sender-inputs input[type="text"] {
+    max-width: 350px;
+    min-width: 350px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    margin: 0;
+    padding: .375rem .75rem;
 }
 
 #latheControls label {

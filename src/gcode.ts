@@ -6,6 +6,7 @@ import { gcodeSenderEditor } from './main';
 export class GCode {
 
     private sendButton: HTMLButtonElement;
+    private sendSingleCommandButton: HTMLButtonElement;
     private stopButton: HTMLButtonElement;
     private senderError: HTMLDivElement;
     private runProgress: HTMLProgressElement;
@@ -16,6 +17,7 @@ export class GCode {
     private jogButtons: NodeListOf<HTMLButtonElement>;
     private toolButtons: NodeListOf<HTMLButtonElement>;
     private sender: Sender | null;
+    private singleCommandSender: HTMLInputElement;
 
     constructor() {
 
@@ -36,12 +38,20 @@ export class GCode {
         this.toolButtons = document.querySelectorAll('#latheControls .tool-btn') as NodeListOf<HTMLButtonElement>;
 
         this.sendButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
+        this.sendSingleCommandButton = document.getElementById('gcodeSendSingleCommandButton') as HTMLButtonElement;
+        this.singleCommandSender = document.getElementById('singleCommandSender') as HTMLInputElement;
 
         this.sender = Sender.getInstance();
         this.sender.addStatusChangeListener(() => this.handleStatusChange());
 
-        this.jogButtons.forEach( (btn) => {
+        this.jogButtons.forEach((btn) => {
             btn.addEventListener('click', () => {
+
+                //if sender is not connected show alert and return
+                if (!this.isConnected) {
+                    alert("Please connect to the controller first.");
+                    return;
+                }
 
                 let feedrate = "";
                 let axis = "";
@@ -98,25 +108,21 @@ export class GCode {
             });
         });
 
-        this.toolButtons.forEach((btn)  => {
+        this.toolButtons.forEach((btn) => {
             btn.addEventListener('click', () => {
-                let toolId = btn.id;
-                let tCommand = 'T';
 
-                if(toolId == 'tool0') {
-                    tCommand += '0';
-                } else if(toolId == 'tool1') {
-                    tCommand += '1';
-                } else if(toolId == 'tool2') {
-                    tCommand += '2';
-                } else if(toolId == 'tool3') {
-                    tCommand += '3';
+                if (!this.isConnected) {
+                    alert("Please connect to the controller first.");
+                    return;
                 }
+
+                let toolId = btn.id;
+                let tCommand = toolId.replace('tool', 'T');
 
                 //remove selected class from all other tool buttons that are not the one that was just clicked
                 let toolButtons = document.querySelectorAll('#latheControls .tool-btn') as NodeListOf<HTMLButtonElement>;
                 toolButtons.forEach(function (btn) {
-                    if(btn.id != toolId) {
+                    if (btn.id != toolId) {
                         btn.classList.remove('tool-selected');
                     }
                     else {
@@ -125,9 +131,8 @@ export class GCode {
                 });
 
 
-                let commandArray = new Array(2);
-                commandArray[0] = 'G91';
-                commandArray[1] = tCommand;
+                let commandArray = new Array(1);
+                commandArray[0] = tCommand
 
                 if (this.sender) {
                     this.sender.sendCommands(commandArray);
@@ -141,8 +146,53 @@ export class GCode {
         });
 
         this.sendButton.addEventListener('click', () => {
+
+            //if sender is not connected show alert and return
+            if (!this.isConnected) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
             if (this.sender) {
+                this.sendButton.disabled = true;
+                this.sendSingleCommandButton.disabled = true;
+
+                //disable jogging controlls
+                this.jogButtons.forEach((btn) => {
+                    btn.disabled = true;
+                });
+
+                //disable tool change buttons
+                this.toolButtons.forEach((btn) => {
+                    btn.disabled = true;
+                });
                 this.sender.start(gcodeSenderEditor.getValue());
+            }
+        });
+
+        this.sendSingleCommandButton.addEventListener('click', () => {
+
+            //if sender is not connected show alert and return
+            if (!this.isConnected) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            if (this.sender) {
+                this.sendButton.disabled = true;
+                this.sendSingleCommandButton.disabled = true;
+
+                //disable jogging controlls
+                this.jogButtons.forEach((btn) => {
+                    btn.disabled = true;
+                });
+
+                //disable tool change buttons
+                this.toolButtons.forEach((btn) => {
+                    btn.disabled = true;
+                });
+
+                this.sender.sendCommand(this.singleCommandSender.value);
             }
         });
 
@@ -175,6 +225,22 @@ export class GCode {
             this.runProgress.value = status.progress;
             this.runProgress.style.display = isRun ? 'block' : 'none';
             this.runProgressLabel.style.display = isRun ? 'block' : 'none';
+
+            //re enable send buttons if sender is not running
+            if (!isRun) {
+                this.sendButton.disabled = false;
+                this.sendSingleCommandButton.disabled = false;
+
+                //enable jogging controls
+                this.jogButtons.forEach((btn) => {
+                    btn.disabled = false;
+                });
+
+                //enable tool change buttons
+                this.toolButtons.forEach((btn) => {
+                    btn.disabled = false;
+                });
+            }
         }
 
         if (this.stopButton) this.stopButton.style.display = isRun ? 'inline-block' : 'none';

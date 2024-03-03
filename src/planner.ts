@@ -23,7 +23,6 @@ let sender: Sender | null;
 const plannerConnectButton = document.getElementById('plannerConnectButton') as HTMLButtonElement;
 const plannerContainer = document.getElementById('plannerContainer') as HTMLDivElement;
 let isConnected = false;
-let lastTaskCompleted = false;
 
 //saving and loading available tasks
 const saveAvailableTaskCollectionButton = document.getElementById('saveAvailableTaskCollection') as HTMLButtonElement;
@@ -417,16 +416,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isRun = status.condition === 'run';
 
-    if (!isRun && lastTaskCompleted) {
+    if (!isRun) {
       completeCncTaskButton.style.display = 'block';
       completeCncTaskButton.disabled = false;
       cncTaskSenderProgressLabel.innerText = "Task completed";
     } else if (isRun) {
       executeGcodeButton.disabled = true;
-      lastTaskCompleted = false;
       cncTaskSenderProgressLabel.innerText = "Task in progress";
-    } else if (!isRun) {
-      lastTaskCompleted = true;
       completeCncTaskButton.style.display = 'none';
     }
 

@@ -109,7 +109,6 @@ document.addEventListener("DOMContentLoaded", () => {
     controlContent.style.display = 'none';
     plannerContent.style.display = 'none';
     threadingContent.style.display = 'none';
-    editor.setValue(gcodeSenderEditor.getValue());
   });
 
   controlTab.addEventListener('click', () => {
@@ -117,7 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
     controlContent.style.display = 'flex';
     plannerContent.style.display = 'none';
     threadingContent.style.display = 'none';
-    gcodeSenderEditor.setValue(editor.getValue());
   });
 
   plannerTab.addEventListener('click', () => {
@@ -388,6 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updatePlaceholder() {
     // Get the current content of the editor
     const content = editor.getValue();
+    const controlContent = gcodeSenderEditor.getValue();
     // Check if the content is empty and set the placeholder
     if (content === '') {
       editor.setValue('Paste your gcode here or click choose file to upload');
@@ -397,6 +396,18 @@ document.addEventListener("DOMContentLoaded", () => {
       editor.on('focus', function () {
         if (editor.getValue() === 'Paste your gcode here or click choose file to upload') {
           editor.setValue('');
+        }
+      });
+    }
+
+    if (controlContent === '') {
+      gcodeSenderEditor.setValue('Paste your gcode here or click choose file to upload');
+      // Move the cursor to the start to avoid the placeholder text being immediately deleted
+      gcodeSenderEditor.gotoLine(1, 0);
+      // If the editor is in focus, clear the placeholder (simulate the placeholder behavior)
+      gcodeSenderEditor.on('focus', function () {
+        if (gcodeSenderEditor.getValue() === 'Paste your gcode here or click choose file to upload') {
+          gcodeSenderEditor.setValue('');
         }
       });
     }

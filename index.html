@@ -83,8 +83,6 @@
 
                     <div class="innerContainer">
                         <button id="connectButton" title="Connect to Nano ELS H4">Connect</button>
-                        <button id="gcodeSenderButton" title="Send GCode to CNC" style="display: none;">Send</button>
-                        <button id="stopButton" style="display: none;">Stop</button>
                     </div>
                 </div>
 
@@ -99,6 +97,14 @@
                         <button class="tool-btn" id="tool1">T1</button>
                         <button class="tool-btn" id="tool2">T2</button>
                         <button class="tool-btn" id="tool3">T3</button>
+                        <button class="tool-btn" id="tool4">T4</button>
+                        <button class="tool-btn" id="tool5">T5</button>
+                        <button class="tool-btn" id="tool6">T6</button>
+                        <button class="tool-btn" id="tool7">T7</button>
+                        <button class="tool-btn" id="tool8">T8</button>
+                        <button class="tool-btn" id="tool9">T9</button>
+
+                        <span id="jogText">Move</span>
                         <!-- Fast arrows -->
                         <button class="arrow fast jog-btn" id="fastForward"><i class="fas fa-arrow-up"></i></button>
                         <button class="arrow fast jog-btn" id="fastBackward"><i class="fas fa-arrow-down"></i></button>
@@ -139,9 +145,26 @@
                 </div>
             </div>
             <div class="controls-container">
+                <div class="innerContainer control-inputs">
+                    <div class="innerContentCentre control-inputs">
+                        <span>Send single command</span>
+                    </div>
+                    <div class="innerContentCentre sender-inputs">
+                        <input id="singleCommandSender" type="text" name="singleCommandSender"></input>
+                    </div>
+                    <div class="innerContentCentre control-inputs">
+                        <button id="gcodeSendSingleCommandButton" title="Send GCode to CNC">Send</button>
+                    </div>
+                </div>
+            </div>
+            <div class="controls-container">
                 <div id="gcodeSenderContainer" style="position: relative;">
-                    <span>GCode to Send</span>
+                    <span>Send multi line commands</span>
                     <div id="gcodeSenderEditor" style="height: 200px; width: 100%;"></div>
+                </div>
+                <div class="innerContainer">
+                    <button id="gcodeSenderButton" title="Send GCode to CNC">Send</button>
+                    <button id="stopButton" style="display: none;">Stop</button>
                 </div>
             </div>
             <script type="module" src="/src/main.ts"></script>
@@ -607,8 +630,9 @@
                 <div id="helpText">
                     <div>This tool is designed to be used in conjunction with LatheCode:</div>
                     <div><a href="https://kachurovskiy.github.io/lathecode/ " target="_blank ">https://kachurovskiy.github.io/lathecode/</a></div>
-                    <div><strong>Please note that this tool is to be used at your own risk and I cannot gaurentee that it will work. This tool targets my custom fork of the H4 firmware which you can find here:</strong> <a href="https://github.com/Festivejelly/nanoels"
-                            target="_blank ">https://github.com/Festivejelly/nanoels</a></div>
+                    <div><strong>Please note that this tool is to be used at your own risk and I cannot gaurentee that
+                            it will work. This tool targets my custom fork of the H4 firmware which you can find
+                            here:</strong> <a href="https://github.com/Festivejelly/nanoels" target="_blank ">https://github.com/Festivejelly/nanoels</a></div>
                     <hr>
                     <div>How to use:</div>
                     <ul style="list-style-type: disc; padding-left: 20px; ">
