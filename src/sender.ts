@@ -64,10 +64,19 @@ export class Sender {
         this.listeners.forEach(listener => listener());
     }
 
+    private remainingStatus: string = '';
+
     private setStatus(s: string) {
+        s = this.remainingStatus + s;
+        this.remainingStatus = '';
+
         if (s.startsWith('<')) s = s.substring(1);
         if (s.endsWith('>')) {
             s = s.slice(0, -1);
+        } else {
+            // Status message is not complete, store it and wait for the next part
+            this.remainingStatus = s;
+            return;
         }
         const parts = s.split('|');
         if (parts.length >= 3) {
@@ -84,6 +93,9 @@ export class Sender {
             }
         }
         this.notifyStatusChange();
+
+        appendLineToResponseEditor(`response: ${s}`);
+        console.log(`response: "${s}"`);
     }
 
     private setError(e: string) {
@@ -101,6 +113,8 @@ export class Sender {
             if (!this.port) {
                 await this.selectPort();
 
+                this.write('!'); // Stop any running job
+
                 await this.askForStatus();
                 if (!(await waitForTrue(() => this.statusReceived))) {
                     this.setError('Device is not reponding, is it in GCODE mode?');
@@ -111,7 +125,6 @@ export class Sender {
                 this.setError('');
                 this.waitForOkOrError = false;
                 this.unparsedResponse = '';
-
             } else {
                 this.closePort();
             }
@@ -146,13 +159,7 @@ export class Sender {
 
     async sendCommand(command: string) {
         this.isOn = true;
-
-        let commandArray = new Array(3);
-        commandArray[0] = 'G91';
-        commandArray[1] = command;
-        commandArray[2] = 'G90';
-
-        this.lines = commandArray;
+        this.lines = [command];
         this.lineIndex = 0;
         this.waitForOkOrError = false;
         this.write('~');
@@ -174,14 +181,12 @@ export class Sender {
         await this.write('!');
         if (!this.isOn) return;
         this.isOn = false;
-        this.askForStatus();
+        //this.askForStatus();
         this.notifyStatusChange();
     }
 
-
     private async write(sequence: string) {
         if (!this.port) return;
-        appendLineToResponseEditor(`command: ${sequence}`);
         console.log('command: ', sequence);
         if (!this.port.writable) {
             if (sequence != '?') {
@@ -215,6 +220,8 @@ export class Sender {
             return;
         }
         this.waitForOkOrError = true;
+        console.log(`command: "${line}"`);
+        appendLineToResponseEditor(`command: ${line}`);
         await this.write(line + '\n');
         await this.readFromPort();
     };
@@ -222,39 +229,46 @@ export class Sender {
     private remainingResponse = '';
 
     private async processResponse(response: string) {
-
         this.unparsedResponse = (this.remainingResponse + response).trimStart();
         this.remainingResponse = '';
-        appendLineToResponseEditor(`command: ${this.unparsedResponse}`);
-        console.log(`response: "${this.unparsedResponse}"`);
     
-        // Cut out status message.
-        const statuses = this.unparsedResponse.match(/(<[^>]+>)/);
-        if (statuses && statuses.length > 1) {
-            statuses.shift();
-            for (const s of statuses) {
-                this.unparsedResponse = this.unparsedResponse.replace(s, '');
+        // Split the response into lines
+        const lines = this.unparsedResponse.split('\n');
+    
+        for (let line of lines) {
+            // Cut out status message.
+            const statuses = line.match(/(<[^>]+>)/);
+            if (statuses && statuses.length > 1) {
+                statuses.shift();
+                for (const s of statuses) {
+                    line = line.replace(s, '');
+                }
+                this.setStatus(statuses.pop()!);
+            } 
+    
+            if (line.startsWith('error:')) {
+                this.remainingResponse += line;
+                appendLineToResponseEditor(`response: ${this.remainingResponse}`);
+                console.log(`response: "${this.remainingResponse}"`);
+                this.setError(line);
+                this.remainingResponse = '';
+                this.stop();
+            } else if (line.startsWith('ok')) {
+                this.remainingResponse += line;
+                appendLineToResponseEditor(`response: ${this.remainingResponse}`);
+                console.log(`response: "${this.remainingResponse}"`);
+                this.remainingResponse = '';
+                this.waitForOkOrError = false;
+                this.lineIndex++;
+                this.notifyStatusChange();
+                if (this.isOn) await this.writeCurrentLine();
+            } else {
+                //some response is not complete, accumulate it
+                this.remainingResponse += line;
             }
-            this.setStatus(statuses.pop()!);
         }
     
-        if (this.unparsedResponse.startsWith('error:')) {
-            this.setError(this.unparsedResponse);
-            this.unparsedResponse = '';
-            this.stop();
-        } else if (this.unparsedResponse.startsWith('ok')) {
-            this.unparsedResponse = '';
-            this.waitForOkOrError = false;
-            this.lineIndex++;
-            this.notifyStatusChange();
-            if (this.isOn) await this.writeCurrentLine();
-        } else {
-            //some response is not complete, wait for the next chunk
-            this.remainingResponse = this.unparsedResponse;
-        }
-
         this.unparsedResponse = '';
-        
     }
 
     private async selectPort() {
