@@ -30,7 +30,7 @@ let absolutePosition: AbsolutePosition = { z: 0, x: 0 };
 const cutLineColour = '#DC143C'
 const travelLineColour = '#6B8E23'
 const retractLineColour = '#FFA500'
-const currentLineColour = '#ADD8E6'
+const currentLineColour = '#242424'
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const incrementButtons = document.querySelectorAll('#latheControls .increment-btn') as NodeListOf<HTMLButtonElement>;
   const moveDistanceInput = document.getElementById('moveDistance') as HTMLInputElement;
 
-  if(!localStorage.getItem('helpModalShown')) {
+  if (!localStorage.getItem('helpModalShown')) {
     helpModal.style.display = "block";
     localStorage.setItem('helpModalShown', 'true');
   }
@@ -529,6 +529,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let minZ = 0; // new variable to track the minimum Z value
     let baseScale = 0;
 
+    let minZRelative = 0;
+    let maxZRelative = 0;
+
+    let minXRelative = 0;
+    let maxXRelative = 0;
+
     if (canvas.id === 'zoomCanvas') {
       // Base scale: 40 pixels per mm for small objects
       baseScale = 80; // 40 pixels per mm
@@ -540,9 +546,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (command.isRelative) {
         if (command.x !== undefined) {
           cumulativeXRelative += command.x;
+          minXRelative = Math.min(minXRelative, cumulativeXRelative);
+          maxXRelative = Math.max(maxXRelative, cumulativeXRelative);
         }
         if (command.z !== undefined) {
           cumulativeZRelative += command.z;
+          minZRelative = Math.min(minZRelative, cumulativeZRelative);
+          maxZRelative = Math.max(maxZRelative, cumulativeZRelative);
         }
       } else {
         // find the largest X and Z values
@@ -553,19 +563,17 @@ document.addEventListener("DOMContentLoaded", () => {
           largestZAbs = Math.max(largestZAbs, command.z);
         }
       }
-
-      //find the largest X and Z values based on the cumulative values of Absolute and relative movements
-      const sizeX = cumulativeXRelative += largestXAbs;
-      const sizeZ = cumulativeZRelative += largestZAbs;
-
-      largestXAbs = 0;
-      largestZAbs = 0;
-
-      maxX = Math.max(maxX, Math.abs(sizeX));
-      maxZ = Math.max(maxZ, Math.abs(sizeZ));
-      minX = Math.min(minX, sizeX); // update minX
-      minZ = Math.min(minZ, sizeZ); // update minZ
     });
+
+    //find the largest X and Z values based on the cumulative values of Absolute and relative movements
+    const sizeX = maxXRelative -= largestXAbs;
+    const sizeZ = maxZRelative += largestZAbs;
+
+    maxX = Math.max(maxX, Math.abs(sizeX));
+    maxZ = Math.max(maxZ, Math.abs(sizeZ));
+    minX = Math.min(minX, sizeX); // update minX
+    minZ = Math.min(minZ, sizeZ); // update minZ
+
 
     // Object size in mm
     const objectSizeX = maxX; // calculate objectSizeX as the difference between maxX and minX
@@ -631,12 +639,59 @@ document.addEventListener("DOMContentLoaded", () => {
     canvasX = (canvas.height / 2) - (currentX * scaleFactor);
     canvasZ = canvas.width - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
 
+    let lineColor = "";
+
     if ((drawableCommand.movementType == MovementType.Cut && drawCuts) || (drawableCommand.movementType == MovementType.Travel && drawNonCuts) || drawableCommand.movementType == MovementType.Retract && drawNonCuts) {
       ctx.beginPath();
-      ctx.strokeStyle = isCurrentLine ? currentLineColour : drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
+      lineColor = drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
       ctx.moveTo(previousCanvasZ, previousCanvasX);
       ctx.lineTo(canvasZ, canvasX);
-      ctx.stroke();
+      
+
+      if (isCurrentLine) {
+        ctx.strokeStyle = lineColor;
+        ctx.setLineDash([5, 5]); // set the line to be dashed for the current line
+        ctx.lineDashOffset = 0;
+
+        ctx.stroke();
+
+        // draw a dashed line with the color of the gaps
+        ctx.strokeStyle = currentLineColour;
+        ctx.setLineDash([5, 5]); // set the line to be dashed
+        ctx.lineDashOffset = -5; // start the dash pattern 5 pixels into the gaps of the first line
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = lineColor;
+        ctx.setLineDash([]); // reset the line to be solid for other lines
+        ctx.stroke();
+      }
+
+      // draw markers for the start and end points of the current line
+      if (isCurrentLine) {
+        // calculate the angle of the line
+        let dx = canvasZ - previousCanvasZ;
+        let dy = canvasX - previousCanvasX;
+        let angle = Math.atan2(dy, dx);
+
+        // draw a green triangle for the start point, rotated to the direction of travel
+        ctx.save(); // save the current state of the context
+        ctx.translate(previousCanvasZ, previousCanvasX); // move the origin to the start point
+        ctx.rotate(angle + Math.PI / 2); // rotate the context to the angle of the line
+        ctx.beginPath();
+        ctx.moveTo(0, -5); // top vertex of the triangle
+        ctx.lineTo(-5, 5); // bottom left vertex of the triangle
+        ctx.lineTo(5, 5); // bottom right vertex of the triangle
+        ctx.closePath(); // close the path to create a complete triangle
+        ctx.fillStyle = 'green';
+        ctx.fill();
+        ctx.restore(); // restore the context to its original state
+
+        // draw a red circle for the end point
+        ctx.beginPath();
+        ctx.rect(canvasZ - 3, canvasX - 3, 6, 6); // square with side length of 6
+        ctx.fillStyle = 'red';
+        ctx.fill();
+      }
     }
 
     previousCanvasX = canvasX;
