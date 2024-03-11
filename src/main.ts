@@ -519,41 +519,50 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function calculateDynamicScaleFactor(commands: GCodeCommand[], canvas: HTMLCanvasElement): number {
-    let cumulativeXRelative = 0;
-    let cumulativeZRelative = 0;
-    let largestXAbs = 0;
-    let largestZAbs = 0;
+
     let maxZ = 0;
     let minX = 0;
+
+    let initialCommand = commands.find(command => !command.isRelative);
+    let cumulativeXRelative = initialCommand && initialCommand.x ? initialCommand.x : 0;
+    let cumulativeZRelative = initialCommand && initialCommand.z ? initialCommand.z : 0;
 
     const screenEdgeMargin = 5;
 
     commands.forEach(command => {
       if (command.x !== undefined) {
-        // For X, we want to track the maximum negative movement
-        cumulativeXRelative += command.x;
-        if (cumulativeXRelative < minX) {
-          minX = cumulativeXRelative;
-        }
-        if (!command.isRelative && command.x < largestXAbs) {
-          largestXAbs = command.x;
+        if (command.isRelative) {
+          // For relative moves, add to the current position
+          cumulativeXRelative += command.x;
+          if (cumulativeXRelative < minX) {
+            minX = cumulativeXRelative;
+          }
+        } else {
+          // For absolute moves, update minX directly
+          if (command.x < minX) {
+            minX = command.x;
+          }
         }
       }
       if (command.z !== undefined) {
-        // For Z, we want to track the maximum positive movement
-        cumulativeZRelative += command.z;
-        if (cumulativeZRelative > maxZ) {
-          maxZ = cumulativeZRelative;
-        }
-        if (!command.isRelative && command.z > largestZAbs) {
-          largestZAbs = command.z;
+        if (command.isRelative) {
+          // For relative moves, add to the current position
+          cumulativeZRelative += command.z;
+          if (cumulativeZRelative > maxZ) {
+            maxZ = cumulativeZRelative;
+          }
+        } else {
+          // For absolute moves, update maxZ directly
+          if (command.z > maxZ) {
+            maxZ = command.z;
+          }
         }
       }
     });
     
     // Object size in mm
-    const objectSizeX = Math.max(Math.abs(minX), largestXAbs);
-    const objectSizeZ = Math.max(maxZ, largestZAbs);
+    const objectSizeX = Math.abs(minX);
+    const objectSizeZ = Math.abs(maxZ);
     
     // Calculate available screen size, taking into account the margin
     const availableScreenSizeX = (canvas.height / 2) - screenEdgeMargin;
