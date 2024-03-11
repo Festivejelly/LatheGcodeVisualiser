@@ -527,20 +527,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let maxZ = 0;
     let minX = 0; // new variable to track the minimum X value
     let minZ = 0; // new variable to track the minimum Z value
-    let baseScale = 0;
 
     let minZRelative = 0;
     let maxZRelative = 0;
 
     let minXRelative = 0;
     let maxXRelative = 0;
-
-    if (canvas.id === 'zoomCanvas') {
-      // Base scale: 40 pixels per mm for small objects
-      baseScale = 80; // 40 pixels per mm
-    } else {
-      baseScale = 40;
-    }
 
     commands.forEach(command => {
       if (command.isRelative) {
@@ -574,22 +566,24 @@ document.addEventListener("DOMContentLoaded", () => {
     minX = Math.min(minX, sizeX); // update minX
     minZ = Math.min(minZ, sizeZ); // update minZ
 
-
     // Object size in mm
-    const objectSizeX = maxX; // calculate objectSizeX as the difference between maxX and minX
+    const objectSizeX = maxX / 2; // calculate objectSizeX as the difference between maxX and minX
     const objectSizeZ = maxZ - minZ; // calculate objectSizeZ as the difference between maxZ and minZ
 
-    // Adjust base scale for larger objects
-    const xZeroLocation = canvas.height / 2;
+    const screenEdgeMargin = 5; // extra margin to ensure the object fits within the canvas
 
-    const screenEdgeMargin = 1; // extra margin to ensure the object fits within the canvas
+    // Calculate available screen size, taking into account the margin
+    const availableScreenSizeX = (canvas.height / 2) - screenEdgeMargin;
+    const availableScreenSizeZ = canvas.width - screenEdgeMargin - offSetFromScreenEdgeZ;
 
     // Adjust scale for larger objects to fit within canvas
-    const scaleX = xZeroLocation / objectSizeX - screenEdgeMargin;
-    const scaleZ = canvas.width / objectSizeZ - screenEdgeMargin;
+    const scaleX = availableScreenSizeX / objectSizeX;
+    const scaleZ = availableScreenSizeZ / objectSizeZ;
 
-    // Choose the smaller scale factor to ensure the object fits within the canvas
-    let scale = Math.min(scaleX, scaleZ, baseScale);
+    // If the scale is larger than baseScale (for smaller objects), set it to baseScale
+    // For larger objects that won't fit in the canvas at this scale, the scale will be smaller
+    let scale = Math.min(scaleX, scaleZ);
+
     return scale;
   }
 
