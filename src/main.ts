@@ -523,67 +523,49 @@ document.addEventListener("DOMContentLoaded", () => {
     let cumulativeZRelative = 0;
     let largestXAbs = 0;
     let largestZAbs = 0;
-    let maxX = 0;
     let maxZ = 0;
-    let minX = 0; // new variable to track the minimum X value
-    let minZ = 0; // new variable to track the minimum Z value
+    let minX = 0;
 
-    let minZRelative = 0;
-    let maxZRelative = 0;
-
-    let minXRelative = 0;
-    let maxXRelative = 0;
+    const screenEdgeMargin = 5;
 
     commands.forEach(command => {
-      if (command.isRelative) {
-        if (command.x !== undefined) {
-          cumulativeXRelative += command.x;
-          minXRelative = Math.min(minXRelative, cumulativeXRelative);
-          maxXRelative = Math.max(maxXRelative, cumulativeXRelative);
+      if (command.x !== undefined) {
+        // For X, we want to track the maximum negative movement
+        cumulativeXRelative += command.x;
+        if (cumulativeXRelative < minX) {
+          minX = cumulativeXRelative;
         }
-        if (command.z !== undefined) {
-          cumulativeZRelative += command.z;
-          minZRelative = Math.min(minZRelative, cumulativeZRelative);
-          maxZRelative = Math.max(maxZRelative, cumulativeZRelative);
+        if (!command.isRelative && command.x < largestXAbs) {
+          largestXAbs = command.x;
         }
-      } else {
-        // find the largest X and Z values
-        if (command.x !== undefined) {
-          largestXAbs = Math.min(largestXAbs, command.x);
+      }
+      if (command.z !== undefined) {
+        // For Z, we want to track the maximum positive movement
+        cumulativeZRelative += command.z;
+        if (cumulativeZRelative > maxZ) {
+          maxZ = cumulativeZRelative;
         }
-        if (command.z !== undefined) {
-          largestZAbs = Math.max(largestZAbs, command.z);
+        if (!command.isRelative && command.z > largestZAbs) {
+          largestZAbs = command.z;
         }
       }
     });
-
-    //find the largest X and Z values based on the cumulative values of Absolute and relative movements
-    const sizeX = maxXRelative -= largestXAbs;
-    const sizeZ = maxZRelative += largestZAbs;
-
-    maxX = Math.max(maxX, Math.abs(sizeX));
-    maxZ = Math.max(maxZ, Math.abs(sizeZ));
-    minX = Math.min(minX, sizeX); // update minX
-    minZ = Math.min(minZ, sizeZ); // update minZ
-
+    
     // Object size in mm
-    const objectSizeX = maxX / 2; // calculate objectSizeX as the difference between maxX and minX
-    const objectSizeZ = maxZ - minZ; // calculate objectSizeZ as the difference between maxZ and minZ
-
-    const screenEdgeMargin = 5; // extra margin to ensure the object fits within the canvas
-
+    const objectSizeX = Math.max(Math.abs(minX), largestXAbs);
+    const objectSizeZ = Math.max(maxZ, largestZAbs);
+    
     // Calculate available screen size, taking into account the margin
     const availableScreenSizeX = (canvas.height / 2) - screenEdgeMargin;
     const availableScreenSizeZ = canvas.width - screenEdgeMargin - offSetFromScreenEdgeZ;
-
+    
     // Adjust scale for larger objects to fit within canvas
     const scaleX = availableScreenSizeX / objectSizeX;
     const scaleZ = availableScreenSizeZ / objectSizeZ;
-
-    // If the scale is larger than baseScale (for smaller objects), set it to baseScale
-    // For larger objects that won't fit in the canvas at this scale, the scale will be smaller
+    
+    // Choose the smaller scale factor to ensure the object fits within the canvas
     let scale = Math.min(scaleX, scaleZ);
-
+    
     return scale;
   }
 
@@ -640,7 +622,7 @@ document.addEventListener("DOMContentLoaded", () => {
       lineColor = drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
       ctx.moveTo(previousCanvasZ, previousCanvasX);
       ctx.lineTo(canvasZ, canvasX);
-      
+
 
       if (isCurrentLine) {
         ctx.strokeStyle = lineColor;
