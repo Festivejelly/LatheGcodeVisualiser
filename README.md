@@ -5,6 +5,6 @@ You can try out the visualisation tool here https://festivejelly.github.io/Lathe
 
 Things on the list to add:
 
-- Add comment to colour a movement
-- Ability to export saved gcode as JSON
-- Ability to link to google drive and onedrive to store files
+- Fusion 360 lathe NC post processing
+- Threading function
+- Nano ELS button press emulation
