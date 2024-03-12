@@ -50,12 +50,18 @@ const saveJobModalCloseButton = document.getElementById('saveJobModalClose') as 
 export const executeJobButton = document.getElementById('executeJobButton') as HTMLButtonElement;
 const saveJobButton = document.getElementById('saveJobButton') as HTMLButtonElement;
 const saveJobNameInput = document.getElementById('saveJobNameInput') as HTMLInputElement;
+const saveJobNameSelect = document.getElementById('saveJobNameSelect') as HTMLSelectElement;
+const newJobNameContainer = document.getElementById('newJobNameContainer') as HTMLDivElement;
 const saveJobSaveButton = document.getElementById('saveJobSaveButton') as HTMLButtonElement;
 const jobLoadSelect = document.getElementById('jobLoadSelect') as HTMLSelectElement;
-const loadJobToExecute = document.getElementById('loadJobToExecute') as HTMLButtonElement;
-const deleteJobToExecute = document.getElementById('deleteJobToExecute') as HTMLButtonElement;
-const importJobToExecute = document.getElementById('importJobToExecute') as HTMLButtonElement;
-const exportJobToExecute = document.getElementById('exportJobToExecute') as HTMLButtonElement;
+const loadJobButton = document.getElementById('loadJobButton') as HTMLButtonElement;
+const deleteJobButton = document.getElementById('deleteJobButton') as HTMLButtonElement;
+const importJobButton = document.getElementById('importJobButton') as HTMLButtonElement;
+const exportJobButton = document.getElementById('exportJobButton') as HTMLButtonElement;
+const exportJobModal = document.getElementById('exportJobModal') as HTMLDivElement;
+const exportJobModalCloseButton = document.getElementById('exportJobModalClose') as HTMLButtonElement;
+const exportJobSaveButton = document.getElementById('exportJobSaveButton') as HTMLButtonElement;
+const exportJobNameSelect = document.getElementById('exportJobNameSelect') as HTMLSelectElement;
 
 const jobQueue: TaskData[] = []; // Initialize with tasks in the job
 const manualTaskModal = document.getElementById('manualTaskModal') as HTMLDivElement;
@@ -112,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateAvailableTaskCollectionsSelect();
     rebuildavailableTasksElements();
-    loadCurrentJob();
+    loadJob('currentJob');
     updateTaskNumbers();
     rebuildTaskElements();
     updateJobLoadSelect();
@@ -131,6 +137,14 @@ document.addEventListener('DOMContentLoaded', () => {
       newCollectionNameContainer.style.display = 'block';
     } else {
       newCollectionNameContainer.style.display = 'none';
+    }
+  });
+
+  saveJobNameSelect.addEventListener('change', () => {
+    if (saveJobNameSelect.value === 'new') {
+      newJobNameContainer.style.display = 'block';
+    } else {
+      newJobNameContainer.style.display = 'none';
     }
   });
 
@@ -163,15 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedTaskCollectionName = localStorage.getItem('selectedTaskCollection');
     let taskCollection;
     if (selectedTaskCollectionName) {
-        const selectedTaskCollection = localStorage.getItem(`taskCollection_${selectedTaskCollectionName}`);
-        if (selectedTaskCollection) {
-            taskCollection = JSON.parse(selectedTaskCollection);
-            // If the new collection name is the same as the selected one, no need to change it
-            if (taskCollectionName !== selectedTaskCollectionName) {
-                taskCollection.name = taskCollectionName;
-                localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
-            }
+      const selectedTaskCollection = localStorage.getItem(`taskCollection_${selectedTaskCollectionName}`);
+      if (selectedTaskCollection) {
+        taskCollection = JSON.parse(selectedTaskCollection);
+        // If the new collection name is the same as the selected one, no need to change it
+        if (taskCollectionName !== selectedTaskCollectionName) {
+          taskCollection.name = taskCollectionName;
+          localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
         }
+      }
     }
 
     //update the select list
@@ -314,6 +328,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateJobLoadSelect() {
     jobLoadSelect.innerHTML = '';
+    saveJobNameSelect.innerHTML = '';
+    exportJobNameSelect.innerHTML = '';
 
     const savedJobs = Object.keys(localStorage).filter(key => key.includes('savedJob_')).sort();
     savedJobs.forEach(job => {
@@ -322,6 +338,8 @@ document.addEventListener('DOMContentLoaded', () => {
       option.value = jobName;
       option.textContent = jobName;
       jobLoadSelect.appendChild(option);
+      saveJobNameSelect.appendChild(option.cloneNode(true));
+      exportJobNameSelect.appendChild(option.cloneNode(true));
     });
 
     // select the job that is stored in the loadedJobName local storage variable
@@ -345,6 +363,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // select the option in the dropdown
       jobLoadSelect.value = loadedJobName;
     }
+
+    const newOption = document.createElement('option');
+    newOption.value = 'new';
+    newOption.textContent = '--new collection--';
+    saveJobNameSelect.appendChild(newOption.cloneNode(true));
   }
 
   function updateAvailableTaskCollectionsSelect() {
@@ -484,15 +507,16 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(name, JSON.stringify(jobData));
   }
 
-  function loadCurrentJob() {
-    const jobData = localStorage.getItem('currentJob');
+  function loadJob(name: string = 'currentJob') {
+    const jobData = localStorage.getItem(name);
     let tasks: { collectionName: string; id: any; }[] = [];
 
     if (jobData) {
       try {
         tasks = JSON.parse(jobData);
       } catch (e) {
-        console.warn('Error parsing current job data, clearing current job data...');
+        console.warn('Error parsing job data, clearing job data...');
+        localStorage.setItem(name, JSON.stringify([]));
         localStorage.setItem('currentJob', JSON.stringify([]));
       }
 
@@ -506,8 +530,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
       });
 
-      //update the current job tasks that belong to a missing collection removed
+
       localStorage.setItem('currentJob', JSON.stringify(tasks));
+      localStorage.setItem(name, JSON.stringify(tasks));
+      tasksToExecute.innerHTML = '';
 
       tasks.forEach((task: { collectionName: string; id: any; }) => {
         const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
@@ -992,16 +1018,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   saveJobButton.onclick = function () {
     saveJobModal.style.display = 'block';
+    //set the selected job to the loaded job
+    const loadedJobName = localStorage.getItem('loadedJobName');
+    if (loadedJobName) {
+      saveJobNameSelect.value = loadedJobName;
+    }
+    if (saveJobNameSelect.options.length === 0) {
+      saveJobNameInput.style.display = 'block';
+    }
   }
 
   saveJobSaveButton.onclick = function () {
-    if (saveJobNameInput.value === '' || saveJobNameInput.value === null) {
+
+    let jobName = saveJobNameSelect.value === 'new' ? saveJobNameInput.value : saveJobNameSelect.value;
+
+    if (jobName === '' || jobName === null) {
       alert('Please enter a name for the job');
       return;
     }
 
-    //check if the job already exists
-    const jobName = saveJobNameInput.value;
     const jobData = localStorage.getItem(`savedJob_${jobName}`);
     if (jobData) {
       const confirmOverwrite = confirm('A job with this name already exists. Do you want to overwrite it?');
@@ -1010,18 +1045,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    saveJob(`savedJob_${saveJobNameInput.value}`);
+    saveJob(`savedJob_${jobName}`);
     updateJobLoadSelect();
 
     saveJobModal.style.display = 'none';
     saveJobNameInput.value = '';
+
+    //show modal saying job saved
+    alert(`${jobName} saved`);
   }
 
   saveJobModalCloseButton.onclick = function () {
     saveJobModal.style.display = 'none';
   }
 
-  loadJobToExecute.onclick = function () {
+  exportJobModalCloseButton.onclick = function () {
+    exportJobModal.style.display = 'none';
+  }
+
+  loadJobButton.onclick = function () {
     //first clear any existing tasks
     tasksToExecute.innerHTML = '';
 
@@ -1046,16 +1088,20 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
+
+      //set the current job to the loaded job
+      localStorage.setItem('currentJob', jobData);
     }
-    updateTaskNumbers();
-    rebuildTaskElements();
 
     //store the loaded job name in local storage
     localStorage.setItem('loadedJobName', jobName);
+
+    updateTaskNumbers();
+    rebuildTaskElements();
   }
 
   //delete selected job from local storage
-  deleteJobToExecute.onclick = function () {
+  deleteJobButton.onclick = function () {
     const jobName = jobLoadSelect.value;
     localStorage.removeItem(`savedJob_${jobName}`);
     updateJobLoadSelect();
@@ -1063,71 +1109,65 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   //import job from file
-  importJobToExecute.onclick = function () {
+  importJobButton.onclick = function () {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
+    input.multiple = true;
     input.onchange = function (e) {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const contents = e.target?.result;
-          if (contents) {
-            const job = JSON.parse(contents as string);
-            tasksToExecute.innerHTML = '';
-            const skippedTasks: { id: any; collectionName: any; reason: string; }[] = [];
-            job.tasks.forEach((task: any) => {
-              const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
-              if (collectionData) {
-                const collection = JSON.parse(collectionData);
-                const taskData = collection.tasks.find((t: any) => t.id === task.id);
-                if (taskData) {
-                  const newTask = document.createElement('div');
-                  newTask.classList.add(`task-${taskData.type}`);
-                  newTask.classList.add('task-to-execute');
-                  newTask.setAttribute('data-task-id', taskData.id.toString());
-                  newTask.setAttribute('data-task-name', taskData.name);
-                  newTask.setAttribute('data-collection-name', task.collectionName);
-                  newTask.textContent = taskData.name;
-                  tasksToExecute.appendChild(newTask);
-                } else {
-                  skippedTasks.push({ id: task.id, collectionName: task.collectionName, reason: 'Task not found in collection' });
-                }
-              } else {
-                skippedTasks.push({ id: task.id, collectionName: task.collectionName, reason: 'Collection not found' });
-              }
-            });
-
-            localStorage.setItem('loadedJobName', job.name);
-            saveJob(`savedJob_${job.name}`);
-            saveJob();
-            updateTaskNumbers();
-            rebuildTaskElements();
-            rebuildavailableTasksElements();
-            updateJobLoadSelect();
-            if (skippedTasks.length > 0) {
-              const skippedTasksMessage = skippedTasks.map(task => `Task ${task.id} in collection ${task.collectionName} was skipped because ${task.reason}.`).join('\n');
-              alert(`Could not import all tasks. The following tasks were skipped:\n${skippedTasksMessage}`);
+      const files = (e.target as HTMLInputElement).files;
+      if (files) {
+        tasksToExecute.innerHTML = '';
+        const promises = Array.from(files).map(file => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const contents = e.target?.result;
+            if (contents) {
+              const job = JSON.parse(contents as string);
+              localStorage.setItem('loadedJobName', job.name);
+              localStorage.setItem(`savedJob_${job.name}`, JSON.stringify(job.tasks));
+              resolve(job.name);
+            } else {
+              reject(new Error('No contents'));
             }
           }
-        }
-        reader.readAsText(file);
+          reader.readAsText(file);
+        }));
+
+        Promise.all(promises).then(jobNames => {
+          // Load the last job
+          loadJob(`savedJob_${jobNames[jobNames.length - 1]}`);
+          updateTaskNumbers();
+          rebuildTaskElements();
+          rebuildavailableTasksElements();
+          updateJobLoadSelect();
+
+        }).catch(error => {
+          console.error('Error reading files:', error);
+        });
       }
     }
     input.click();
   }
 
-  exportJobToExecute.onclick = function () {
-    const currentJob = localStorage.getItem('currentJob');
-    if (currentJob) {
-      const tasks = JSON.parse(currentJob);
+  exportJobButton.onclick = function () {
+    //show export job modal
+    exportJobModal.style.display = 'block';
+    const loadedJobName = localStorage.getItem('loadedJobName');
+    if (loadedJobName) {
+      exportJobNameSelect.value = loadedJobName;
+    }
+  }
 
-      const jobName = window.prompt('Enter a name for the job');
-      if (jobName === null || jobName === '') {
-        alert('Job name cannot be empty');
-        return;
-      }
+  exportJobSaveButton.onclick = function () {
+    //get the name of the selected job
+    const jobName = exportJobNameSelect.value;
+
+    //load job from local storage
+    const jobData = localStorage.getItem(`savedJob_${jobName}`);
+
+    if (jobData) {
+      const tasks = JSON.parse(jobData);
 
       const job = {
         name: jobName,
@@ -1152,8 +1192,8 @@ document.addEventListener('DOMContentLoaded', () => {
       a.download = `${job.name}.json`;
       a.click();
       URL.revokeObjectURL(url);
+
+      exportJobModal.style.display = 'none';
     }
   }
-
-
 });
