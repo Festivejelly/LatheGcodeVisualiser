@@ -205,8 +205,8 @@
                                         Job</button>
                                 </div>
                                 <div class="innerContainer toolbar">
-                                    <button id="loadJobToExecute" class="planner-load-delete-buttons" title="Load Job from local browser storage">Load</button>
-                                    <button id="deleteJobToExecute" class="planner-load-delete-buttons" title="Delete Job from local browser storage">Delete</button>
+                                    <button id="loadJobButton" class="planner-load-delete-buttons" title="Load Job from local browser storage">Load</button>
+                                    <button id="deleteJobButton" class="planner-load-delete-buttons" title="Delete Job from local browser storage">Delete</button>
                                 </div>
                                 <div class="innerContainer toolbar">
                                     <select id="jobLoadSelect" class="planner-load-select">
@@ -217,8 +217,8 @@
                                 </div>
                                 <span class="planner-saving-label">Import and export Job to JSON</span>
                                 <div class="innerContainer toolbar">
-                                    <button id="importJobToExecute" class="planner-load-delete-buttons" title="Import Job from JSON file">Import</button>
-                                    <button id="exportJobToExecute" class="planner-load-delete-buttons" title="Export Job to JSON">Export</button>
+                                    <button id="importJobButton" class="planner-load-delete-buttons" title="Import Job from JSON file">Import</button>
+                                    <button id="exportJobButton" class="planner-load-delete-buttons" title="Export Job to JSON">Export</button>
                                 </div>
                             </div>
                         </div>
@@ -376,11 +376,35 @@
                 <span id="saveJobModalClose" class="close-modal">&times;</span>
                 <h2>Save Job</h2>
                 <hr>
+                <div class="modal-pad">Pick a name:</div>
                 <div>
-                    <input id="saveJobNameInput" type="text" class="planner-save-text" placeholder="Name of Job"></input>
+                    <select id="saveJobNameSelect">
+                    </select>
+                </div>
+                <div id="newJobNameContainer" style="display: none;">
+                    <div class="modal-pad">New Job name:</div>
+                    <div>
+                        <input id="saveJobNameInput" type="text" class="planner-save-text" placeholder="Name of Job"></input>
+                    </div>
                 </div>
                 <div class="modal-pad">
                     <button id="saveJobSaveButton">Save</button>
+                </div>
+            </div>
+        </div>
+        <!-- export Job Modal -->
+        <div id="exportJobModal" class="task-modal">
+            <div class="task-modal-content">
+                <span id="exportJobModalClose" class="close-modal">&times;</span>
+                <h2>Export Job</h2>
+                <hr>
+                <div class="modal-pad">Select Job To Export:</div>
+                <div>
+                    <select id="exportJobNameSelect">
+                    </select>
+                </div>
+                <div class="modal-pad">
+                    <button id="exportJobSaveButton">Save</button>
                 </div>
             </div>
         </div>
