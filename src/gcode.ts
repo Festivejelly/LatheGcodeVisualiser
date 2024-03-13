@@ -103,7 +103,12 @@ export class GCode {
                 let positiveModifier = positive === true ? '' : '-';
                 let command = `${axis}${positiveModifier}${distance} F${feedrate}`;
                 if (this.sender) {
-                    this.sender.sendCommand(command);
+                    let commands = new Array(3);
+                    commands[0] = 'G91'; //set to relative positioning
+                    commands[1] = command;
+                    commands[2] = 'G90'; //set to absolute positioning
+
+                    this.sender.sendCommands(commands);
                 }
             });
         });
