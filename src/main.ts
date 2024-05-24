@@ -416,7 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateSliderLabel(command: GCodeCommand | undefined) {
     if (command?.lineNumber !== undefined) {
       editor.gotoLine(command.lineNumber, 0, true); // Highlight the line in the editor
-      sliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}<br>Abs: X${command.absolutePosition?.x} Z${command.absolutePosition?.z}` || '';
+      sliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}<br>Abs: X${command.absolutePosition?.x ?? 0} &lpar;Dia: ${(command.absolutePosition?.x ?? 0) * 2}&rpar; Z${command.absolutePosition?.z}` || '';
     } else {
       sliderLabel.innerHTML = '';
     }
@@ -425,7 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateZoomSliderLabel(command: GCodeCommand | undefined) {
     if (command?.lineNumber !== undefined) {
       editor.gotoLine(command.lineNumber, 0, true); // Highlight the line in the editor
-      zoomSliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}<br>Abs: X${command.absolutePosition?.x} Z${command.absolutePosition?.z}` || '';
+      zoomSliderLabel.innerHTML = `Line:${command.lineNumber}<br>${command?.originalLine}<br>Abs: X${command.absolutePosition?.x} &lpar;Dia: ${(command.absolutePosition?.x ?? 0) * 2}&rpar; Z${command.absolutePosition?.z}` || '';
     } else {
       zoomSliderLabel.innerHTML = '';
     }
