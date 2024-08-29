@@ -71,10 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const simulationTab = document.getElementById('simulationTab') as HTMLLIElement;
   const controlTab = document.getElementById('controlTab') as HTMLLIElement;
+  const macroTab = document.getElementById('macroTab') as HTMLLIElement;
   const plannerTab = document.getElementById('plannerTab') as HTMLLIElement;
   const threadingTab = document.getElementById('threadingTab') as HTMLLIElement;
   const simulationContent = document.getElementById('simulationContainer') as HTMLDivElement;
   const controlContent = document.getElementById('controlsContainer') as HTMLDivElement;
+  const macroContent = document.getElementById('macroContainer') as HTMLDivElement;
   const plannerContent = document.getElementById('plannerContainer') as HTMLDivElement;
   const threadingContent = document.getElementById('threadingContainer') as HTMLDivElement;
   const incrementButtons = document.querySelectorAll('#latheControls .increment-btn') as NodeListOf<HTMLButtonElement>;
@@ -107,6 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
   simulationTab.addEventListener('click', () => {
     simulationContent.style.display = 'flex';
     controlContent.style.display = 'none';
+    macroContent.style.display = 'none';
     plannerContent.style.display = 'none';
     threadingContent.style.display = 'none';
   });
@@ -114,6 +117,15 @@ document.addEventListener("DOMContentLoaded", () => {
   controlTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
     controlContent.style.display = 'flex';
+    macroContent.style.display = 'none';
+    plannerContent.style.display = 'none';
+    threadingContent.style.display = 'none';
+  });
+
+  macroTab.addEventListener('click', () => {
+    simulationContent.style.display = 'none';
+    controlContent.style.display = 'none';
+    macroContent.style.display = 'flex';
     plannerContent.style.display = 'none';
     threadingContent.style.display = 'none';
   });
@@ -121,6 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
   plannerTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
     controlContent.style.display = 'none';
+    macroContent.style.display = 'none';
     plannerContent.style.display = 'flex';
     threadingContent.style.display = 'none';
 
@@ -131,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
   threadingTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
     controlContent.style.display = 'none';
+    macroContent.style.display = 'none';
     plannerContent.style.display = 'none';
     threadingContent.style.display = 'flex';
   });

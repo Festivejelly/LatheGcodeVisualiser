@@ -6,6 +6,8 @@ export class SenderStatus {
         readonly condition: 'disconnected' | 'idle' | 'run',
         readonly error: string,
         readonly progress: number,
+        readonly currentLine: string,
+        readonly feedRate: number,
         readonly z: number,
         readonly x: number,
         readonly feed: number,
@@ -26,6 +28,8 @@ export class Sender {
     private unparsedResponse = '';
     private error = '';
     private statusReceived = false;
+    private currentLine = '';
+    private feedRate = 0;
     private z = 0;
     private x = 0;
     private feed = 0;
@@ -48,6 +52,8 @@ export class Sender {
             this.isOn ? 'run' : 'idle',
             this.error,
             this.lines.length ? this.lineIndex / this.lines.length : 0,
+            this.currentLine,
+            this.feedRate,
             this.z,
             this.x,
             this.feed,
@@ -56,12 +62,27 @@ export class Sender {
         return this.lastStatus;
     }
 
+    public getCurrentCommand(): string {
+        return this.currentLine;
+    }
+
     public addStatusChangeListener(listener: () => void): void {
         this.listeners.push(listener);
     }
 
     private notifyStatusChange() {
         this.listeners.forEach(listener => listener());
+    }
+
+    private currentCommandListeners: Array<(command: string) => void> = [];
+
+    public addCurrentCommandListener(listener: (command: string) => void): void {
+        this.currentCommandListeners.push(listener);
+    }
+
+    private notifyCurrentCommand(command: string) {
+        // Notify current command listeners about the current command
+        this.currentCommandListeners.forEach(listener => listener(command));
     }
 
     private remainingStatus: string = '';
@@ -219,6 +240,10 @@ export class Sender {
             this.writeCurrentLine();
             return;
         }
+
+        this.currentLine = line;
+        this.notifyCurrentCommand(this.currentLine);
+
         this.waitForOkOrError = true;
         console.log(`command: "${line}"`);
         appendLineToResponseEditor(`command: ${line}`);

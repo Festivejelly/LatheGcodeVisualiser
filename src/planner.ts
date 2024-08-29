@@ -23,6 +23,7 @@ let sender: Sender | null;
 const plannerConnectButton = document.getElementById('plannerConnectButton') as HTMLButtonElement;
 const plannerContainer = document.getElementById('plannerContainer') as HTMLDivElement;
 let isConnected = false;
+let feedRate: number | null = null;
 
 //saving and loading available tasks
 const saveAvailableTaskCollectionButton = document.getElementById('saveAvailableTaskCollection') as HTMLButtonElement;
@@ -85,6 +86,14 @@ const completeTaskCloseButton = document.getElementById('completeTaskCloseButton
 const notConnectedModal = document.getElementById('notConnectedModal') as HTMLDivElement;
 const notConnectedCloseButton = document.getElementById('notConnectedCloseButton') as HTMLButtonElement;
 
+//gcode exectution information
+const currentGcodeLineContainer = document.getElementById('currentGcodeLineContainer') as HTMLDivElement;
+const currentGcodeLine = document.getElementById('currentGcodeLine') as HTMLSpanElement;
+
+const currentFeedrateContainer = document.getElementById('currentFeedrateContainer') as HTMLDivElement;
+const currentFeedrate = document.getElementById('currentFeedrate') as HTMLSpanElement;
+
+
 //emulation
 const emulationInnerContainer = document.getElementById('emulationInnerContainer') as HTMLDivElement;
 const emulationNewTasksList = document.getElementById('emulationNewTasks') as HTMLDivElement;
@@ -111,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   sender = Sender.getInstance();
   sender.addStatusChangeListener(() => handleStatusChange());
+  sender.addCurrentCommandListener(handleCurrentCommand);
 
   plannerContainer.addEventListener('containerVisible', () => {
 
@@ -424,6 +434,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isConnected && sender) sender.connect();
   });
 
+  function handleCurrentCommand(command: string) {
+    if (!sender) return;
+    const status = sender.getStatus();
+    //const currentCommand = sender.getCurrentCommand();
+
+    const isRun = status.condition === 'run';
+
+    if (!isRun) {
+
+    } else if (isRun) {
+
+      const feedrateMatch = command.match(/F(\d+)/);
+      if (feedrateMatch) {
+        feedRate = parseInt(feedrateMatch[1], 10);
+        currentFeedrate.innerText = feedRate.toString();
+      }
+      currentGcodeLine.innerText = command;
+
+      currentFeedrateContainer.style.display = 'block';
+      currentGcodeLineContainer.style.display = 'block';
+    }
+  }
+
   function handleStatusChange() {
     if (!sender) return;
     const status = sender.getStatus();
@@ -443,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
       completeCncTaskButton.style.display = 'block';
       completeCncTaskButton.disabled = false;
       cncTaskSenderProgressLabel.innerText = "Task completed";
+
     } else if (isRun) {
       executeGcodeButton.disabled = true;
       cncTaskSenderProgressLabel.innerText = "Task in progress";
