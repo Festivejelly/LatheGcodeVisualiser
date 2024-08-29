@@ -16,6 +16,7 @@
             <ul>
                 <li id="simulationTab">Simulation</li>
                 <li id="controlTab">Control</li>
+                <li id="macroTab">Macros</li>
                 <li id="plannerTab">Planner</li>
                 <li id="threadingTab">Threading</li>
             </ul>
@@ -169,6 +170,15 @@
             </div>
             <script type="module" src="/src/main.ts"></script>
         </div>
+        <div id="macroContainer" class="main-container" style="display: none;">
+            <div id="macroContent" class="controls-container">
+                <div class="innerContainer">
+                    <h1>Macros</h1>
+                    <div>Coming soon. Use macros to define commmon tasks. For example profile 10mm from current position</div>
+                </div>
+            </div>
+        </div>
+
         <div id="plannerContainer" class="main-container" style="display: none;">
             <div id="plannerContent" class="planner-container">
                 <div class="innerContainer">
@@ -323,6 +333,14 @@
                 </div>
                 <div class="modal-pad">
                     <button id="completeCncTask" disabled>Next Task --></button>
+                </div>
+                <div id="currentGcodeLineContainer" class="modal-pad">
+                    <span id="currentGcodeLineLabel">Current Gcode Line:</span>
+                    <span id="currentGcodeLine"></span>
+                </div>
+                <div id="currentFeedrateContainer" class="modal-pad">
+                    <span id="currentFeedrateLabel">Current Feedrate:</span>
+                    <span id="currentFeedrate"></span>
                 </div>
                 <div id="cncTaskSenderProgressContainer" class="modal-pad">
                     <span id="cncTaskSenderProgressLabel">Execution in progress...</span>
