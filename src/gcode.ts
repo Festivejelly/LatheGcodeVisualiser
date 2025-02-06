@@ -1,4 +1,4 @@
-import { Sender } from './sender';
+import { Sender, SenderClient } from './sender';
 import { gcodeResponseEditor } from './main';
 import { gcodeSenderEditor } from './main';
 
@@ -12,7 +12,6 @@ export class GCode {
     private runProgress: HTMLProgressElement;
     private runProgressLabel: HTMLSpanElement;
     private connectButton: HTMLButtonElement;
-    private isConnected: boolean = false;
     private gcodeResponseContainer: HTMLDivElement;
     private jogButtons: NodeListOf<HTMLButtonElement>;
     private toolButtons: NodeListOf<HTMLButtonElement>;
@@ -42,13 +41,13 @@ export class GCode {
         this.singleCommandSender = document.getElementById('singleCommandSender') as HTMLInputElement;
 
         this.sender = Sender.getInstance();
-        this.sender.addStatusChangeListener(() => this.handleStatusChange());
+        this.sender.addStatusChangeListener(() => this.handleStatusChange(), SenderClient.GCODE);
 
         this.jogButtons.forEach((btn) => {
             btn.addEventListener('click', () => {
 
                 //if sender is not connected show alert and return
-                if (!this.isConnected) {
+                if (!this.sender?.isConnected()) {
                     alert("Please connect to the controller first.");
                     return;
                 }
@@ -108,7 +107,7 @@ export class GCode {
                     commands[1] = command;
                     commands[2] = 'G90'; //set to absolute positioning
 
-                    this.sender.sendCommands(commands);
+                    this.sender.sendCommands(commands, SenderClient.GCODE);
                 }
             });
         });
@@ -116,7 +115,7 @@ export class GCode {
         this.toolButtons.forEach((btn) => {
             btn.addEventListener('click', () => {
 
-                if (!this.isConnected) {
+                if (!this.sender?.isConnected()) {
                     alert("Please connect to the controller first.");
                     return;
                 }
@@ -140,20 +139,20 @@ export class GCode {
                 commandArray[0] = tCommand
 
                 if (this.sender) {
-                    this.sender.sendCommands(commandArray);
+                    this.sender.sendCommands(commandArray, SenderClient.GCODE);
                 }
             });
         });
 
         this.connectButton.addEventListener('click', () => {
             this.gcodeResponseContainer.style.display = 'block';
-            if (!this.isConnected && this.sender) this.sender.connect();
+            if (!this.sender?.isConnected() && this.sender) this.sender.connect();
         });
 
         this.sendButton.addEventListener('click', () => {
 
             //if sender is not connected show alert and return
-            if (!this.isConnected) {
+            if (!this.sender?.isConnected()) {
                 alert("Please connect to the controller first.");
                 return;
             }
@@ -171,14 +170,14 @@ export class GCode {
                 this.toolButtons.forEach((btn) => {
                     btn.disabled = true;
                 });
-                this.sender.start(gcodeSenderEditor.getValue());
+                this.sender.start(gcodeSenderEditor.getValue(), SenderClient.GCODE);
             }
         });
 
         this.sendSingleCommandButton.addEventListener('click', () => {
 
             //if sender is not connected show alert and return
-            if (!this.isConnected) {
+            if (!this.sender?.isConnected()) {
                 alert("Please connect to the controller first.");
                 return;
             }
@@ -197,7 +196,7 @@ export class GCode {
                     btn.disabled = true;
                 });
 
-                this.sender.sendCommand(this.singleCommandSender.value);
+                this.sender.sendCommand(this.singleCommandSender.value, SenderClient.GCODE);
             }
         });
 
@@ -211,18 +210,20 @@ export class GCode {
     }
 
     private handleStatusChange() {
+
         if (!this.sender) return;
         const status = this.sender.getStatus();
         if (status.isConnected === false) {
-            this.sendButton.style.display = 'none';
             this.connectButton.innerText = 'Connect';
-            this.isConnected = false;
+            this.connectButton.disabled = false;
+            //clear the button colour
+            this.connectButton.style.backgroundColor = '';
             return;
         } else {
-            this.isConnected = true;
-            this.sendButton.style.display = 'inline-block';
             this.connectButton.innerText = 'Connected';
             this.connectButton.disabled = true;
+            //colour button green
+            this.connectButton.style.backgroundColor = 'green';
         }
 
         const isRun = status.condition === 'run';
@@ -231,9 +232,9 @@ export class GCode {
             this.runProgress.style.display = isRun ? 'block' : 'none';
             this.runProgressLabel.style.display = isRun ? 'block' : 'none';
 
-            //re enable send buttons if sender is not running
             if (!isRun) {
                 this.sendButton.disabled = false;
+                this.sendButton.style.display = 'inline-block';
                 this.sendSingleCommandButton.disabled = false;
 
                 //enable jogging controls
@@ -245,6 +246,9 @@ export class GCode {
                 this.toolButtons.forEach((btn) => {
                     btn.disabled = false;
                 });
+
+            } else if (isRun) {
+                this.sendButton.style.display = 'none';
             }
         }
 

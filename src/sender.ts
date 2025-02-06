@@ -1,5 +1,16 @@
 import { gcodeResponseEditor } from './main';
 
+export enum SenderClient {
+    GCODE = 'gcode',
+    PLANNER = 'planner',
+    QUICKTASKS = 'quicktasks'
+}
+
+export enum StatusType {
+    CONNECTION,
+    COMMAND
+}
+
 export class SenderStatus {
     constructor(
         readonly isConnected: boolean,
@@ -14,9 +25,15 @@ export class SenderStatus {
         readonly rpm: number,) { }
 }
 
+type StatusChangeListener = {
+    callback: () => void;
+    client: SenderClient;
+}
+
 export class Sender {
     private static instance: Sender | null = null;
-    private listeners: (() => void)[] = [];
+    private listeners: StatusChangeListener[] = [];
+    private activeClient: SenderClient | null = null;
     private port: SerialPort | null = null;
     private readTimeout = 0;
     private reader: ReadableStreamDefaultReader<string> | null = null;
@@ -46,6 +63,16 @@ export class Sender {
 
     constructor() { }
 
+    public setActiveClient(client: SenderClient) {
+        this.activeClient = client;
+        console.log(`Active client set to: ${client}`);
+    }
+
+    public clearActiveClient() {
+        this.activeClient = null;
+        console.log('Active client cleared');
+    }
+
     getStatus() {
         this.lastStatus = new SenderStatus(
             this.port !== null,
@@ -66,12 +93,19 @@ export class Sender {
         return this.currentLine;
     }
 
-    public addStatusChangeListener(listener: () => void): void {
-        this.listeners.push(listener);
+    public addStatusChangeListener(callback: () => void, client: SenderClient): void {
+        this.listeners.push({ callback, client });
     }
 
     private notifyStatusChange() {
-        this.listeners.forEach(listener => listener());
+        this.listeners.forEach(listener => {
+            if (listener.client === this.activeClient) {
+                console.debug(`Notifying ${listener.client} listener`);
+                listener.callback();
+            } else {
+                console.debug(`Skipping ${listener.client} listener (not active)`);
+            }
+        });
     }
 
     private currentCommandListeners: Array<(command: string) => void> = [];
@@ -87,7 +121,7 @@ export class Sender {
 
     private remainingStatus: string = '';
 
-    private setStatus(s: string) {
+    private setStatus(s: string, ) {
         s = this.remainingStatus + s;
         this.remainingStatus = '';
 
@@ -119,7 +153,7 @@ export class Sender {
         console.log(`response: "${s}"`);
     }
 
-    private setError(e: string) {
+    private setError(e: string, ) {
         this.error = e;
         appendLineToResponseEditor(e);
         this.notifyStatusChange();
@@ -131,6 +165,7 @@ export class Sender {
 
     async connect() {
         try {
+            this.setActiveClient(SenderClient.GCODE);  // Connection is owned by GCODE
             if (!this.port) {
                 await this.selectPort();
 
@@ -166,8 +201,9 @@ export class Sender {
         return this.isDisconnecting;
     }
 
-    async start(text: string) {
+    async start(text: string, client: SenderClient) {
         if (!text) return;
+        this.setActiveClient(client);
 
         this.isOn = true;
         this.lines = text.split('\n');
@@ -175,10 +211,13 @@ export class Sender {
         this.waitForOkOrError = false;
         this.write('~');
         this.writeCurrentLine();
+
         this.notifyStatusChange();
     }
 
-    async sendCommand(command: string) {
+    async sendCommand(command: string, client: SenderClient) {
+        this.setActiveClient(client);
+
         this.isOn = true;
         this.lines = [command];
         this.lineIndex = 0;
@@ -188,7 +227,9 @@ export class Sender {
         this.notifyStatusChange();
     }
 
-    async sendCommands(commands: string[]) {
+    async sendCommands(commands: string[], client: SenderClient) {
+        this.setActiveClient(client);
+
         this.isOn = true;
         this.lines = commands;
         this.lineIndex = 0;
@@ -199,11 +240,12 @@ export class Sender {
     }
 
     async stop() {
-        await this.write('!');
+        await this.write('!',);
         if (!this.isOn) return;
         this.isOn = false;
-        //this.askForStatus();
+
         this.notifyStatusChange();
+        this.clearActiveClient();
     }
 
     private async write(sequence: string) {
@@ -256,10 +298,10 @@ export class Sender {
     private async processResponse(response: string) {
         this.unparsedResponse = (this.remainingResponse + response).trimStart();
         this.remainingResponse = '';
-    
+
         // Split the response into lines
         const lines = this.unparsedResponse.split('\n');
-    
+
         for (let line of lines) {
             // Cut out status message.
             const statuses = line.match(/(<[^>]+>)/);
@@ -269,8 +311,8 @@ export class Sender {
                     line = line.replace(s, '');
                 }
                 this.setStatus(statuses.pop()!);
-            } 
-    
+            }
+
             if (line.startsWith('error:')) {
                 this.remainingResponse += line;
                 appendLineToResponseEditor(`response: ${this.remainingResponse}`);
@@ -292,7 +334,7 @@ export class Sender {
                 this.remainingResponse += line;
             }
         }
-    
+
         this.unparsedResponse = '';
     }
 

@@ -1,6 +1,7 @@
 import { GCode } from './gcode.ts';
 import { exampleGcode } from './example.ts';
 import './planner';
+import './quickTasks';
 
 export const editor = ace.edit("gcodeEditor");
 export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
@@ -71,14 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const simulationTab = document.getElementById('simulationTab') as HTMLLIElement;
   const controlTab = document.getElementById('controlTab') as HTMLLIElement;
-  const macroTab = document.getElementById('macroTab') as HTMLLIElement;
+  const quickTasksTab = document.getElementById('quickTasksTab') as HTMLLIElement;
   const plannerTab = document.getElementById('plannerTab') as HTMLLIElement;
-  const threadingTab = document.getElementById('threadingTab') as HTMLLIElement;
+  const connectionContainer = document.getElementById('connectionContainer') as HTMLDivElement;
   const simulationContent = document.getElementById('simulationContainer') as HTMLDivElement;
   const controlContent = document.getElementById('controlsContainer') as HTMLDivElement;
-  const macroContent = document.getElementById('macroContainer') as HTMLDivElement;
+  const quickTasksContent = document.getElementById('quickTasksContainer') as HTMLDivElement;
   const plannerContent = document.getElementById('plannerContainer') as HTMLDivElement;
-  const threadingContent = document.getElementById('threadingContainer') as HTMLDivElement;
   const incrementButtons = document.querySelectorAll('#latheControls .increment-btn') as NodeListOf<HTMLButtonElement>;
   const moveDistanceInput = document.getElementById('moveDistance') as HTMLInputElement;
 
@@ -109,44 +109,36 @@ document.addEventListener("DOMContentLoaded", () => {
   simulationTab.addEventListener('click', () => {
     simulationContent.style.display = 'flex';
     controlContent.style.display = 'none';
-    macroContent.style.display = 'none';
+    quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'none';
-    threadingContent.style.display = 'none';
+    connectionContainer.style.display = 'none';
   });
 
   controlTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
     controlContent.style.display = 'flex';
-    macroContent.style.display = 'none';
+    quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'none';
-    threadingContent.style.display = 'none';
+    connectionContainer.style.display = 'block';
   });
 
-  macroTab.addEventListener('click', () => {
+  quickTasksTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
     controlContent.style.display = 'none';
-    macroContent.style.display = 'flex';
+    quickTasksContent.style.display = 'flex';
     plannerContent.style.display = 'none';
-    threadingContent.style.display = 'none';
+    connectionContainer.style.display = 'block';
   });
 
   plannerTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
     controlContent.style.display = 'none';
-    macroContent.style.display = 'none';
+    quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'flex';
-    threadingContent.style.display = 'none';
+    connectionContainer.style.display = 'block';
 
     const event = new Event('containerVisible');
     plannerContent.dispatchEvent(event);
-  });
-
-  threadingTab.addEventListener('click', () => {
-    simulationContent.style.display = 'none';
-    controlContent.style.display = 'none';
-    macroContent.style.display = 'none';
-    plannerContent.style.display = 'none';
-    threadingContent.style.display = 'flex';
   });
 
   zoomCanvas.width = window.visualViewport!.width - 100;
