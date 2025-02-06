@@ -78,6 +78,26 @@ button:focus-visible {
     outline: 4px auto -webkit-focus-ring-color;
 }
 
+.disabled-button {
+    background-color: red;
+    cursor: not-allowed;
+}
+
+.interaction-ready-button {
+    background-color: green;
+}
+
+.icon-container {
+    width: 60px;
+    height: 50px;
+    padding: 5px 10px;
+}
+
+.icon-container svg {
+    width: 100%;
+    height: 100%;
+}
+
 #simulationContainer {
     display: flex;
     flex-direction: column;
@@ -91,6 +111,14 @@ button:focus-visible {
     width: 100%;
 }
 
+#interactiveComponentsContainer {
+    display: flex;
+    flex-direction: column;
+    width: 800px;
+    max-width: 1280px;
+    text-align: center;
+}
+
 #controlsContainer {
     display: flex;
     flex-direction: column;
@@ -99,7 +127,61 @@ button:focus-visible {
     text-align: center;
 }
 
+#quickTasksContainer {
+    display: flex;
+    flex-direction: column;
+    width: 800px;
+    max-width: 1280px;
+    text-align: center;
+}
+
+button.quick-tasks-innercontainer {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 5px 0px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #333;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+    /* Include padding and border in the element's total width and height */
+}
+
+button.quick-tasks-innercontainer:hover {
+    background-color: #6c5ce7;
+}
+
+button.execute {
+    /* remove padding from top and button but keep padding on sides*/
+    padding: 0 10px;
+}
+
+input.quick-task-summary {
+    width: auto;
+    box-sizing: border-box;
+}
+
+.quick-tasks-subinnercontainer {
+    display: flex;
+    flex-direction: row;
+}
+
 .controls-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 5px;
+    border: 1px solid #ccc;
+}
+
+.connection-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -646,15 +728,20 @@ input[type="file"]::file-selector-button:hover {
 
 /* Planner section */
 
+#plannerContainer {
+    display: flex;
+    flex-direction: column;
+    width: 800px;
+    max-width: 1280px;
+    text-align: center;
+}
+
 .planner-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     margin: 5px;
-    width: 800px;
-    max-width: 1280px;
-    text-align: center;
     border: 1px solid #ccc;
 }
 

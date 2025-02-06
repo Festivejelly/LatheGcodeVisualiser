@@ -16,9 +16,8 @@
             <ul>
                 <li id="simulationTab">Simulation</li>
                 <li id="controlTab">Control</li>
-                <li id="macroTab">Macros</li>
+                <li id="quickTasksTab">Quick Tasks</li>
                 <li id="plannerTab">Planner</li>
-                <li id="threadingTab">Threading</li>
             </ul>
         </div>
 
@@ -76,217 +75,520 @@
             </div>
 
         </div>
-        <div id="controlsContainer" class="main-container" style="display: none;">
-            <div id="controlsContent" class="controls-container">
-                <div id="gcodeSenderContainer" class="innerContainer">
 
-                    <span>Send GCode to Nano ELS H4</span>
+        <div id="interactiveComponentsContainer" class="main-container">
+            <div id="connectionContainer" class="connection-container" style="display: none;">
+                <div class="innerContainer">
+                    <button id="connectButton" title="Connect to Nano ELS H4">Connect</button>
+                </div>
+            </div>
+            <div id="controlsContainer" class="main-container" style="display: none;">
+                <div id="controlsContent" class="controls-container">
 
+                    <div id="latheControls">
+                        <div id="jogControls">
+                            <span id="fastText">Fast</span>
+                            <span id="slowText">Slow</span>
+                            <span id="toolText">Tool</span>
+
+                            <!-- Tools -->
+                            <button class="tool-btn tool-selected" id="tool0">T0</button>
+                            <button class="tool-btn" id="tool1">T1</button>
+                            <button class="tool-btn" id="tool2">T2</button>
+                            <button class="tool-btn" id="tool3">T3</button>
+                            <button class="tool-btn" id="tool4">T4</button>
+                            <button class="tool-btn" id="tool5">T5</button>
+                            <button class="tool-btn" id="tool6">T6</button>
+                            <button class="tool-btn" id="tool7">T7</button>
+                            <button class="tool-btn" id="tool8">T8</button>
+                            <button class="tool-btn" id="tool9">T9</button>
+
+                            <span id="jogText">Move</span>
+                            <!-- Fast arrows -->
+                            <button class="arrow fast jog-btn" id="fastForward"><i class="fas fa-arrow-up"></i></button>
+                            <button class="arrow fast jog-btn" id="fastBackward"><i
+                                    class="fas fa-arrow-down"></i></button>
+                            <button class="arrow fast jog-btn" id="fastLeft"><i class="fas fa-arrow-left"></i></button>
+                            <button class="arrow fast jog-btn" id="fastRight"><i
+                                    class="fas fa-arrow-right"></i></button>
+                            <!-- Slow arrows -->
+                            <button class="arrow slow jog-btn" id="slowForward"><i class="fas fa-arrow-up"></i></button>
+                            <button class="arrow slow jog-btn" id="slowBackward"><i
+                                    class="fas fa-arrow-down"></i></button>
+                            <button class="arrow slow jog-btn" id="slowLeft"><i class="fas fa-arrow-left"></i></button>
+                            <button class="arrow slow jog-btn" id="slowRight"><i
+                                    class="fas fa-arrow-right"></i></button>
+                        </div>
+                        <div id="incrementControls">
+                            <button class="increment-btn" data-increment="0.01">0.01</button>
+                            <button class="increment-btn" data-increment="0.1">0.1</button>
+                            <button class="increment-btn active" data-increment="1">1</button>
+                            <button class="increment-btn" data-increment="10">10</button>
+                        </div>
+                        <div id="feedrateControls" class="innerContentCentre control-inputs">
+                            <label for="fastFeedrate">Fast Feedrate:</label>
+                            <input type="text" id="fastFeedrate" name="fastFeedrate" value="200">
+                            <label for="slowFeedrate">Slow Feedrate:</label>
+                            <input type="text" id="slowFeedrate" name="slowFeedrate" value="50">
+                        </div>
+                        <div id="distanceControl" class="innerContentCentre control-inputs">
+                            <label for="moveDistance">Move Distance (mm):</label>
+                            <input type="text" id="moveDistance" name="moveDistance" value="1">
+                        </div>
+                    </div>
+
+                    <div id="gcodeResponseContainer" style="display: none;">
+                        <div id="gcodeResponseHeader">GCode Responses</div>
+                        <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
+                        <div class="senderError" style="display: none;"></div>
+                        <div id="senderProgressContainer">
+                            <span id="senderProgressLabel" style="display: none;">Progress...</span>
+                            <progress id="senderProgress" max="1" style="display: none;"></progress>
+                        </div>
+                    </div>
+                </div>
+                <div class="controls-container">
+                    <div class="innerContainer control-inputs">
+                        <div class="innerContentCentre control-inputs">
+                            <span>Send single command</span>
+                        </div>
+                        <div class="innerContentCentre sender-inputs">
+                            <input id="singleCommandSender" type="text" name="singleCommandSender"></input>
+                        </div>
+                        <div class="innerContentCentre control-inputs">
+                            <button id="gcodeSendSingleCommandButton" title="Send GCode to CNC">Send</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="controls-container">
+                    <div id="gcodeSenderContainer" style="position: relative;">
+                        <span>Send multi line commands</span>
+                        <div id="gcodeSenderEditor" style="height: 200px; width: 100%;"></div>
+                    </div>
                     <div class="innerContainer">
-                        <button id="connectButton" title="Connect to Nano ELS H4">Connect</button>
+                        <button id="gcodeSenderButton" title="Send GCode to CNC">Send</button>
+                        <button id="stopButton" style="display: none;">Stop</button>
                     </div>
                 </div>
+                <script type="module" src="/src/main.ts"></script>
+            </div>
+            <div id="quickTasksContainer" class="main-container" style="display: none;">
+                <div id="quickTasksContent" class="controls-container">
+                    <div class="innerContainer">
+                        <h1>Quick Tasks</h1>
+                        <button id="facingButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
+                                        <!-- L-shape -->
+                                        <path d="M5 45 L35 45 L35 5" fill="none" stroke="white" stroke-width="3" />
 
-                <div id="latheControls">
-                    <div id="jogControls">
-                        <span id="fastText">Fast</span>
-                        <span id="slowText">Slow</span>
-                        <span id="toolText">Tool</span>
+                                        <!-- Arrow stem -->
+                                        <line x1="50" y1="45" x2="50" y2="10" stroke="white" stroke-width="3" />
 
-                        <!-- Tools -->
-                        <button class="tool-btn tool-selected" id="tool0">T0</button>
-                        <button class="tool-btn" id="tool1">T1</button>
-                        <button class="tool-btn" id="tool2">T2</button>
-                        <button class="tool-btn" id="tool3">T3</button>
-                        <button class="tool-btn" id="tool4">T4</button>
-                        <button class="tool-btn" id="tool5">T5</button>
-                        <button class="tool-btn" id="tool6">T6</button>
-                        <button class="tool-btn" id="tool7">T7</button>
-                        <button class="tool-btn" id="tool8">T8</button>
-                        <button class="tool-btn" id="tool9">T9</button>
+                                        <!-- Arrow head -->
+                                        <path d="M42 17 L50 5 L58 17 Z" fill="white" />
+                                    </svg>
+                                </div>
+                                <p>Facing</p>
+                            </div>
 
-                        <span id="jogText">Move</span>
-                        <!-- Fast arrows -->
-                        <button class="arrow fast jog-btn" id="fastForward"><i class="fas fa-arrow-up"></i></button>
-                        <button class="arrow fast jog-btn" id="fastBackward"><i class="fas fa-arrow-down"></i></button>
-                        <button class="arrow fast jog-btn" id="fastLeft"><i class="fas fa-arrow-left"></i></button>
-                        <button class="arrow fast jog-btn" id="fastRight"><i class="fas fa-arrow-right"></i></button>
-                        <!-- Slow arrows -->
-                        <button class="arrow slow jog-btn" id="slowForward"><i class="fas fa-arrow-up"></i></button>
-                        <button class="arrow slow jog-btn" id="slowBackward"><i class="fas fa-arrow-down"></i></button>
-                        <button class="arrow slow jog-btn" id="slowLeft"><i class="fas fa-arrow-left"></i></button>
-                        <button class="arrow slow jog-btn" id="slowRight"><i class="fas fa-arrow-right"></i></button>
-                    </div>
-                    <div id="incrementControls">
-                        <button class="increment-btn" data-increment="0.01">0.01</button>
-                        <button class="increment-btn" data-increment="0.1">0.1</button>
-                        <button class="increment-btn active" data-increment="1">1</button>
-                        <button class="increment-btn" data-increment="10">10</button>
-                    </div>
-                    <div id="feedrateControls" class="innerContentCentre control-inputs">
-                        <label for="fastFeedrate">Fast Feedrate:</label>
-                        <input type="text" id="fastFeedrate" name="fastFeedrate" value="200">
-                        <label for="slowFeedrate">Slow Feedrate:</label>
-                        <input type="text" id="slowFeedrate" name="slowFeedrate" value="50">
-                    </div>
-                    <div id="distanceControl" class="innerContentCentre control-inputs">
-                        <label for="moveDistance">Move Distance (mm):</label>
-                        <input type="text" id="moveDistance" name="moveDistance" value="1">
-                    </div>
-                </div>
+                        </button>
+                        <button id="groovingButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 60">
+                                        <!-- U-shape rotated correctly (facing up) -->
+                                        <path d="M5 55 L5 5 L45 5 L45 55" fill="none" stroke="white" stroke-width="3" />
 
-                <div id="gcodeResponseContainer" style="display: none;">
-                    <div id="gcodeResponseHeader">GCode Responses</div>
-                    <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
-                    <div class="senderError" style="display: none;"></div>
-                    <div id="senderProgressContainer">
-                        <span id="senderProgressLabel" style="display: none;">Progress...</span>
-                        <progress id="senderProgress" max="1" style="display: none;"></progress>
+                                        <!-- Arrow stem -->
+                                        <line x1="25" y1="45" x2="25" y2="15" stroke="white" stroke-width="3" />
+
+                                        <!-- Arrow head (filled) -->
+                                        <path d="M17 22 L25 10 L33 22 Z" fill="white" />
+                                    </svg>
+                                </div>
+                                <p>Grooving</p>
+                            </div>
+                        </button>
+                        <button id="profilingButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
+                                        <!-- Rotated L-shape -->
+                                        <path d="M55 5 L5 5 L5 35" fill="none" stroke="white" stroke-width="3" />
+
+                                        <!-- Arrow stem -->
+                                        <line x1="22" y1="30" x2="50" y2="30" stroke="white" stroke-width="3" />
+
+                                        <!-- Arrow head (filled) -->
+                                        <path d="M22 22 L10 30 L22 38 Z" fill="white" />
+                                    </svg>
+                                </div>
+                                <p>Profiling</p>
+                            </div>
+                        </button>
+                        <button id="coneButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
+                                        <!-- Sideways trapezoid -->
+                                        <path
+                                            d="M10 5 L50 15 L50 35 L10 45 Z"
+                                            fill="none"
+                                            stroke="white"
+                                            stroke-width="3"
+                                        />
+                                    </svg>
+                                </div>
+                                <p>Cone</p>
+                            </div>
+                        </button>
+                        <button id="boringButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
+                                        <!-- Correctly rotated squared U-shape (90° clockwise) -->
+                                        <path d="M55 5 L5 5 L5 45 L55 45" fill="none" stroke="white" stroke-width="3" />
+
+                                        <!-- Arrow stem -->
+                                        <line x1="22" y1="25" x2="42" y2="25" stroke="white" stroke-width="3" />
+
+                                        <!-- Arrow head (filled) -->
+                                        <path d="M22 17 L10 25 L22 33 Z" fill="white" />
+                                    </svg>
+                                </div>
+                                <p>Boring</p>
+                            </div>
+                        </button>
+                        <button id="threadingButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
+                                        <!-- Background rectangle -->
+                                        <!--<rect x="0" y="7.5" width="60" height="35" fill="#e0e0e0"></rect> -->
+
+                                        <!-- Thread lines -->
+                                        <line x1="6" y1="41.7" x2="18" y2="8.3" stroke="white" stroke-width="5"
+                                            stroke-linecap="round"></line>
+                                        <line x1="15" y1="41.7" x2="27" y2="8.3" stroke="white" stroke-width="5"
+                                            stroke-linecap="round"></line>
+                                        <line x1="24" y1="41.7" x2="36" y2="8.3" stroke="white" stroke-width="5"
+                                            stroke-linecap="round"></line>
+                                        <line x1="33" y1="41.7" x2="45" y2="8.3" stroke="white" stroke-width="5"
+                                            stroke-linecap="round"></line>
+                                        <line x1="42" y1="41.7" x2="54" y2="8.3" stroke="white" stroke-width="5"
+                                            stroke-linecap="round"></line>
+                                        <!-- Corrected start of thread -->
+                                        <line x1="-3" y1="41.7" x2="9" y2="8.3" stroke="white" stroke-width="5"
+                                            stroke-linecap="round"></line>
+                                        <!-- Corrected end of thread -->
+                                        <line x1="51" y1="41.7" x2="63" y2="8.3" stroke="white" stroke-width="5"
+                                            stroke-linecap="round"></line>
+                                    </svg>
+                                </div>
+                                <p>Threading</p>
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="controls-container">
-                <div class="innerContainer control-inputs">
-                    <div class="innerContentCentre control-inputs">
-                        <span>Send single command</span>
-                    </div>
-                    <div class="innerContentCentre sender-inputs">
-                        <input id="singleCommandSender" type="text" name="singleCommandSender"></input>
-                    </div>
-                    <div class="innerContentCentre control-inputs">
-                        <button id="gcodeSendSingleCommandButton" title="Send GCode to CNC">Send</button>
-                    </div>
-                </div>
-            </div>
-            <div class="controls-container">
-                <div id="gcodeSenderContainer" style="position: relative;">
-                    <span>Send multi line commands</span>
-                    <div id="gcodeSenderEditor" style="height: 200px; width: 100%;"></div>
-                </div>
-                <div class="innerContainer">
-                    <button id="gcodeSenderButton" title="Send GCode to CNC">Send</button>
-                    <button id="stopButton" style="display: none;">Stop</button>
-                </div>
-            </div>
-            <script type="module" src="/src/main.ts"></script>
-        </div>
-        <div id="macroContainer" class="main-container" style="display: none;">
-            <div id="macroContent" class="controls-container">
-                <div class="innerContainer">
-                    <h1>Macros</h1>
-                    <div>Coming soon. Use macros to define commmon tasks. For example profile 10mm from current position</div>
-                </div>
-            </div>
-        </div>
 
-        <div id="plannerContainer" class="main-container" style="display: none;">
-            <div id="plannerContent" class="planner-container">
-                <div class="innerContainer">
-                    <h1>Planner</h1>
-                    <div class="planner-guidance">
-                        <span>Use this tool to create a job of tasks to execute. This can be manual, gcode, button press
-                            emulation or a
-                            combination
-                            of them.
-                            When you click execute the job wizard will execute the tasks one after another. Each task
-                            with require confirmation to start.</span>
+            <div id="plannerContainer" class="main-container" style="display: none;">
+                <div id="plannerContent" class="planner-container">
+                    <div class="innerContainer">
+                        <h1>Planner</h1>
+                        <div class="planner-guidance">
+                            <span>Use this tool to create a job of tasks to execute. This can be manual, gcode, button
+                                press
+                                emulation or a
+                                combination
+                                of them.
+                                When you click execute the job wizard will execute the tasks one after another. Each
+                                task
+                                with require confirmation to start.</span>
+                        </div>
                     </div>
-                </div>
-                <div class="innerContainer">
-                    <h1>Device status</h1>
-                    <button id="plannerConnectButton">Connect</button>
-                </div>
-                <div id="taskContainer">
-                    <div class="container-wrapper-outer">
-                        <div class="container-wrapper">
-                            <h2>Current Job</h2>
-                            <span>Drag an available task to below</span>
-                            <div id="tasksToExecute" class="task-container">
+                    <div id="taskContainer">
+                        <div class="container-wrapper-outer">
+                            <div class="container-wrapper">
+                                <h2>Current Job</h2>
+                                <span>Drag an available task to below</span>
+                                <div id="tasksToExecute" class="task-container">
+                                </div>
+                            </div>
+                            <div class="container-wrapper">
+                                <button id="executeJobButton">Execute Job</button>
+                            </div>
+                            <hr>
+                            <div class="container-wrapper">
+                                <div class="innerContainer" id="loadAndSaveJob">
+                                    <div class="innerContainer toolbar">
+                                        <button id="saveJobButton" class="planner-save-button" title="Save Job to local browser storage">Save
+                                            Job</button>
+                                    </div>
+                                    <div class="innerContainer toolbar">
+                                        <button id="newJobButton" class="planner-save-button" title="Create a new job">New
+                                            Job</button>
+                                    </div>
+                                    <div class="innerContainer toolbar">
+                                        <button id="loadJobButton" class="planner-load-delete-buttons" title="Load Job from local browser storage">Load</button>
+                                        <button id="deleteJobButton" class="planner-load-delete-buttons" title="Delete Job from local browser storage">Delete</button>
+                                    </div>
+                                    <div class="innerContainer toolbar">
+                                        <span class="planner-saving-label">Group:</span>
+                                        <select id="groupLoadSelect" class="planner-load-select">
+                                        </select>
+                                    </div>
+                                    <div class="innerContainer toolbar">
+                                        <span class="planner-saving-label">Job:</span>
+                                        <select id="jobLoadSelect" class="planner-load-select">
+                                        </select>
+                                    </div>
+                                    <div class="container-wrapper-inner">
+                                        <hr>
+                                    </div>
+                                    <span class="planner-saving-label">Import and export Job to JSON</span>
+                                    <div class="innerContainer toolbar">
+                                        <button id="importJobButton" class="planner-load-delete-buttons" title="Import Job from JSON file">Import</button>
+                                        <button id="exportJobButton" class="planner-load-delete-buttons" title="Export Job to JSON">Export</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="container-wrapper">
-                            <button id="executeJobButton">Execute Job</button>
-                        </div>
-                        <hr>
-                        <div class="container-wrapper">
-                            <div class="innerContainer" id="loadAndSaveJob">
-                                <div class="innerContainer toolbar">
-                                    <button id="saveJobButton" class="planner-save-button" title="Save Job to local browser storage">Save
-                                        Job</button>
+                        <div class="container-wrapper-outer">
+                            <div class="container-wrapper">
+                                <h2>Available Tasks</h2>
+                                <div id="availableTasks" class="task-container">
                                 </div>
-                                <div class="innerContainer toolbar">
-                                    <button id="loadJobButton" class="planner-load-delete-buttons" title="Load Job from local browser storage">Load</button>
-                                    <button id="deleteJobButton" class="planner-load-delete-buttons" title="Delete Job from local browser storage">Delete</button>
-                                </div>
-                                <div class="innerContainer toolbar">
-                                    <select id="jobLoadSelect" class="planner-load-select">
-                                    </select>
-                                </div>
+                            </div>
+                            <div class="container-wrapper">
                                 <div class="container-wrapper-inner">
-                                    <hr>
+                                    <span>Drag here to delete</span>
                                 </div>
-                                <span class="planner-saving-label">Import and export Job to JSON</span>
-                                <div class="innerContainer toolbar">
-                                    <button id="importJobButton" class="planner-load-delete-buttons" title="Import Job from JSON file">Import</button>
-                                    <button id="exportJobButton" class="planner-load-delete-buttons" title="Export Job to JSON">Export</button>
+                                <div id="deleteTasks" class="container-wrapper-delete">
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="container-wrapper-outer">
-                        <div class="container-wrapper">
-                            <h2>Available Tasks</h2>
-                            <div id="availableTasks" class="task-container">
+                            <div class="container-wrapper">
+                                <button id="addNewTaskButton">Add New Task</button>
                             </div>
-                        </div>
-                        <div class="container-wrapper">
                             <div class="container-wrapper-inner">
-                                <span>Drag here to delete</span>
+                                <hr class="no-marge">
                             </div>
-                            <div id="deleteTasks" class="container-wrapper-delete">
-                            </div>
-                        </div>
-                        <div class="container-wrapper">
-                            <button id="addNewTaskButton">Add New Task</button>
-                        </div>
-                        <div class="container-wrapper-inner">
-                            <hr class="no-marge">
-                        </div>
-                        <div class="container-wrapper">
-                            <div class="innerContainer" id="loadAndSaveAvailableTasks">
-                                <div><span>Task Collections</span></div>
-                                <div class="innerContainer toolbar">
-                                    <button id='saveAvailableTaskCollection' class="planner-save-button" title="Save Task to local browser storage">Save tasks to a collection
-                                        <i class="far fa-save show-info icon-tooltip"
-                                            data-tooltip="Save to local machine"></i>
-                                    </button>
-                                </div>
-                                <div class="innerContainer toolbar">
-                                    <select id="availableTaskCollections" class="planner-load-select">
-                                        <option value="" disabled>Select your option</option>
-                                    </select>
-                                </div>
-                                <div class="innerContainer toolbar">
-                                    <button id="loadTaskCollection" class="planner-load-delete-buttons" title="Load selected collection">Load collection</button>
-                                    <button id="deleteTaskCollection" class="planner-load-delete-buttons" title="Delete selected collection">Delete collection</button>
-                                </div>
-                                <div class="container-wrapper-inner">
-                                    <hr>
-                                </div>
-                                <span class="planner-saving-label">Import and export tasks via JSON</span>
-                                <div class="innerContainer toolbar">
-                                    <button id="importAvailableTasks" class="planner-load-delete-buttons" title="Import tasks from JSON file">Import</button>
-                                    <button id="exportAvailableTasks" class="planner-load-delete-buttons" title="Export tasks to JSON">Export</button>
+                            <div class="container-wrapper">
+                                <div class="innerContainer" id="loadAndSaveAvailableTasks">
+                                    <div><span>Task Collections</span></div>
+                                    <div class="innerContainer toolbar">
+                                        <button id='saveAvailableTaskCollection' class="planner-save-button" title="Save Task to local browser storage">Save tasks to a collection
+                                            <i class="far fa-save show-info icon-tooltip"
+                                                data-tooltip="Save to local machine"></i>
+                                        </button>
+                                    </div>
+                                    <div class="innerContainer toolbar">
+                                        <select id="availableTaskCollections" class="planner-load-select">
+                                            <option value="" disabled>Select your option</option>
+                                        </select>
+                                    </div>
+                                    <div class="innerContainer toolbar">
+                                        <button id="loadTaskCollection" class="planner-load-delete-buttons" title="Load selected collection">Load collection</button>
+                                        <button id="deleteTaskCollection" class="planner-load-delete-buttons" title="Delete selected collection">Delete collection</button>
+                                    </div>
+                                    <div class="container-wrapper-inner">
+                                        <hr>
+                                    </div>
+                                    <span class="planner-saving-label">Import and export tasks via JSON</span>
+                                    <div class="innerContainer toolbar">
+                                        <button id="importAvailableTasks" class="planner-load-delete-buttons" title="Import tasks from JSON file">Import</button>
+                                        <button id="exportAvailableTasks" class="planner-load-delete-buttons" title="Export tasks to JSON">Export</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
-        <div id="threadingContainer" class="main-container" style="display: none;">
-            <div id="threadingContent" class="threading-container">Coming soon.</div>
+
+        <!-- Quick Task Facing Modal-->
+        <div id="quickTaskFacingModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Facing Modal</h2>
+                <div class="modal-pad-bottom">
+                    <label for="facingFeedRate">Facing Feed Rate (mm per minute):</label>
+                    <input type="text" id="facingFeedRate" name="facingFeedRate" placeholder="50">
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskFacingExecuteButton" class="execute" title="Execute facing command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskFacingCloseButton">Close</button>
+                </div>
+            </div>
         </div>
+
+        <!-- Quick Task Grooving Modal-->
+        <div id="quickTaskGroovingModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Grooving Modal</h2>
+                <div class="modal-pad-bottom">
+                    <label for="groovingDepth">Depth of groove in mm:</label>
+                    <input type="text" id="groovingDepth" name="groovingDepth" placeholder="50">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="groovingWidth">Width of groove in mm:</label>
+                    <input type="text" id="groovingWidth" name="groovingWidth" placeholder="50">
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskGroovingExecuteButton" class="execute" title="Execute grooving command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskGroovingCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Task Profiling Modal-->
+        <div id="quickTaskProfilingModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Profiling Modal</h2>
+                <div class="modal-pad-bottom">
+                    <label for="profilingLength">Length to profile (mm)</label>
+                    <input type="text" id="profilingLength" name="profilingLength" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="profilingDepth">Depth (mm)</label>
+                    <input type="text" id="profilingDepth" name="profilingDepth" placeholder="0.2">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="profilingPasses">Passes</label>
+                    <input type="text" id="profilingPasses" name="profilingPasses" placeholder="1">
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskProfilingExecuteButton" class="execute" title="Execute profiling command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskProfilingCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Task Cone Modal-->
+        <div id="quickTaskConeModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Quick Task: Cone</h2>
+                <div class="modal-pad-bottom">
+                    <label for="coneStartingDepth">Starting Depth (radius mm)</label>
+                    <input type="text" id="coneStartingDepth" name="coneStartingDepth" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="coneEndingDepth">Ending Depth (radius mm)</label>
+                    <input type="text" id="coneEndingDepth" name="coneEndingDepth" placeholder="0.2">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="coneInternalExternal">External or Internal</label>
+                    <select id="coneInternalExternal" name="coneInternalExternal">
+                        <option value="External">External</option>
+                        <option value="Internal">Internal</option>
+                    </select>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="coneLength">Length</label>
+                    <input type="text" id="coneLength" name="coneLength" placeholder="1">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="conePasses">Passes</label>
+                    <input type="text" id="conePasses" name="conePasses" placeholder="1">
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskConeExecuteButton" class="execute" title="Execute cone command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskConeCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Task Boring Modal-->
+        <div id="quickTaskBoringModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Boring Modal</h2>
+                <div class="modal-pad-bottom">
+                    <label for="boringDepth">Boring Depth (mm)</label>
+                    <input type="text" id="boringDepth" name="boringDepth" placeholder="50">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="peckingDepth">Pecking Depth (mm)</label>
+                    <input type="text" id="peckingDepth" name="peckingDepth" placeholder="50">
+                </div>
+                <div class="modal-pad-bottom">
+                    <span>Quick Task Summary</span>
+                </div>
+                <div class="modal-pad-bottom">
+                    <input type="text" id="boringQuickTaskSummary" class="quick-task-summary" name="boringQuickTaskSummary" placeholder="" disabled>
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskBoringExecuteButton" class="execute" title="Execute Boring command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskBoringCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Task Threading Modal-->
+        <div id="quickTaskThreadingModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Threading Modal</h2>
+
+                <div class="modal-pad-bottom">
+                    <label for="threadPitchType">Thread Pitch Type</label>
+                    <select id="threadPitchType" name="threadPitchType" placeholder="10">
+                        <option value="coarse">Coarse</option>
+                        <option value="fine">Fine</option>
+                    </select>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="threadSize">Thread Size</label>
+                    <select id="threadSize" name="threadSize" placeholder="10"></select>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="threadLength">Thread Length (mm)</label>
+                    <input type="text" id="threadLength" name="threadLength" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskThreadingExecuteButton" class="execute" title="Execute threading command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskThreadingCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Not Connected warning -->
         <div id="notConnectedModal" class="task-modal">
             <div class="task-modal-content center-modal">
@@ -312,7 +614,7 @@
                 </div>
                 <div class="modal-pad">
                     <button id="cancelManualTask">Cancel</button>
-                    <button id="completeManualTask">Next Task --></button>
+                    <button id="completeManualTask" class="interaction-ready-button">Next Task --></button>
                 </div>
             </div>
         </div>
@@ -394,7 +696,18 @@
                 <span id="saveJobModalClose" class="close-modal">&times;</span>
                 <h2>Save Job</h2>
                 <hr>
-                <div class="modal-pad">Pick a name:</div>
+                <div class="modal-pad">Job Group Name:</div>
+                <div>
+                    <select id="saveJobGroupNameSelect">
+                    </select>
+                </div>
+                <div id="newJobGroupNameContainer" style="display: none;">
+                    <div class="modal-pad">New Job Group name:</div>
+                    <div>
+                        <input id="saveJobGroupNameInput" type="text" class="planner-save-text" placeholder="Name of Group"></input>
+                    </div>
+                </div>
+                <div class="modal-pad">Name of Job:</div>
                 <div>
                     <select id="saveJobNameSelect">
                     </select>
@@ -416,7 +729,12 @@
                 <span id="exportJobModalClose" class="close-modal">&times;</span>
                 <h2>Export Job</h2>
                 <hr>
-                <div class="modal-pad">Select Job To Export:</div>
+                <div class="modal-pad">Job Group:</div>
+                <div>
+                    <select id="exportJobGroupNameSelect">
+                    </select>
+                </div>
+                <div class="modal-pad">Job:</div>
                 <div>
                     <select id="exportJobNameSelect">
                     </select>
