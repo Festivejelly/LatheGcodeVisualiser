@@ -114,6 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'none';
     connectionContainer.style.display = 'none';
+    helpContent.style.display = 'none';
   });
 
   controlTab.addEventListener('click', () => {
@@ -122,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'none';
     connectionContainer.style.display = 'block';
+    helpContent.style.display = 'none';
   });
 
   quickTasksTab.addEventListener('click', () => {
@@ -130,6 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTasksContent.style.display = 'flex';
     plannerContent.style.display = 'none';
     connectionContainer.style.display = 'block';
+    helpContent.style.display = 'none';
   });
 
   plannerTab.addEventListener('click', () => {
@@ -138,6 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'flex';
     connectionContainer.style.display = 'block';
+    helpContent.style.display = 'none';
 
     const event = new Event('containerVisible');
     plannerContent.dispatchEvent(event);
