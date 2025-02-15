@@ -300,7 +300,7 @@ export class Sender {
         this.remainingResponse = '';
 
         // Split the response into lines
-        const lines = this.unparsedResponse.split('\n');
+        const lines = this.unparsedResponse.split(/\r?\n/).map(line => line.replace(/\r/g, ''));
 
         for (let line of lines) {
             // Cut out status message.
