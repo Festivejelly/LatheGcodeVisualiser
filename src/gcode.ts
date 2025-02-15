@@ -17,8 +17,11 @@ export class GCode {
     private toolButtons: NodeListOf<HTMLButtonElement>;
     private sender: Sender | null;
     private singleCommandSender: HTMLInputElement;
+    private  minimumVersion: string;
 
     constructor() {
+
+        this.minimumVersion = 'H4V12FJ';
 
         let fastFeedrateInput: HTMLInputElement;
         let slowFeedrateInput: HTMLInputElement;
@@ -117,6 +120,11 @@ export class GCode {
 
                 if (!this.sender?.isConnected()) {
                     alert("Please connect to the controller first.");
+                    return;
+                }
+
+                if(this.sender.getStatus().version != this.minimumVersion){
+                    alert(`This feature is only available on firmware version ${this.minimumVersion} or later. Please see help tab for more information.`);
                     return;
                 }
 

@@ -160,11 +160,51 @@ button.quick-tasks-innercontainer:hover {
 button.execute {
     /* remove padding from top and button but keep padding on sides*/
     padding: 0 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0 auto;
 }
 
 input.quick-task-summary {
     width: auto;
     box-sizing: border-box;
+}
+
+.tooltip-icon {
+    display: inline-flex;
+    margin-left: 5px;
+    cursor: help;
+    color: #ffffff;
+    /* Change color as needed */
+    font-weight: bold;
+    font-size: 16px;
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.tooltip-icon:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    background-color: #333;
+    color: #fff;
+    padding: 5px;
+    border-radius: 5px;
+    white-space: nowrap;
+    z-index: 10;
+    top: 100%;
+    /* Position below the icon */
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .quick-tasks-subinnercontainer {

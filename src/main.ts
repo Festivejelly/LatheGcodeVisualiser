@@ -74,11 +74,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const controlTab = document.getElementById('controlTab') as HTMLLIElement;
   const quickTasksTab = document.getElementById('quickTasksTab') as HTMLLIElement;
   const plannerTab = document.getElementById('plannerTab') as HTMLLIElement;
+  const helpTab = document.getElementById('helpTab') as HTMLLIElement;
   const connectionContainer = document.getElementById('connectionContainer') as HTMLDivElement;
   const simulationContent = document.getElementById('simulationContainer') as HTMLDivElement;
   const controlContent = document.getElementById('controlsContainer') as HTMLDivElement;
   const quickTasksContent = document.getElementById('quickTasksContainer') as HTMLDivElement;
   const plannerContent = document.getElementById('plannerContainer') as HTMLDivElement;
+  const helpContent = document.getElementById('helpContainer') as HTMLDivElement;
   const incrementButtons = document.querySelectorAll('#latheControls .increment-btn') as NodeListOf<HTMLButtonElement>;
   const moveDistanceInput = document.getElementById('moveDistance') as HTMLInputElement;
 
@@ -139,6 +141,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const event = new Event('containerVisible');
     plannerContent.dispatchEvent(event);
+  });
+
+  helpTab.addEventListener('click', () => {
+    simulationContent.style.display = 'none';
+    controlContent.style.display = 'none';
+    quickTasksContent.style.display = 'none';
+    plannerContent.style.display = 'none';
+    connectionContainer.style.display = 'none';
+    helpContent.style.display = 'flex';
   });
 
   zoomCanvas.width = window.visualViewport!.width - 100;

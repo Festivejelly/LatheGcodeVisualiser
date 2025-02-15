@@ -18,6 +18,7 @@
                 <li id="controlTab">Control</li>
                 <li id="quickTasksTab">Quick Tasks</li>
                 <li id="plannerTab">Planner</li>
+                <li id="helpTab">Help</li>
             </ul>
         </div>
 
@@ -176,7 +177,7 @@
                 <div id="quickTasksContent" class="controls-container">
                     <div class="innerContainer">
                         <h1>Quick Tasks</h1>
-                        <button id="facingButton" class="quick-tasks-innercontainer">
+                        <button id="quickTaskFacingButton" class="quick-tasks-innercontainer">
                             <div class="quick-tasks-subinnercontainer">
                                 <div class="icon-container">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
@@ -194,7 +195,7 @@
                             </div>
 
                         </button>
-                        <button id="groovingButton" class="quick-tasks-innercontainer">
+                        <button id="quickTaskGroovingButton" class="quick-tasks-innercontainer">
                             <div class="quick-tasks-subinnercontainer">
                                 <div class="icon-container">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 60">
@@ -211,7 +212,7 @@
                                 <p>Grooving</p>
                             </div>
                         </button>
-                        <button id="profilingButton" class="quick-tasks-innercontainer">
+                        <button id="quickTaskProfilingButton" class="quick-tasks-innercontainer">
                             <div class="quick-tasks-subinnercontainer">
                                 <div class="icon-container">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
@@ -228,7 +229,7 @@
                                 <p>Profiling</p>
                             </div>
                         </button>
-                        <button id="coneButton" class="quick-tasks-innercontainer">
+                        <button id="quickTaskConeButton" class="quick-tasks-innercontainer">
                             <div class="quick-tasks-subinnercontainer">
                                 <div class="icon-container">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
@@ -244,7 +245,7 @@
                                 <p>Cone</p>
                             </div>
                         </button>
-                        <button id="boringButton" class="quick-tasks-innercontainer">
+                        <button id="quickTaskBoringButton" class="quick-tasks-innercontainer">
                             <div class="quick-tasks-subinnercontainer">
                                 <div class="icon-container">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
@@ -261,7 +262,7 @@
                                 <p>Boring</p>
                             </div>
                         </button>
-                        <button id="threadingButton" class="quick-tasks-innercontainer">
+                        <button id="quickTaskThreadingButton" class="quick-tasks-innercontainer">
                             <div class="quick-tasks-subinnercontainer">
                                 <div class="icon-container">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
@@ -288,6 +289,25 @@
                                     </svg>
                                 </div>
                                 <p>Threading</p>
+                            </div>
+                        </button>
+                        <button id="quickTaskToolOffsetsButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
+                                        <!-- Left arrow (pointing up) - thicker shaft -->
+                                        <line x1="7.5" y1="45" x2="7.5" y2="10" stroke="white" stroke-width="3"/>
+                                        <path d="M4 13 L7.5 7.5 L11 13 Z" fill="white"/>
+                                        
+                                        <!-- Bottom arrow (pointing right) - thicker shaft -->
+                                        <line x1="6" y1="44" x2="50" y2="44" stroke="white" stroke-width="3"/>
+                                        <path d="M48 40.5 L53.5 44 L48 47.5 Z" fill="white"/>
+                                        
+                                        <!-- Gear shifted up 1 unit -->
+                                        <path d="M28 9 L31 9 L32.5 13 L35 14.5 L39 11.5 L40.5 14 L38 18 L39.5 20.5 L43.5 22 L43.5 25 L39.5 26.5 L38 29 L40.5 33 L39 35.5 L35 32.5 L32.5 34 L31 38 L28 38 L26.5 34 L24 32.5 L20 35.5 L18.5 33 L21 29 L19.5 26.5 L15.5 25 L15.5 22 L19.5 20.5 L21 18 L18.5 14 L20 11.5 L24 14.5 L26.5 13 L28 9 M29.5 18 A5 5 0 0 0 29.5 29 A5 5 0 0 0 29.5 18" fill="white"/>
+                                    </svg>
+                                </div>
+                                <p>Tool Offsets</p>
                             </div>
                         </button>
                     </div>
@@ -408,6 +428,16 @@
                 </div>
             </div>
 
+            <div id="helpContainer" class="main-container" style="display: none;">
+                <div id="helpContent" class="controls-container">
+                    <div class="innerContainer">
+                        <h1>Help Page</h1>
+                        <p>Some functionality offered by this tool is not present on the Nano ELS h4/h5 controller by default such as gcode threading and tool offsets. Please see my custom firmware page to download my fork of the firmware: </p>
+                        <p><a href="https://github.com/Festivejelly/nanoels/blob/main/h4/h4.ino" target="_blank">Github Repo</a></p>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Quick Task Facing Modal-->
@@ -416,7 +446,11 @@
                 <h2>Facing Modal</h2>
                 <div class="modal-pad-bottom">
                     <label for="facingFeedRate">Facing Feed Rate (mm per minute):</label>
-                    <input type="text" id="facingFeedRate" name="facingFeedRate" placeholder="50">
+                    <input type="text" id="facingFeedRate" name="facingFeedRate" placeholder="100">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="facingDepth">Facing Cutting Depth (mm)</label>
+                    <input type="text" id="facingDepth" name="facingDepth" placeholder="10">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskFacingExecuteButton" class="execute" title="Execute facing command">
@@ -424,6 +458,15 @@
                             <path d="M8 5v14l11-7z" fill="green" />
                         </svg>
                     </button>
+                    <button id="quickTaskFacingStopButton" class="execute" title="Stop facing command" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad-bottom" style="display: none;">
+                    <span id="quickTaskFacingLabel">Execution in progress...</span>
+                    <progress id="quickTaskFacingProgressBar" max="1"></progress>
                 </div>
                 <div class="modal-pad">
                     <button id="quickTaskFacingCloseButton">Close</button>
@@ -447,6 +490,11 @@
                     <button id="quickTaskGroovingExecuteButton" class="execute" title="Execute grooving command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
                             <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                    <button id="quickTaskGroovingStopButton" class="execute" title="Stop grooving command" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
                         </svg>
                     </button>
                 </div>
@@ -478,6 +526,15 @@
                             <path d="M8 5v14l11-7z" fill="green" />
                         </svg>
                     </button>
+                    <button id="quickTaskProfilingStopButton" class="execute" title="Stop profiling command" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad-bottom" style="display: none;">
+                    <span id="quickTaskProfilingLabel">Execution in progress...</span>
+                    <progress id="quickTaskProfilingProgressBar" max="1"></progress>
                 </div>
                 <div class="modal-pad">
                     <button id="quickTaskProfilingCloseButton">Close</button>
@@ -518,6 +575,11 @@
                             <path d="M8 5v14l11-7z" fill="green" />
                         </svg>
                     </button>
+                    <button id="quickTaskConeStopButton" class="execute" title="Stop cone command" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
+                        </svg>
+                    </button>
                 </div>
                 <div class="modal-pad">
                     <button id="quickTaskConeCloseButton">Close</button>
@@ -547,6 +609,11 @@
                     <button id="quickTaskBoringExecuteButton" class="execute" title="Execute Boring command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
                             <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                    <button id="quickTaskBoringStopButton" class="execute" title="Stop boring command" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
                         </svg>
                     </button>
                 </div>
@@ -582,9 +649,80 @@
                             <path d="M8 5v14l11-7z" fill="green" />
                         </svg>
                     </button>
+                    <button id="quickTaskThreadingStopButton" class="execute" title="Stop threading command" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
+                        </svg>
+                    </button>
                 </div>
                 <div class="modal-pad">
                     <button id="quickTaskThreadingCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Task Tool offsets Modal-->
+        <div id="quickTaskToolOffsetsModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Tool offsets wizard</h2>
+
+                <div class="modal-pad-bottom">
+                    <p>Before setting offsets be sure your primary tool (T0 which should be a grooving tool) has been zero'ed on your centre line and Z reference. See this video guide: link</p>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="toolOffsetsToolNumber">Tool Number (eg T1)</label>
+                    <input type="text" id="toolOffsetsToolNumber" name="toolOffsetsToolNumber" placeholder="T1">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="toolOffsetsToolType">Tool Type
+                        <span class="tooltip-icon" data-tooltip="External tools touch off on front of probe, Internal on the rear.">?</span>
+                    </label>
+                    <select id="toolOffsetsToolType" name="toolOffsetsToolType">
+                        <option value="External-Profiling" selected>External: Profiling</option>
+                        <option value="External-Facing">External: Facing</option>
+                        <option value="External-Grooving">External: Grooving</option>
+                        <option value="External-Threading">External: Threading</option>
+                        <option value="External-Other">External: Other</option>
+                        <option value="Internal-Boring">Internal: Boring</option>
+                        <option value="Internal-Grooving">Internal: Grooving</option>
+                        <option value="Internal-Threading">Internal: Threading</option>
+                        <option value="Internal-Other">Internal: Other</option>
+                        <option value="Drill">Drill</option>
+                    </select>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="toolOffsetsXValue">X Value</label>
+                    <input type="text" id="toolOffsetsXValue" name="toolOffsetsXValue" placeholder="0">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="toolOffsetsZValue">Z Value</label>
+                    <input type="text" id="toolOffsetsZValue" name="toolOffsetsZValue" placeholder="0">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="toolOffsetsProbeDiameter">Probe diameter</label>
+                    <input type="text" id="toolOffsetsProbeDiameter" name="toolOffsetsProbeDiameter" placeholder="5">
+                </div>
+                <div class="modal-pad-bottom">
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskToolOffsetsExecuteButton" class="execute" title="Set tool offset">
+                        <Span>Set Tool Offset</Span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                    <button id="quickTaskToolOffsetsStopButton" class="execute" title="Stop gcode" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
+                        </svg>
+                    </button>
+                    <div class="modal-pad-bottom" style="display: none;">
+                        <span id="quickTaskToolOffsetsLabel">Execution in progress...</span>
+                        <progress id="quickTaskToolOffsetsProgressBar" max="1"></progress>
+                    </div>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskToolOffsetsCloseButton">Close</button>
                 </div>
             </div>
         </div>
