@@ -22,7 +22,8 @@ export class SenderStatus {
         readonly z: number,
         readonly x: number,
         readonly feed: number,
-        readonly rpm: number,) { }
+        readonly rpm: number,
+        readonly version: string) { }
 }
 
 type StatusChangeListener = {
@@ -53,6 +54,7 @@ export class Sender {
     private rpm = 0;
     private isDisconnecting = false;
     private lastStatus: SenderStatus | null = null;
+    private version = '';
 
     public static getInstance(): Sender {
         if (!Sender.instance) {
@@ -84,7 +86,8 @@ export class Sender {
             this.z,
             this.x,
             this.feed,
-            this.rpm
+            this.rpm,
+            this.version
         );
         return this.lastStatus;
     }
@@ -145,6 +148,9 @@ export class Sender {
                 const coords = parts[2].substring('FS:'.length).split(',');
                 this.feed = Number(coords[0]);
                 this.rpm = Number(coords[1]);
+            }
+            if (parts[3].startsWith('Id:')) {
+                this.version = String(parts[3].substring('Id:'.length));
             }
         }
         this.notifyStatusChange();
