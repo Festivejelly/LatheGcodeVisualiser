@@ -2,6 +2,7 @@ import { Sender, SenderClient } from './sender';
 
 
 let sender: Sender | null;
+let minimumVersion = 'H4V12FJ';
 
 
 const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTMLButtonElement, closeButton: HTMLButtonElement, executeButton: HTMLButtonElement, stopButton: HTMLButtonElement, progressBar: HTMLProgressElement, taskFunction: () => void } } = {
@@ -247,10 +248,32 @@ function boringTask() {
 }
 
 function threadingTask() {
-  alert('Not Yet Implemented');
+  const status = sender?.getStatus();
+  if (!status || !status.isConnected) {
+    alert('Please connect to the machine first');
+    return;
+  } else {
+    if (status.version !== minimumVersion) {
+      alert(`Threading is only supported on ${minimumVersion} controllers. Please see the help page for more information.`);
+      return;
+    } else {
+      alert('Not Yet Implemented');
+    }
+  }
 }
 
 function toolOffsetsTask() {
+
+  const status = sender?.getStatus();
+  if (!status || !status.isConnected) {
+    alert('Please connect to the machine first');
+    return;
+  } else {
+    if (status.version !== minimumVersion) {
+      alert(`Tool offsets is only supported on ${minimumVersion} controllers. Please see the help page for more information.`);
+      return;
+    } 
+  }
 
   const toolNumber = document.getElementById('toolOffsetsToolNumber') as HTMLInputElement;
 
@@ -403,10 +426,10 @@ function calculateToolOffsets(input: ToolOffset): CalculatedOffset {
 
   const roundToThree = (num: number): number => {
     return Math.round(num * 1000) / 1000;
-};
+  };
 
-return {
+  return {
     x: roundToThree(xOffset),
     z: roundToThree(zOffset)
-};
+  };
 }
