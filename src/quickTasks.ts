@@ -1,9 +1,9 @@
 import { Sender, SenderClient } from './sender';
+import { Threading, type ThreadingType, type ThreadSpec , type ThreadingDirection} from './threading';
 
 
 let sender: Sender | null;
 let minimumVersion = 'H4V12FJ';
-
 
 const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTMLButtonElement, closeButton: HTMLButtonElement, executeButton: HTMLButtonElement, stopButton: HTMLButtonElement, progressBar: HTMLProgressElement, taskFunction: () => void } } = {
   'quickTaskFacing': {
@@ -71,6 +71,13 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
   }
 };
 
+//Threading
+const quickTaskThreadingType = document.getElementById('quickTaskThreadingType') as HTMLSelectElement;
+const quickTaskThreadingSize = document.getElementById('quickTaskThreadingSize') as HTMLSelectElement;
+const quickTaskThreadingDirection = document.getElementById('quickTaskThreadingDirection') as HTMLSelectElement;
+const quickTaskThreadingExternalOrInternal = document.getElementById('quickTaskThreadingExternalOrInternal') as HTMLSelectElement;
+const quickTaskThreadingLength = document.getElementById('quickTaskThreadingLength') as HTMLInputElement;
+
 document.addEventListener("DOMContentLoaded", () => {
 
   let activeQuickTaskConfig: { modal: HTMLDivElement, openButton: HTMLButtonElement, closeButton: HTMLButtonElement, executeButton: HTMLButtonElement, stopButton: HTMLButtonElement, progressBar: HTMLProgressElement, taskFunction: () => void };
@@ -85,19 +92,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const config = quickTaskConfig[taskId];
     const openButton = quickTaskConfig[taskId].openButton;
     openButton.addEventListener('click', () => {
-
-      activeQuickTaskConfig = config;
-      config.modal.style.display = 'block';
-
+      if (!sender?.isConnected()) {
+        alert('Please connect to the machine first');
+      } else {
+        activeQuickTaskConfig = config;
+        config.modal.style.display = 'block';
+      }
     });
 
     // Execute button
     config.executeButton.addEventListener('click', () => {
-      if (!sender?.isConnected()) {
-        alert('Please connect to the machine first');
-      } else {
-        config.taskFunction();
-      }
+      config.taskFunction();
     });
 
     // Stop button
@@ -109,15 +114,138 @@ document.addEventListener("DOMContentLoaded", () => {
     config.closeButton.addEventListener('click', () => {
       config.modal.style.display = 'none';
     });
+  });
 
-    //load any saved values from local stoage
-    //probe diameter
-    const probeDiameter = localStorage.getItem('probeDiameter');
-    if (probeDiameter) {
-      (document.getElementById('toolOffsetsProbeDiameter') as HTMLInputElement).value = probeDiameter;
+  const probeDiameter = localStorage.getItem('probeDiameter');
+  if (probeDiameter) {
+    (document.getElementById('toolOffsetsProbeDiameter') as HTMLInputElement).value = probeDiameter;
+  }
+
+  //Facing
+  const facingMovementType = document.getElementById('quickTaskFacingMovementType') as HTMLSelectElement;
+
+  //if movement type is set to Absolute then hide quickTaskFacingDepthContainer
+  facingMovementType.addEventListener('change', () => {
+    if (facingMovementType.value === 'Absolute') {
+      document.getElementById('quickTaskFacingDepthContainer')!.style.display = 'none';
+    } else {
+      document.getElementById('quickTaskFacingDepthContainer')!.style.display = 'block';
+    }
+  });
+
+  //Profiling
+  const quickTaskProfilingType = document.getElementById('quickTaskProfilingType') as HTMLSelectElement;
+
+  //if profiling type is set to Absolute then hide quickTaskProfilingDepthContainer
+  quickTaskProfilingType.addEventListener('change', () => {
+    if (quickTaskProfilingType.value === 'Absolute') {
+      document.getElementById('quickTaskProfilingDepthContainer')!.style.display = 'none';
+      document.getElementById('quickTaskProfilingFinalDiameterContainer')!.style.display = 'block';
+    } else {
+      document.getElementById('quickTaskProfilingDepthContainer')!.style.display = 'block';
+      document.getElementById('quickTaskProfilingFinalDiameterContainer')!.style.display = 'none';
+    }
+  });
+
+  const finalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
+  const profilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
+
+
+
+  // Update on input for number of passes
+  if (finalDiameter) {
+    finalDiameter.addEventListener('input', () => updateNumberOfPasses('Absolute'));
+  }
+
+  if (profilingDepth) {
+    profilingDepth.addEventListener('input', () => updateNumberOfPasses('Relative'));
+  }
+
+  async function updateNumberOfPasses(movementType: string) {
+
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+
+    const startPosX = latestStatus?.x!;
+
+    const depthPerPass = document.getElementById('quickTaskProfilingDepthPerPass') as HTMLInputElement;
+    const finishingPass = document.getElementById('quickTaskProfilingFinishingDepth') as HTMLInputElement;
+    const profilingPasses = document.getElementById('quickTaskProfilingPasses') as HTMLInputElement;
+
+    let totalDepth: number;
+    if (movementType === 'Absolute') {
+      const finalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
+      totalDepth = Math.abs(startPosX - (-parseFloat(finalDiameter.value) / 2));
+    } else {
+      const profilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
+      totalDepth = Math.abs(startPosX - (-parseFloat(profilingDepth.value)));
     }
 
-  });
+    const mainPassDepth = parseFloat(depthPerPass.value);
+    const finishingPassDepth = parseFloat(finishingPass.value);
+
+    if (mainPassDepth <= 0 || finishingPassDepth <= 0) {
+      console.error('Invalid pass depths');
+      return;
+    }
+
+    // Calculate main passes needed
+    const depthForMainPasses = totalDepth - finishingPassDepth;
+    const mainPasses = Math.floor(depthForMainPasses / mainPassDepth);
+
+    if (mainPasses <= 0) {
+      console.error('Depth too small for main passes');
+      return;
+    }
+
+    // Adjust the main pass depth to evenly distribute any remainder
+    const adjustedMainPassDepth = (depthForMainPasses / mainPasses).toFixed(3);
+
+    // Update the depth per pass input with the adjusted value
+    depthPerPass.value = adjustedMainPassDepth;
+
+    // Total passes is main passes plus one finishing pass
+    const totalPasses = mainPasses + 1;
+    profilingPasses.value = totalPasses.toString();
+  }
+
+
+  const updateThreadSizes = () => {
+
+    const threadingType = quickTaskThreadingType.value;
+    const threadSpecs = Threading.getThreadsForGroup(threadingType);
+    //const externalOrInternal = quickTaskThreadingExternalOrInternal.value;
+
+    // Clear existing options
+    quickTaskThreadingSize.innerHTML = '<option value="">Select Thread Size</option>';
+
+    if (threadSpecs.length > 0) {
+
+      threadSpecs
+        .sort((a, b) => {
+          // First sort by diameter
+          if (a.nominalDiameter !== b.nominalDiameter) {
+            return a.nominalDiameter - b.nominalDiameter;
+          }
+          // Then by pitch (smaller pitch/fine first)
+          return a.pitch - b.pitch;
+        })
+        .forEach(thread => {
+          const option = document.createElement('option');
+          option.value = thread.name;
+          option.textContent = thread.name;
+          quickTaskThreadingSize.appendChild(option);
+        });
+      quickTaskThreadingSize.disabled = false;
+    } else {
+      quickTaskThreadingSize.disabled = true;
+    }
+  }
+
+  quickTaskThreadingType.addEventListener('change', updateThreadSizes);
+
+  //call on page load
+  updateThreadSizes();
+
 
   function handleStatusChange() {
     if (!sender) return;
@@ -170,48 +298,74 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 })
 
+
+
 function profilingTask() {
 
   //profiling modal inputs
-  const profilingLength = document.getElementById('profilingLength') as HTMLInputElement;
-  const profilingDepth = document.getElementById('profilingDepth') as HTMLInputElement;
-  const profilingPasses = document.getElementById('profilingPasses') as HTMLInputElement;
-
-  const length = parseFloat(profilingLength.value);
-  const depth = parseFloat(profilingDepth.value);
-  const passes = parseInt(profilingPasses.value, 10);
-  const feedRate = 100;
+  const profilingLength = parseFloat((document.getElementById('quickTaskProfilingLength') as HTMLInputElement).value);
+  const profilingPasses = parseInt((document.getElementById('quickTaskProfilingPasses') as HTMLInputElement).value, 10);
+  const feedRate = parseFloat((document.getElementById('quickTaskProfilingFeedRate') as HTMLInputElement).value);
   const retractFeedrate = 200;
 
-  //split moves into multiple lines
-  const depthPerPass = depth / passes;
+  const profilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
+  const finalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
 
-  let commands: string[] = [];
-  commands.push('G91'); //set to relative positioning
+  //get profiling type
+  const profilingType = (document.getElementById('quickTaskProfilingType') as HTMLInputElement).value;
 
-  //send the command for each pass
-  for (let i = 0; i < passes; i++) {
+  const startPosX = sender?.getStatus().x!;
+  const startPosZ = sender?.getStatus().z!;
 
-    //cutting move x
-    commands.push(`G1 X${depthPerPass} F${feedRate}`);
+  const commands: string[] = [];
 
-    //cutting move Z
-    commands.push(`G1 Z${length} F${feedRate}`);
+  if (profilingType === 'Absolute') {
 
-    //retract move
-    commands.push(`G1 X-${depthPerPass} F${retractFeedrate}`);
+    commands.push('G91'); //set to relative positioning
 
-    //retract move
-    commands.push(`G1 Z-${length} F${retractFeedrate}`);
+    //work out the depth of each cut to final diameter
+    const depthRadius = parseFloat(finalDiameter.value) / 2;
+    const depthPerPass = (startPosX - depthRadius) / profilingPasses;
 
-    //unretract X
-    commands.push(`G1 X${depthPerPass} F${retractFeedrate}`);
+    for (let i = 0; i < profilingPasses; i++) {
+
+      //cutting move x
+      commands.push(`G1 X${depthPerPass} F${feedRate}`);
+      //cutting move Z
+      commands.push(`G1 Z${profilingLength} F${feedRate}`);
+      //retract move
+      commands.push(`G1 X-${depthPerPass} F${retractFeedrate}`);
+      //retract move
+      commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
+      //unretract X
+      commands.push(`G1 X${depthPerPass} F${retractFeedrate}`);
+    }
+  } else {
+
+    commands.push('G91'); //set to relative positioning
+
+    //work out the depth of each cut to final diameter
+    const depthPerPass = (startPosX - parseFloat(profilingDepth.value) / profilingPasses);
+
+    for (let i = 0; i < profilingPasses; i++) {
+      //cutting move x
+      commands.push(`G1 X${depthPerPass} F${feedRate}`);
+      //cutting move Z
+      commands.push(`G1 Z${profilingLength} F${feedRate}`);
+      //retract move
+      commands.push(`G1 X-${depthPerPass} F${retractFeedrate}`);
+      //retract move
+      commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
+      //unretract X
+      commands.push(`G1 X${depthPerPass} F${retractFeedrate}`);
+    }
+
   }
 
   commands.push('G90'); // Set to absolute positioning
 
   //more back to zero position
-  commands.push(`G0 Z0 X0 F${retractFeedrate}`);
+  commands.push(`G0 Z${startPosZ} X${startPosX} F${retractFeedrate}`);
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
@@ -220,18 +374,26 @@ function profilingTask() {
 function facingTask() {
 
   //facing modal inputs
-  const facingFeedRate = document.getElementById('facingFeedRate') as HTMLInputElement;
-  const facingDepth = document.getElementById('facingDepth') as HTMLInputElement;
+  const facingFeedRate = document.getElementById('quickTaskFacingFeedRate') as HTMLInputElement;
+  const facingMovementType = document.getElementById('quickTaskFacingMovementType') as HTMLSelectElement;
 
   let commands: string[] = [];
 
-  commands.push('G91'); //set to absolute positioning
+  const startPosition = sender?.getStatus().x;
 
-  //face to specified depth
-  commands.push(`G1 X${facingDepth.value} F${facingFeedRate.value}`);
-  //retract a bit
-  commands.push(`G1 Z-1 F${facingFeedRate.value}`);
-  commands.push('G90'); //set to absolute positioning
+  if (facingMovementType.value === 'Absolute') {
+    commands.push('G90'); //set to absolute positioning
+    commands.push(`G1 X0 F${facingFeedRate.value}`);
+    commands.push(`G1 X${startPosition} F${facingFeedRate.value}`); //retract a bit
+    commands.push('G91'); //set to relative positioning    
+  } else {
+    const facingDepth = document.getElementById('quickTaskFacingDepth') as HTMLInputElement;
+    commands.push('G91'); //set to relative positioning
+    commands.push(`G1 X${facingDepth.value} F${facingFeedRate.value}`);
+    commands.push(`G1 X-${facingDepth.value} F${facingFeedRate.value}`); //retract a bit
+    commands.push('G90'); //set to absolute positioning
+  }
+
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
@@ -257,7 +419,27 @@ function threadingTask() {
       alert(`Threading is only supported on ${minimumVersion} controllers. Please see the help page for more information.`);
       return;
     } else {
-      alert('Not Yet Implemented');
+      //get threading inputs
+      const threadingSize = quickTaskThreadingSize.value;
+
+      if (threadingSize === '') {
+        alert('Please select a thread size');
+        return;
+      }
+
+      const threadingDirection = quickTaskThreadingDirection.value as ThreadingDirection;
+      const threadingExternalOrInternal = quickTaskThreadingExternalOrInternal.value  as ThreadingType;
+      const threadingLength = parseFloat(quickTaskThreadingLength.value);
+
+      //get threading spec
+      const threadSpec = Threading.getThreadSpecByName(threadingSize) as ThreadSpec;
+
+      const gcode = Threading.generateThreadingGcode(threadSpec, threadingExternalOrInternal, threadingDirection, threadingLength);
+
+      const commands: string[] = [];
+      commands.push('G90'); //set to absolute positioning
+      commands.push(gcode);
+      sender?.sendCommands(commands, SenderClient.QUICKTASKS);
     }
   }
 }
@@ -272,7 +454,7 @@ function toolOffsetsTask() {
     if (status.version !== minimumVersion) {
       alert(`Tool offsets is only supported on ${minimumVersion} controllers. Please see the help page for more information.`);
       return;
-    } 
+    }
   }
 
   const toolNumber = document.getElementById('toolOffsetsToolNumber') as HTMLInputElement;

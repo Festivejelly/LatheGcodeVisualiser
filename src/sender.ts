@@ -245,6 +245,23 @@ export class Sender {
         this.notifyStatusChange();
     }
 
+    async getPosition(client: SenderClient) {
+        this.setActiveClient(client);
+
+        // Reset the statusReceived flag before requesting new status
+        this.statusReceived = false;
+
+        await this.write('?');
+
+        const received = await waitForTrue(() => this.statusReceived);
+        if (!received) {
+            throw new Error('Failed to get position update');
+        }
+
+        this.notifyStatusChange();
+        return this.getStatus();
+    }
+
     async stop() {
         await this.write('!',);
         if (!this.isOn) return;

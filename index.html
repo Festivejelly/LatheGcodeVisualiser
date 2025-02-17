@@ -445,12 +445,21 @@
             <div class="task-modal-content center-modal">
                 <h2>Facing Modal</h2>
                 <div class="modal-pad-bottom">
-                    <label for="facingFeedRate">Facing Feed Rate (mm per minute):</label>
-                    <input type="text" id="facingFeedRate" name="facingFeedRate" placeholder="100">
+                    <label for="quickTaskFacingFeedRate">Facing Feed Rate (mm per minute):</label>
+                    <input type="text" id="quickTaskFacingFeedRate" name="quickTaskFacingFeedRate" placeholder="100">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="facingDepth">Facing Cutting Depth (mm)</label>
-                    <input type="text" id="facingDepth" name="facingDepth" placeholder="10">
+                    <label for="quickTaskFacingMovementType">Movement Type
+                        <span class="tooltip-icon" data-tooltip="Absolute cuts all the way to the centre line. Relative cuts to a specific depth.">?</span>
+                    </label>
+                    <select id="quickTaskFacingMovementType" name="quickTaskFacingMovementType">
+                        <option value="Absolute" selected>Absolute</option>
+                        <option value="Relative">Relative</option>
+                    </select>
+                </div>
+                <div class="modal-pad-bottom" id="quickTaskFacingDepthContainer" style="display: none;">
+                    <label for="quickTaskFacingDepth">Facing Cutting Depth (mm)</label>
+                    <input type="text" id="quickTaskFacingDepth" name="quickTaskFacingDepth" placeholder="10">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskFacingExecuteButton" class="execute" title="Execute facing command">
@@ -513,12 +522,44 @@
                     <input type="text" id="profilingLength" name="profilingLength" placeholder="10">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="profilingDepth">Depth (mm)</label>
-                    <input type="text" id="profilingDepth" name="profilingDepth" placeholder="0.2">
+                    <label for="quickTaskProfilingFeedRate">Feed rate</label>
+                    <input type="text" id="quickTaskProfilingFeedRate" name="quickTaskProfilingFeedRate" placeholder="100">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="profilingPasses">Passes</label>
-                    <input type="text" id="profilingPasses" name="profilingPasses" placeholder="1">
+                    <label for="quickTaskProfilingType">Profiling Type
+                        <span class="tooltip-icon" data-tooltip="Absolute cuts to a specified diameter. Relative cuts to a specified depth.">?</span>
+                    </label>
+                    <select id="quickTaskProfilingType" name="quickTaskProfilingType">
+                        <option value="Absolute" selected>Absolute</option>
+                        <option value="Relative">Relative</option>
+                    </select>
+                </div>
+                <div class="modal-pad-bottom" id="quickTaskProfilingFinalDiameterContainer">
+                    <label for="quickTaskProfilingFinalDiameter">Final Diameter</label>
+                    <input type="number" id="quickTaskProfilingFinalDiameter" name="quickTaskProfilingFinalDiameter" placeholder="1">
+                </div>
+                <div class="modal-pad-bottom" id="quickTaskProfilingDepthContainer" style="display: none;">
+                    <label for="quickTaskProfilingDepth">Depth (mm)</label>
+                    <input type="number" id="quickTaskProfilingDepth" name="quickTaskProfilingDepth" placeholder="1">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskProfilingDepthPerPass">Depth Per Pass (mm)
+                        <span class="tooltip-icon" data-tooltip="This value might get adjusted if the depth isnt devisible exactly by this value">?</span>
+                    </label>
+                    <input type="number" id="quickTaskProfilingDepthPerPass" name="quickTaskProfilingDepthPerPass" placeholder="0.2" value="0.2">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskProfilingFinishingDepth">Depth of finishing pass (mm)
+                    </label>
+                    <input type="number" id="quickTaskProfilingFinishingDepth" name="quickTaskProfilingFinishingDepth" placeholder="0.1" value="0.1">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskProfilingPasses">Passes
+                        <span class="tooltip-icon" data-tooltip="This value is calculated">?</span>
+                    </label>
+                    <input type="number" id="quickTaskProfilingPasses" name="quickTaskProfilingPasses" placeholder="1" readonly>
+                </div>
+                <div class="modal-pad-bottom">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskProfilingExecuteButton" class="execute" title="Execute profiling command">
@@ -629,19 +670,38 @@
                 <h2>Threading Modal</h2>
 
                 <div class="modal-pad-bottom">
-                    <label for="threadPitchType">Thread Pitch Type</label>
-                    <select id="threadPitchType" name="threadPitchType" placeholder="10">
-                        <option value="coarse">Coarse</option>
-                        <option value="fine">Fine</option>
+                    <label for="quickTaskThreadingExternalOrInternal">External or Internal</label>
+                    <select id="quickTaskThreadingExternalOrInternal" name="quickTaskThreadingExternalOrInternal">
+                        <option value="External" selected>External</option>
+                        <option value="Internal">Internal</option>
+                    </select>
+                </div>
+
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskThreadingType">Threading Type</label>
+                    <select id="quickTaskThreadingType" name="quickTaskThreadingType">
+                        <option value="Metric" selected>Metric</option>
+                        <option value="UNC">UNC</option>
+                        <option value="Custom" disabled>Custom</option>
+                    </select>
+                </div>
+
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskThreadingSize">Thread Size</label>
+                    <select id="quickTaskThreadingSize" name="quickTaskThreadingSize" disabled>
+                        <option value="">Select Thread Size</option>
                     </select>
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="threadSize">Thread Size</label>
-                    <select id="threadSize" name="threadSize" placeholder="10"></select>
+                    <label for="quickTaskThreadingDirection">Thread Direction</label>
+                    <select id="quickTaskThreadingDirection" name="quickTaskThreadingDirection">
+                        <option value="Right" selected>Right handed thread</option>
+                        <option value="Left">Left handed thread</option>
+                    </select>
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="threadLength">Thread Length (mm)</label>
-                    <input type="text" id="threadLength" name="threadLength" placeholder="10">
+                    <label for="quickTaskThreadingLength">Thread Length (mm)</label>
+                    <input type="text" id="quickTaskThreadingLength" name="quickTaskThreadingLength" placeholder="10">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskThreadingExecuteButton" class="execute" title="Execute threading command">
@@ -654,6 +714,10 @@
                             <path d="M6 6h12v12H6z" fill="red" />
                         </svg>
                     </button>
+                    <div class="modal-pad-bottom" style="display: none;">
+                        <span id="quickTaskThreadingProgressBarLabel">Execution in progress...</span>
+                        <progress id="quickTaskThreadingProgressBar" max="1"></progress>
+                    </div>
                 </div>
                 <div class="modal-pad">
                     <button id="quickTaskThreadingCloseButton">Close</button>
@@ -1127,28 +1191,28 @@
                 <span id="closeHelpModal" class="close-modal">&times;</span>
                 <div id="helpText">
                     <div>This tool is designed to be used in conjunction with LatheCode:</div>
-                    <div><a href="https://kachurovskiy.github.io/lathecode/ " target="_blank ">https://kachurovskiy.github.io/lathecode/</a></div>
+                    <div><a href="https://kachurovskiy.github.io/lathecode/" target="_blank">https://kachurovskiy.github.io/lathecode/</a></div>
                     <div><strong>Please note that this tool is to be used at your own risk and I cannot gaurentee that
                             it will work. This tool targets my custom fork of the H4 firmware which you can find
-                            here:</strong> <a href="https://github.com/Festivejelly/nanoels" target="_blank ">https://github.com/Festivejelly/nanoels</a></div>
+                            here:</strong> <a href="https://github.com/Festivejelly/nanoels" target="_blank">https://github.com/Festivejelly/nanoels</a></div>
                     <hr>
                     <div>How to use:</div>
-                    <ul style="list-style-type: disc; padding-left: 20px; ">
+                    <ul style="list-style-type: disc; padding-left: 20px;">
                         <li>Use LatheCode to generate the G-code, then paste it into this tool.</li>
                         <li>You can also write the G-code by hand for simple operations such as boring or grooving.
-                            <a href="# " id="exampleCode">Click here</a> to load an example.
+                            <a href="#" id="exampleCode">Click here</a> to load an example.
                         </li>
-                        <li>Click "Simulate" to plot the moves onto the canvas.</li>
-                        <li>movement lines marked with "; cut" will show in <span class="line red-line"></span><span class="text-red">red</span>.</li>
-                        <li>movement lines marked with "; travel" will show in <span class="line green-line"></span><span class="text-green">green</span>.</li>
-                        <li>movement lines marked with "; retract" will show in <span class="line orange-line"></span><span class="text-orange">orange</span>.</li>
+                        <li>Click"Simulate" to plot the moves onto the canvas.</li>
+                        <li>movement lines marked with"; cut" will show in <span class="line red-line"></span><span class="text-red">red</span>.</li>
+                        <li>movement lines marked with"; travel" will show in <span class="line green-line"></span><span class="text-green">green</span>.</li>
+                        <li>movement lines marked with"; retract" will show in <span class="line orange-line"></span><span class="text-orange">orange</span>.</li>
                         <li>movement lines not marked will default to <span class="line green-line"></span><span class="text-green">green</span>.</li>
                         <li>All other moves will be considered travel moves and will show in green.</li>
                         <li>Any G-code you paste or write can be saved into the browser's local storage. This is useful for saving common operations.</li>
-                        <li>When you're ready, you can send the G-code to the Nano ELS H4 by clicking "Send."
+                        <li>When you're ready, you can send the G-code to the Nano ELS H4 by clicking"Send."
                         </li>
                         <li>More functionality to come soon! Version 0.2</li>
-                        <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser " target="_blank ">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
+                        <li>Please provide feedback, raise issues or make suggestions here: <a href="https://github.com/Festivejelly/LatheGcodeVisualiser" target="_blank">https://github.com/Festivejelly/LatheGcodeVisualiser</a></li>
                     </ul>
                 </div>
             </div>
@@ -1156,7 +1220,7 @@
         <div id="zoomModal" class="zoom-modal">
             <div class="zoom-modal-content" style="background-color: #242424;">
                 <span id="closeZoomModal" class="close-modal">&times;</span>
-                <canvas id="zoomCanvas" width="1600 " height="1200 "></canvas>
+                <canvas id="zoomCanvas" width="1600" height="1200"></canvas>
                 <div id="sliderAndButtonContainer">
                     <div id="zoomSliderContainer" class="innerContainer" style="width: 400px;">
                         <input type="range" id="zoomProgressSlider" min="0" max="100" value="0" style="width: 100%;">
