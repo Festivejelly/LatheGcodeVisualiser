@@ -78,6 +78,13 @@ button:focus-visible {
     outline: 4px auto -webkit-focus-ring-color;
 }
 
+input[readonly] {
+    /* dark background */
+    cursor: not-allowed;
+    background-color: darkslategrey;
+    border-color: rgb(118, 118, 118);
+}
+
 .disabled-button {
     background-color: red;
     cursor: not-allowed;

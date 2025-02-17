@@ -6,7 +6,8 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "launch": "yarn build && yarn dev"
     },
     "devDependencies": {
         "@types/ace": "^0.0.52",
