@@ -26,6 +26,47 @@ h1 {
     line-height: 1.1;
 }
 
+table {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+thead {
+    display: flex;
+    width: 100%;
+}
+
+tr {
+    display: flex;
+    width: 100%;
+}
+
+th:first-child,
+td:first-child {
+    flex: 0 0 60px;
+    /* Tool column */
+}
+
+th:last-child,
+td:last-child {
+    flex: 0 0 60px;
+    /* Action column */
+}
+
+th:not(:first-child):not(:last-child),
+td:not(:first-child):not(:last-child) {
+    flex: 1;
+    /* Other columns flex equally */
+}
+
+hr {
+    width: 100%;
+    border: none;
+    border-top: 1px solid #ffffff;
+    margin: 10px 0;
+}
+
 #app {
     max-width: 1280px;
     margin: 0 auto;
@@ -263,6 +304,13 @@ input.quick-task-summary {
 
 .modal-pad-bottom {
     padding-bottom: 10px;
+}
+
+.modal-pad-bottom-flex {
+    padding-bottom: 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .emulation-modal-pad-border {
@@ -506,7 +554,7 @@ input[type="file"]::file-selector-button:hover {
 
 #latheControls #jogControls {
     display: grid;
-    grid-template-columns: repeat(10, 60px);
+    grid-template-columns: repeat(12, 60px);
     grid-template-rows: repeat(6, 60px);
     justify-content: center;
     align-items: center;
@@ -535,14 +583,18 @@ input[type="file"]::file-selector-button:hover {
     height: 50px;
     border-radius: 5px;
     cursor: pointer;
-    background-color: #f0ad4e;
+    background-color: #379126;
     display: flex;
     justify-content: center;
     align-items: center;
     text-align: center;
-    line-height: 50px;
-    font-size: 24px;
+    line-height: 20px;
+    font-size: 12px;
     padding: 0px;
+}
+
+#latheControls .tool-btn:hover {
+    background-color: #6c5ce7;
 }
 
 #latheControls .tool {
@@ -556,125 +608,173 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #latheControls .fast {
-    background-color: #f0ad4e;
+    background-color: #2196F3;
 }
 
 #latheControls .slow {
-    background-color: #5bc0de;
+    background-color: #4CAF50;
 }
 
 #latheControls .jog-btn:hover {
     background-color: #6c5ce7;
 }
 
-#jogText {
-    grid-column: 6;
-    grid-row: 1;
+.jog-btn {
+    grid-column: var(--col);
+    grid-row: var(--row);
 }
 
-#fastForward {
-    grid-column: 6;
-    grid-row: 2;
+.jog-labels {
+    grid-column: var(--col);
+    grid-row: var(--row);
 }
 
-#fastText {
-    grid-column: 5;
-    grid-row: 2;
+.tool-label {
+    grid-column: var(--col) / span 2;
+    grid-row: var(--row);
+    font-size: 18px;
+    align-self: end;
 }
 
-#slowText {
-    grid-column: 5;
-    grid-row: 3;
+.tool-select {
+    width: 100px;
+    height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #004b8b;
+    text-align: center;
+    font-size: 20px;
+    padding: 0 16px 0 0;
+    /* Remove default select styling */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: none;
+    /* Center the text */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid white;
+    grid-column: var(--col) / span 2;
+    /* Start at column 1 and span 2 columns */
+    grid-row: var(--row);
+    background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right -8px center;
+    background-size: 30px;
 }
 
-#fastLeft {
-    grid-column: 4;
-    grid-row: 4;
+.tool-select::after {
+    content: "▼";
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    /* Smaller size for the arrow */
+    pointer-events: none;
+    /* Makes sure it doesn't interfere with clicking */
 }
 
-#fastBackward {
-    grid-column: 6;
-    grid-row: 6;
+
+/* Style the options in the dropdown */
+
+.tool-select option {
+    background-color: #202124;
+    /* Your root background color */
+    color: rgba(255, 255, 255, 0.87);
+    /* Your root text color */
+    text-align: center;
 }
 
-#fastRight {
-    grid-column: 8;
-    grid-row: 4;
+
+/* Remove the default focus outline and add your own if desired */
+
+.tool-select:focus {
+    outline: none;
+    box-shadow: 0 0 3px #f0ad4e;
 }
 
-#slowForward {
-    grid-column: 6;
-    grid-row: 3;
+.tool-edit {
+    width: 100px;
+    height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #004b8b;
+    text-align: center;
+    font-size: 18px;
+    /* Remove default select styling */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: none;
+    /* Center the text */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid white;
+    grid-column: var(--col) / span 2;
+    /* Start at column 1 and span 2 columns */
+    grid-row: var(--row);
 }
 
-#slowLeft {
-    grid-column: 5;
-    grid-row: 4;
+.tool-btn {
+    grid-column: var(--col);
+    grid-row: var(--row);
 }
 
-#slowBackward {
-    grid-column: 6;
-    grid-row: 5;
+.tool-save-button {
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    /* Added to fill the action cell */
 }
 
-#slowRight {
-    grid-column: 7;
-    grid-row: 4;
+.tool-save-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    /* subtle hover effect */
+    border-radius: 3px;
 }
 
-#toolText {
-    grid-column: 1;
-    grid-row: 1;
+.tool-cell {
+    flex: 0 0 60px;
+    padding: 4px;
+    border-bottom: 1px solid #444;
 }
 
-#tool0 {
-    grid-column: 1;
-    grid-row: 2;
+.data-cell {
+    flex: 1;
+    padding: 4px;
+    border-bottom: 1px solid #444;
 }
 
-#tool1 {
-    grid-column: 1;
-    grid-row: 3;
+.action-cell {
+    flex: 0 0 60px;
+    padding: 4px;
+    border-bottom: 1px solid #444;
 }
 
-#tool2 {
-    grid-column: 1;
-    grid-row: 4;
+
+/* Style for the input fields */
+
+.tool-cell input {
+    width: 100%;
+    padding: 4px;
+    text-align: center;
+    background-color: #333;
+    border: 1px solid #444;
 }
 
-#tool3 {
-    grid-column: 1;
-    grid-row: 5;
-}
-
-#tool4 {
-    grid-column: 1;
-    grid-row: 6;
-}
-
-#tool5 {
-    grid-column: 2;
-    grid-row: 2;
-}
-
-#tool6 {
-    grid-column: 2;
-    grid-row: 3;
-}
-
-#tool7 {
-    grid-column: 2;
-    grid-row: 4;
-}
-
-#tool8 {
-    grid-column: 2;
-    grid-row: 5;
-}
-
-#tool9 {
-    grid-column: 2;
-    grid-row: 6;
+.data-cell input {
+    width: 100%;
+    padding: 4px;
+    text-align: right;
+    border: 1px solid #444;
 }
 
 .menu ul {
@@ -730,7 +830,7 @@ input[type="file"]::file-selector-button:hover {
 #latheControls .increment-btn {
     padding: 5px 10px;
     border: 1px solid #ccc;
-    background-color: #f0ad4e;
+    background-color: #3a3d3d;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
@@ -763,6 +863,31 @@ input[type="file"]::file-selector-button:hover {
     border: 1px solid #ccc;
     margin: 0;
     padding: .375rem .75rem;
+}
+
+.gcode-dropdown {
+    position: absolute;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    background: var(--background-color, #fff);
+    /* Using CSS variable for flexibility */
+    z-index: 1000;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.gcode-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    color: inherit;
+    background-color: #202124;
+    /* Using CSS variable for flexibility */
+}
+
+.gcode-option:hover {
+    filter: brightness(1.2);
+    /* Using CSS variable for flexibility */
 }
 
 #latheControls label {
@@ -1227,9 +1352,9 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .task-modal {
+    z-index: 9999;
     display: none;
     position: fixed;
-    z-index: 1;
     left: 0;
     top: 0;
     width: 100%;
@@ -1246,6 +1371,8 @@ input[type="file"]::file-selector-button:hover {
     border: 2px solid #6c5ce7;
     max-width: 600px;
     min-width: 600px;
+    display: flex;
+    flex-direction: column;
 }
 
 .center-modal {

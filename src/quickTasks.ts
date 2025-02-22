@@ -1,5 +1,5 @@
 import { Sender, SenderClient } from './sender';
-import { Threading, type ThreadingType, type ThreadSpec , type ThreadingDirection} from './threading';
+import { Threading, type ThreadingType, type ThreadSpec, type ThreadingDirection } from './threading';
 
 
 let sender: Sender | null;
@@ -71,12 +71,47 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
   }
 };
 
+//Facing
+const quickTaskFacingMovementType = document.getElementById('quickTaskFacingMovementType') as HTMLSelectElement;
+//const quickTaskFacingDepth = document.getElementById('quickTaskFacingDepth') as HTMLInputElement;
+//const quickTaskFacingFeedRate = document.getElementById('quickTaskFacingFeedRate') as HTMLInputElement;
+const quickTaskFacingDepthContainer = document.getElementById('quickTaskFacingDepthContainer') as HTMLDivElement;
+const quickTaskFacingFinalDiameterContainer = document.getElementById('quickTaskFacingFinalDiameterContainer') as HTMLDivElement;
+
+
+//Profiling
+const quickTaskProfilingFinalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
+const quickTaskProfilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
+const quickTaskProfilingDepthPerPass = document.getElementById('quickTaskProfilingDepthPerPass') as HTMLInputElement;
+const quickTaskProfilingFinishingDepth = document.getElementById('quickTaskProfilingFinishingDepth') as HTMLInputElement;
+const quickTaskProfilingPasses = document.getElementById('quickTaskProfilingPasses') as HTMLInputElement;
+const quickTaskProfilingType = document.getElementById('quickTaskProfilingType') as HTMLSelectElement;
+const quickTaskProfilingFinalDiameterContainer = document.getElementById('quickTaskProfilingFinalDiameterContainer') as HTMLDivElement;
+const quickTaskProfilingDepthContainer = document.getElementById('quickTaskProfilingDepthContainer') as HTMLDivElement;
+
 //Threading
 const quickTaskThreadingType = document.getElementById('quickTaskThreadingType') as HTMLSelectElement;
 const quickTaskThreadingSize = document.getElementById('quickTaskThreadingSize') as HTMLSelectElement;
 const quickTaskThreadingDirection = document.getElementById('quickTaskThreadingDirection') as HTMLSelectElement;
 const quickTaskThreadingExternalOrInternal = document.getElementById('quickTaskThreadingExternalOrInternal') as HTMLSelectElement;
 const quickTaskThreadingLength = document.getElementById('quickTaskThreadingLength') as HTMLInputElement;
+const quickTaskThreadingPasses = document.getElementById('quickTaskThreadingPasses') as HTMLInputElement;
+
+//Boring
+//const quickTaskBoringDepth = document.getElementById('quickTaskBoringDepth') as HTMLInputElement;
+//const quickTaskBoringWidth = document.getElementById('quickTaskBoringWidth') as HTMLInputElement;
+//const quickTaskBoringFeedRate = document.getElementById('quickTaskBoringFeedRate') as HTMLInputElement;
+//const quickTaskBoringType = document.getElementById('quickTaskBoringType') as HTMLSelectElement;
+//const quickTaskBoringFinalDiameterContainer = document.getElementById('quickTaskBoringFinalDiameterContainer') as HTMLDivElement;
+//const quickTaskBoringWidthContainer = document.getElementById('quickTaskBoringWidthContainer') as HTMLDivElement;
+//const quickTaskBoringFinalDiameter = document.getElementById('quickTaskBoringFinalDiameter') as HTMLInputElement;
+//const quickTaskBoringDepthPerPass = document.getElementById('quickTaskBoringDepthPerPass') as HTMLInputElement;
+//const quickTaskBoringFinishingDepth = document.getElementById('quickTaskBoringFinishingDepth') as HTMLInputElement;
+//const quickTaskBoringPasses = document.getElementById('quickTaskBoringPasses') as HTMLInputElement;
+
+//Tool offsets
+const quickTaskToolOffsetsProbeDiameter = document.getElementById('quickTaskToolOffsetsProbeDiameter') as HTMLInputElement;
+
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -96,7 +131,13 @@ document.addEventListener("DOMContentLoaded", () => {
         alert('Please connect to the machine first');
       } else {
         activeQuickTaskConfig = config;
-        config.modal.style.display = 'block';
+
+        //if its a cone task show an alert saying not implemented
+        if (taskId === 'quickTaskCone' || taskId === 'quickTaskGrooving') {
+          alert('Not Yet Implemented, coming soon!');
+        } else {
+          config.modal.style.display = 'block';
+        }
       }
     });
 
@@ -116,99 +157,41 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  const probeDiameter = localStorage.getItem('probeDiameter');
-  if (probeDiameter) {
-    (document.getElementById('toolOffsetsProbeDiameter') as HTMLInputElement).value = probeDiameter;
-  }
 
-  //Facing
-  const facingMovementType = document.getElementById('quickTaskFacingMovementType') as HTMLSelectElement;
 
-  //if movement type is set to Absolute then hide quickTaskFacingDepthContainer
-  facingMovementType.addEventListener('change', () => {
-    if (facingMovementType.value === 'Absolute') {
-      document.getElementById('quickTaskFacingDepthContainer')!.style.display = 'none';
+  //<---- Facing event listeners ---->
+  quickTaskFacingMovementType.addEventListener('change', () => {
+    if (quickTaskFacingMovementType.value === 'Absolute') {
+      quickTaskFacingFinalDiameterContainer!.style.display = 'block';
+      quickTaskFacingDepthContainer!.style.display = 'none';
     } else {
-      document.getElementById('quickTaskFacingDepthContainer')!.style.display = 'block';
+      quickTaskFacingFinalDiameterContainer!.style.display = 'none';
+      quickTaskFacingDepthContainer!.style.display = 'block';
     }
   });
 
-  //Profiling
-  const quickTaskProfilingType = document.getElementById('quickTaskProfilingType') as HTMLSelectElement;
 
-  //if profiling type is set to Absolute then hide quickTaskProfilingDepthContainer
+  //<---- Profiling event listeners ---->
   quickTaskProfilingType.addEventListener('change', () => {
     if (quickTaskProfilingType.value === 'Absolute') {
-      document.getElementById('quickTaskProfilingDepthContainer')!.style.display = 'none';
-      document.getElementById('quickTaskProfilingFinalDiameterContainer')!.style.display = 'block';
+      quickTaskProfilingDepthContainer!.style.display = 'none';
+      quickTaskProfilingFinalDiameterContainer!.style.display = 'block';
     } else {
-      document.getElementById('quickTaskProfilingDepthContainer')!.style.display = 'block';
-      document.getElementById('quickTaskProfilingFinalDiameterContainer')!.style.display = 'none';
+      quickTaskProfilingDepthContainer!.style.display = 'block';
+      quickTaskProfilingFinalDiameterContainer!.style.display = 'none';
     }
   });
-
-  const finalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
-  const profilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
-
+  quickTaskProfilingFinalDiameter.addEventListener('input', () => profilingUpdateNumberOfPasses('Absolute'));
+  quickTaskProfilingDepth.addEventListener('input', () => profilingUpdateNumberOfPasses('Relative'));
 
 
-  // Update on input for number of passes
-  if (finalDiameter) {
-    finalDiameter.addEventListener('input', () => updateNumberOfPasses('Absolute'));
+  //<---- Tool offset event listeners ---->
+  const localStorageProbeDiameter = localStorage.getItem('probeDiameter');
+
+  if (localStorageProbeDiameter !== null) {
+      quickTaskToolOffsetsProbeDiameter.value = localStorageProbeDiameter;
   }
-
-  if (profilingDepth) {
-    profilingDepth.addEventListener('input', () => updateNumberOfPasses('Relative'));
-  }
-
-  async function updateNumberOfPasses(movementType: string) {
-
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-
-    const startPosX = latestStatus?.x!;
-
-    const depthPerPass = document.getElementById('quickTaskProfilingDepthPerPass') as HTMLInputElement;
-    const finishingPass = document.getElementById('quickTaskProfilingFinishingDepth') as HTMLInputElement;
-    const profilingPasses = document.getElementById('quickTaskProfilingPasses') as HTMLInputElement;
-
-    let totalDepth: number;
-    if (movementType === 'Absolute') {
-      const finalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
-      totalDepth = Math.abs(startPosX - (-parseFloat(finalDiameter.value) / 2));
-    } else {
-      const profilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
-      totalDepth = Math.abs(startPosX - (-parseFloat(profilingDepth.value)));
-    }
-
-    const mainPassDepth = parseFloat(depthPerPass.value);
-    const finishingPassDepth = parseFloat(finishingPass.value);
-
-    if (mainPassDepth <= 0 || finishingPassDepth <= 0) {
-      console.error('Invalid pass depths');
-      return;
-    }
-
-    // Calculate main passes needed
-    const depthForMainPasses = totalDepth - finishingPassDepth;
-    const mainPasses = Math.floor(depthForMainPasses / mainPassDepth);
-
-    if (mainPasses <= 0) {
-      console.error('Depth too small for main passes');
-      return;
-    }
-
-    // Adjust the main pass depth to evenly distribute any remainder
-    const adjustedMainPassDepth = (depthForMainPasses / mainPasses).toFixed(3);
-
-    // Update the depth per pass input with the adjusted value
-    depthPerPass.value = adjustedMainPassDepth;
-
-    // Total passes is main passes plus one finishing pass
-    const totalPasses = mainPasses + 1;
-    profilingPasses.value = totalPasses.toString();
-  }
-
-
+  
   const updateThreadSizes = () => {
 
     const threadingType = quickTaskThreadingType.value;
@@ -299,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
 })
 
 
-
+//<---- Profiling functions ---->
 function profilingTask() {
 
   //profiling modal inputs
@@ -370,6 +353,47 @@ function profilingTask() {
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
+async function profilingUpdateNumberOfPasses(movementType: string) {
+
+  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+
+  const startPosX = latestStatus?.x!;
+
+  let totalDepth: number;
+  if (movementType === 'Absolute') {
+    totalDepth = Math.abs(startPosX - (-parseFloat(quickTaskProfilingFinalDiameter.value) / 2));
+  } else {
+    totalDepth = Math.abs(startPosX - (-parseFloat(quickTaskProfilingDepth.value)));
+  }
+
+  const mainPassDepth = parseFloat(quickTaskProfilingDepthPerPass.value);
+  const finishingPassDepth = parseFloat(quickTaskProfilingFinishingDepth.value);
+
+  if (mainPassDepth <= 0 || finishingPassDepth <= 0) {
+    console.error('Invalid pass depths');
+    return;
+  }
+
+  // Calculate main passes needed
+  const depthForMainPasses = totalDepth - finishingPassDepth;
+  const mainPasses = Math.floor(depthForMainPasses / mainPassDepth);
+
+  if (mainPasses <= 0) {
+    console.error('Depth too small for main passes');
+    return;
+  }
+
+  // Adjust the main pass depth to evenly distribute any remainder
+  const adjustedMainPassDepth = (depthForMainPasses / mainPasses).toFixed(3);
+
+  // Update the depth per pass input with the adjusted value
+  quickTaskProfilingDepthPerPass.value = adjustedMainPassDepth;
+
+  // Total passes is main passes plus one finishing pass
+  const totalPasses = mainPasses + 1;
+  quickTaskProfilingPasses.value = totalPasses.toString();
+}
+
 //other quick task functions
 function facingTask() {
 
@@ -428,13 +452,14 @@ function threadingTask() {
       }
 
       const threadingDirection = quickTaskThreadingDirection.value as ThreadingDirection;
-      const threadingExternalOrInternal = quickTaskThreadingExternalOrInternal.value  as ThreadingType;
+      const threadingExternalOrInternal = quickTaskThreadingExternalOrInternal.value as ThreadingType;
       const threadingLength = parseFloat(quickTaskThreadingLength.value);
+      const threadingPasses = parseInt(quickTaskThreadingPasses.value, 10);
 
       //get threading spec
       const threadSpec = Threading.getThreadSpecByName(threadingSize) as ThreadSpec;
 
-      const gcode = Threading.generateThreadingGcode(threadSpec, threadingExternalOrInternal, threadingDirection, threadingLength);
+      const gcode = Threading.generateThreadingGcode(threadSpec, threadingExternalOrInternal, threadingDirection, threadingLength, threadingPasses);
 
       const commands: string[] = [];
       commands.push('G90'); //set to absolute positioning

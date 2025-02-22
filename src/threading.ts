@@ -93,7 +93,7 @@ export class Threading {
 
 
     // G33 Threading command handler
-    // Format: G33 Z[end] X[end] P[pitch] H[passes] Q[start_z] R[start_x] I
+    // Format: G33 Z[end] X[end] P[pitch] H[passes] Q[start_z] R[start_x]
     // Parameters:
     //   Z - End Z position
     //   X - End X position
@@ -101,7 +101,7 @@ export class Threading {
     //   H - Number of passes (optional, default 3)
     //   Q - Start Z position (optional, defaults to current position)
     //   R - Start X position (optional, defaults to current position)
-    public static generateThreadingGcode(thread: ThreadSpec, type: ThreadingType, direction: ThreadingDirection, length: number): string {
+    public static generateThreadingGcode(thread: ThreadSpec, type: ThreadingType, direction: ThreadingDirection, length: number, passes: number): string {
         const depth = thread.getThreadDepth(type);
         const majorDiameter = thread.getMajorDiameter(type);
 
@@ -121,7 +121,7 @@ export class Threading {
 
         const zEnd = direction === 'Right' ? length : -length;
 
-        return `G33 Z${zEnd} X${-endRadius} P${thread.pitch} R${-startRadius}`;
+        return `G33 Z${zEnd} X${-endRadius} P${thread.pitch} H${passes} R${-startRadius}`;
     }
 
     public static getThreadSpecByName(name: string): ThreadSpec | undefined {

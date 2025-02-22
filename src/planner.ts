@@ -772,6 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newTask = document.createElement('div');
         newTask.classList.add(`task-${task.type}`);
         newTask.classList.add('available-task');
+        newTask.setAttribute('data-task-type', task.type);
         newTask.setAttribute('data-task-id', task.id.toString());
         newTask.setAttribute('data-task-name', task.name);
         newTask.setAttribute('data-collection-name', taskCollectionName || '');
@@ -1034,13 +1035,19 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-
     const task = jobQueue.shift(); // Get the next task
 
     if (task && task.type === 'manual') {
       manualTaskName.textContent = `Task ${task.order}: ${task.name}`;
       manualTaskInstructions.value = task.description;
       manualTaskModal.style.display = 'block';
+
+      if (jobQueue.length === 0) {
+        completeManualTaskButton.innerText = 'Complete Job';
+      } else {
+        completeManualTaskButton.innerText = 'Next Task -->';
+      }
+
     } else if (task && task.type === 'gcode') {
       executeGcodeButton.disabled = false;
       executeGcodeButton.classList.remove('disabled-button');
@@ -1048,6 +1055,13 @@ document.addEventListener('DOMContentLoaded', () => {
       cncTaskName.textContent = `Task ${task.order}: ${task.name}`;
       cncTaskGcode.value = task.gcode ?? '';
       cncTaskModal.style.display = 'block';
+
+      if (jobQueue.length === 0) {
+        completeCncTaskButton.innerText = 'Complete Job';
+      } else {
+        completeCncTaskButton.innerText = 'Next Task -->';
+      }
+
       const taskModalContent = cncTaskModal.querySelector('.task-modal-content') as HTMLElement; // Typecast to HTMLElement
       if (taskModalContent) {
         taskModalContent.style.backgroundColor = '';
@@ -1077,11 +1091,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   completeManualTaskButton.onclick = function () {
+    completeManualTaskButton.innerText = 'Next Task -->';
     manualTaskModal.style.display = 'none';
     executeNextTask();
   }
 
   completeCncTaskButton.onclick = function () {
+    completeCncTaskButton.innerText = 'Next Task -->';
     cncTaskModal.style.display = 'none';
     executeNextTask();
   }
@@ -1102,6 +1118,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
+
     tasks.forEach(task => {
 
       const taskId = task.getAttribute('data-task-id');
@@ -1138,23 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveJobGroupNameInput.value = '';
     saveJobNameInput.value = '';
 
-    const loadedJob = localStorage.getItem('loadedJob');
-    if (loadedJob) {
-      //read name of job from JSON in local storage
-      const loadedJobName = JSON.parse(loadedJob).name;
-      const loadedJobGroupName = JSON.parse(loadedJob).groupName;
 
-      const newGroupNameOption = document.createElement('option');
-      newGroupNameOption.value = loadedJobGroupName;
-      newGroupNameOption.textContent = loadedJobGroupName;
-      saveJobGroupNameSelect.appendChild(newGroupNameOption);
-  
-      const newJobNameOption = document.createElement('option');
-      newJobNameOption.value = loadedJobName;
-      newJobNameOption.textContent = loadedJobName;
-      saveJobNameSelect.appendChild(newJobNameOption);
-
-    } else {
       //get all groups
       const groups = Object.keys(localStorage).filter(key => key.startsWith('savedGroup_')).sort();
 
@@ -1185,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newJobGroupNameContainer.style.display = 'block';
         newJobNameContainer.style.display = 'block';
       }
-    }
+    
 
     //at the end of the group name and job name lists add a new option
     const newGroupNameOption = document.createElement('option');

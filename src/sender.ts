@@ -23,7 +23,8 @@ export class SenderStatus {
         readonly x: number,
         readonly feed: number,
         readonly rpm: number,
-        readonly version: string) { }
+        readonly version: string,
+        readonly lastResponse: string) { }
 }
 
 type StatusChangeListener = {
@@ -44,6 +45,7 @@ export class Sender {
     private lines: string[] = [];
     private lineIndex = 0;
     private unparsedResponse = '';
+    private remainingResponse = '';
     private error = '';
     private statusReceived = false;
     private currentLine = '';
@@ -55,6 +57,7 @@ export class Sender {
     private isDisconnecting = false;
     private lastStatus: SenderStatus | null = null;
     private version = '';
+    private lastResponse = '';
 
     public static getInstance(): Sender {
         if (!Sender.instance) {
@@ -87,7 +90,8 @@ export class Sender {
             this.x,
             this.feed,
             this.rpm,
-            this.version
+            this.version,
+            this.lastResponse
         );
         return this.lastStatus;
     }
@@ -256,17 +260,37 @@ export class Sender {
         const received = await waitForTrue(() => this.statusReceived);
         if (!received) {
             throw new Error('Failed to get position update');
-        }
+        } 
 
         this.notifyStatusChange();
         return this.getStatus();
     }
+    
+    async getToolOffsets(client: SenderClient) {
+        this.setActiveClient(client);
+        this.lastResponse = ''; // Reset last response
+
+        await this.sendCommand('#', client);
+        
+        const received = await waitForTrueWithTimeout(() => 
+            this.lastResponse.includes('toolOffsets:') && 
+            this.lastResponse.includes('ok'), 50, 100
+        );
+    
+        if (!received) {
+            throw new Error('Failed to get tool offsets');
+        }
+
+        this.stop();
+    
+        return this.lastResponse;
+    }
 
     async stop() {
+        this.error = '';
         await this.write('!',);
         if (!this.isOn) return;
         this.isOn = false;
-
         this.notifyStatusChange();
         this.clearActiveClient();
     }
@@ -316,8 +340,6 @@ export class Sender {
         await this.readFromPort();
     };
 
-    private remainingResponse = '';
-
     private async processResponse(response: string) {
         this.unparsedResponse = (this.remainingResponse + response).trimStart();
         this.remainingResponse = '';
@@ -343,9 +365,10 @@ export class Sender {
                 this.setError(line);
                 this.remainingResponse = '';
                 this.stop();
-            } else if (line.startsWith('ok')) {
+            } else if (line.startsWith('ok')||line.endsWith('ok')) {
                 this.remainingResponse += line;
                 appendLineToResponseEditor(`response: ${this.remainingResponse}`);
+                this.lastResponse = this.remainingResponse;
                 console.log(`response: "${this.remainingResponse}"`);
                 this.remainingResponse = '';
                 this.waitForOkOrError = false;
@@ -490,6 +513,29 @@ function waitForTrue(checkFunction: () => boolean): Promise<boolean> {
             } else {
                 iteration++;
                 setTimeout(check, 100);
+            }
+        }
+
+        check();
+    });
+}
+
+function waitForTrueWithTimeout(
+    checkFunction: () => boolean, 
+    maxIterations: number = 50,
+    delayMs: number = 100
+): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+        let iteration = 0;
+
+        function check() {
+            if (checkFunction()) {
+                resolve(true);
+            } else if (iteration >= maxIterations) {
+                resolve(false);
+            } else {
+                iteration++;
+                setTimeout(check, delayMs);
             }
         }
 
