@@ -111,6 +111,10 @@ const quickTaskThreadingPasses = document.getElementById('quickTaskThreadingPass
 
 //Tool offsets
 const quickTaskToolOffsetsProbeDiameter = document.getElementById('quickTaskToolOffsetsProbeDiameter') as HTMLInputElement;
+const quickTaskToolOffsetsToolNumber = document.getElementById('quickTaskToolOffsetsToolNumber') as HTMLSelectElement;
+const quickTaskToolOffsetsToolType = document.getElementById('quickTaskToolOffsetsToolType') as HTMLSelectElement;
+const quickTaskToolOffsetsOffsetX = document.getElementById('quickTaskToolOffsetsOffsetX') as HTMLInputElement;
+const quickTaskToolOffsetsOffsetZ = document.getElementById('quickTaskToolOffsetsOffsetZ') as HTMLInputElement;
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -122,11 +126,47 @@ document.addEventListener("DOMContentLoaded", () => {
   //Connect button
   const connectButton = document.getElementById('connectButton') as HTMLButtonElement;
 
+  interface ToolOffset {
+    tool: number;
+    z: number;
+    x: number;
+    w: number;  // Z-axis compensation
+    u: number;  // X-axis compensation
+  }
+
+  const parseToolOffsets = (response: string): ToolOffset[] => {
+    // Remove 'Tool offsets:' prefix and 'ok' suffix
+    const offsetsString = response.replace('toolOffsets:', '').replace('ok', '');
+
+    // Split into individual tool strings by the pipe character
+    const toolStrings = offsetsString.split('|');
+
+    return toolStrings.map(toolString => {
+      // Extract tool number
+      const toolMatch = toolString.match(/T(\d+)/);
+      const tool = toolMatch ? parseInt(toolMatch[1]) : 0;
+
+      // Extract values using regular expressions
+      const zMatch = toolString.match(/Z=(-?\d+\.?\d*)/);
+      const xMatch = toolString.match(/X=(-?\d+\.?\d*)/);
+      const wMatch = toolString.match(/W=(-?\d+\.?\d*)/);
+      const uMatch = toolString.match(/U=(-?\d+\.?\d*)/);
+
+      return {
+        tool,
+        z: zMatch ? parseFloat(zMatch[1]) : 0,
+        x: xMatch ? parseFloat(xMatch[1]) : 0,
+        w: wMatch ? parseFloat(wMatch[1]) : 0,
+        u: uMatch ? parseFloat(uMatch[1]) : 0
+      };
+    }).filter(offset => !isNaN(offset.tool)); // Filter out any invalid entries
+  };
+
   // Quick task open buttons
   Object.keys(quickTaskConfig).forEach(taskId => {
     const config = quickTaskConfig[taskId];
     const openButton = quickTaskConfig[taskId].openButton;
-    openButton.addEventListener('click', () => {
+    openButton.addEventListener('click', async () => {
       if (!sender?.isConnected()) {
         alert('Please connect to the machine first');
       } else {
@@ -137,6 +177,29 @@ document.addEventListener("DOMContentLoaded", () => {
           alert('Not Yet Implemented, coming soon!');
         } else {
           config.modal.style.display = 'block';
+        }
+
+        //if task is tool offsets, populate the tool number select with the available tools
+        if (taskId === 'quickTaskToolOffsets') {
+
+          const response = await sender.getToolOffsets(SenderClient.GCODE);
+          const toolOffsets = parseToolOffsets(response);
+
+          // Clear existing options
+          quickTaskToolOffsetsToolNumber.innerHTML = '';
+
+          if (toolOffsets.length > 0) {
+            for (let i = 1; i <= (toolOffsets.length - 1); i++) {
+              const option = document.createElement('option');
+              option.value = `T${i}`;
+              option.textContent = `T${i}`;
+              quickTaskToolOffsetsToolNumber.appendChild(option);
+            }
+
+            //set the default value to the first tool
+            quickTaskToolOffsetsToolNumber.value = 'T1';
+
+          }
         }
       }
     });
@@ -181,17 +244,19 @@ document.addEventListener("DOMContentLoaded", () => {
       quickTaskProfilingFinalDiameterContainer!.style.display = 'none';
     }
   });
-  quickTaskProfilingFinalDiameter.addEventListener('input', () => profilingUpdateNumberOfPasses('Absolute'));
-  quickTaskProfilingDepth.addEventListener('input', () => profilingUpdateNumberOfPasses('Relative'));
+
+  quickTaskProfilingFinalDiameter.addEventListener('input', () => profilingUpdateDepthOfPasses('Absolute'));
+  quickTaskProfilingDepth.addEventListener('input', () => profilingUpdateDepthOfPasses('Relative'));
+  quickTaskProfilingPasses.addEventListener('input', () => profilingUpdateDepthOfPasses(quickTaskProfilingType.value));
 
 
   //<---- Tool offset event listeners ---->
   const localStorageProbeDiameter = localStorage.getItem('probeDiameter');
 
   if (localStorageProbeDiameter !== null) {
-      quickTaskToolOffsetsProbeDiameter.value = localStorageProbeDiameter;
+    quickTaskToolOffsetsProbeDiameter.value = localStorageProbeDiameter;
   }
-  
+
   const updateThreadSizes = () => {
 
     const threadingType = quickTaskThreadingType.value;
@@ -287,73 +352,46 @@ function profilingTask() {
 
   //profiling modal inputs
   const profilingLength = parseFloat((document.getElementById('quickTaskProfilingLength') as HTMLInputElement).value);
-  const profilingPasses = parseInt((document.getElementById('quickTaskProfilingPasses') as HTMLInputElement).value, 10);
+  const profilingPasses = parseInt((quickTaskProfilingPasses).value, 10);
   const feedRate = parseFloat((document.getElementById('quickTaskProfilingFeedRate') as HTMLInputElement).value);
   const retractFeedrate = 200;
 
-  const profilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
-  const finalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
-
-  //get profiling type
-  const profilingType = (document.getElementById('quickTaskProfilingType') as HTMLInputElement).value;
-
-  const startPosX = sender?.getStatus().x!;
-  const startPosZ = sender?.getStatus().z!;
-
   const commands: string[] = [];
 
-  if (profilingType === 'Absolute') {
 
-    commands.push('G91'); //set to relative positioning
+  commands.push('G91'); //set to relative positioning
 
-    //work out the depth of each cut to final diameter
-    const depthRadius = parseFloat(finalDiameter.value) / 2;
-    const depthPerPass = (startPosX - depthRadius) / profilingPasses;
+  const mainPassDepth = parseFloat(quickTaskProfilingDepthPerPass.value);
+  const finishingPassDepth = parseFloat(quickTaskProfilingFinishingDepth.value);
 
-    for (let i = 0; i < profilingPasses; i++) {
+  //main passes
+  for (let i = 0; i < profilingPasses - 1; i++) {
 
-      //cutting move x
-      commands.push(`G1 X${depthPerPass} F${feedRate}`);
-      //cutting move Z
-      commands.push(`G1 Z${profilingLength} F${feedRate}`);
-      //retract move
-      commands.push(`G1 X-${depthPerPass} F${retractFeedrate}`);
-      //retract move
-      commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
-      //unretract X
-      commands.push(`G1 X${depthPerPass} F${retractFeedrate}`);
-    }
-  } else {
-
-    commands.push('G91'); //set to relative positioning
-
-    //work out the depth of each cut to final diameter
-    const depthPerPass = (startPosX - parseFloat(profilingDepth.value) / profilingPasses);
-
-    for (let i = 0; i < profilingPasses; i++) {
-      //cutting move x
-      commands.push(`G1 X${depthPerPass} F${feedRate}`);
-      //cutting move Z
-      commands.push(`G1 Z${profilingLength} F${feedRate}`);
-      //retract move
-      commands.push(`G1 X-${depthPerPass} F${retractFeedrate}`);
-      //retract move
-      commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
-      //unretract X
-      commands.push(`G1 X${depthPerPass} F${retractFeedrate}`);
-    }
-
+    //cutting move x
+    commands.push(`G1 X${mainPassDepth} F${feedRate}`);
+    //cutting move Z
+    commands.push(`G1 Z${profilingLength} F${feedRate}`);
+    //retract move
+    commands.push(`G1 X-0.2 F${retractFeedrate}`);
+    //retract move
+    commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
+    //unretract X
+    commands.push(`G1 X0.2 F${retractFeedrate}`);
   }
 
-  commands.push('G90'); // Set to absolute positioning
+  //finishing pass
+  commands.push(`G1 X${finishingPassDepth} F${feedRate}`);
+  commands.push(`G1 Z${profilingLength} F${feedRate}`);
+  //retract move
+  commands.push(`G1 X-0.2 F${retractFeedrate}`);
+  commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
 
-  //more back to zero position
-  commands.push(`G0 Z${startPosZ} X${startPosX} F${retractFeedrate}`);
+  commands.push('G90'); // Set to absolute positioning
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
-async function profilingUpdateNumberOfPasses(movementType: string) {
+async function profilingUpdateDepthOfPasses(movementType: string) {
 
   const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
 
@@ -363,35 +401,17 @@ async function profilingUpdateNumberOfPasses(movementType: string) {
   if (movementType === 'Absolute') {
     totalDepth = Math.abs(startPosX - (-parseFloat(quickTaskProfilingFinalDiameter.value) / 2));
   } else {
-    totalDepth = Math.abs(startPosX - (-parseFloat(quickTaskProfilingDepth.value)));
+    totalDepth = parseFloat(quickTaskProfilingDepth.value);
   }
 
-  const mainPassDepth = parseFloat(quickTaskProfilingDepthPerPass.value);
-  const finishingPassDepth = parseFloat(quickTaskProfilingFinishingDepth.value);
-
-  if (mainPassDepth <= 0 || finishingPassDepth <= 0) {
-    console.error('Invalid pass depths');
-    return;
-  }
-
-  // Calculate main passes needed
-  const depthForMainPasses = totalDepth - finishingPassDepth;
-  const mainPasses = Math.floor(depthForMainPasses / mainPassDepth);
-
-  if (mainPasses <= 0) {
-    console.error('Depth too small for main passes');
-    return;
-  }
-
-  // Adjust the main pass depth to evenly distribute any remainder
-  const adjustedMainPassDepth = (depthForMainPasses / mainPasses).toFixed(3);
+  //calculate depth per pass based on total depths and number of passes but account for a finish pass of 0.1mm
+  const passes = parseInt(quickTaskProfilingPasses.value, 10);
+  const finishingPassDepth = 0.1;
+  const depthPerPass = (totalDepth - finishingPassDepth) / (passes -1);
 
   // Update the depth per pass input with the adjusted value
-  quickTaskProfilingDepthPerPass.value = adjustedMainPassDepth;
-
-  // Total passes is main passes plus one finishing pass
-  const totalPasses = mainPasses + 1;
-  quickTaskProfilingPasses.value = totalPasses.toString();
+  quickTaskProfilingDepthPerPass.value = depthPerPass.toFixed(3);
+  quickTaskProfilingFinishingDepth.value = finishingPassDepth.toFixed(3);
 }
 
 //other quick task functions
@@ -482,10 +502,9 @@ function toolOffsetsTask() {
     }
   }
 
-  const toolNumber = document.getElementById('toolOffsetsToolNumber') as HTMLInputElement;
 
   //is user enters T1 instead of 1, strip the T
-  let toolNumberValue = toolNumber.value;
+  let toolNumberValue = quickTaskToolOffsetsToolNumber.value;
 
   //if no tool number is entered, send error and return
   if (toolNumberValue === '') {
@@ -503,17 +522,12 @@ function toolOffsetsTask() {
     return;
   }
 
-  const toolType = document.getElementById('toolOffsetsToolType') as HTMLSelectElement;
-  const offsetX = document.getElementById('toolOffsetsXValue') as HTMLInputElement;
-  const offsetZ = document.getElementById('toolOffsetsZValue') as HTMLInputElement;
-  const probeDiameter = document.getElementById('toolOffsetsProbeDiameter') as HTMLInputElement;
-
   let valuesProvided = "XZ";
   //determine if X and Z values are provided
-  if (offsetX.value === '') {
+  if (quickTaskToolOffsetsOffsetX.value === '') {
     valuesProvided = valuesProvided.replace('X', '');
   }
-  if (offsetZ.value === '') {
+  if (quickTaskToolOffsetsOffsetZ.value === '') {
     valuesProvided = valuesProvided.replace('Z', '');
   }
 
@@ -524,18 +538,18 @@ function toolOffsetsTask() {
   }
 
   //save the probe diameter to local storage
-  localStorage.setItem('probeDiameter', probeDiameter.value);
+  localStorage.setItem('probeDiameter', quickTaskToolOffsetsProbeDiameter.value);
 
 
   let commands: string[] = [];
 
-  const probeRadius = parseFloat(probeDiameter.value) / 2;
+  const probeRadius = parseFloat(quickTaskToolOffsetsProbeDiameter.value) / 2;
 
-  if (toolType.value.startsWith('External')) { //Turning tools
+  if (quickTaskToolOffsetsToolType.value.startsWith('External')) { //Turning tools
 
     const offsets: ToolOffset = {
-      x: parseFloat(offsetX.value),
-      z: parseFloat(offsetZ.value),
+      x: parseFloat(quickTaskToolOffsetsOffsetX.value),
+      z: parseFloat(quickTaskToolOffsetsOffsetZ.value),
       radius: probeRadius,
       toolType: 'External'
     };
@@ -551,11 +565,11 @@ function toolOffsetsTask() {
       commands.push(`G10 P${toolNumberValue} X${calculatedOffsets.x} Z${calculatedOffsets.z}`);
     }
 
-  } else if (toolType.value.startsWith('Internal')) { //Boring tools
+  } else if (quickTaskToolOffsetsToolType.value.startsWith('Internal')) { //Boring tools
 
     const offsets: ToolOffset = {
-      x: parseFloat(offsetX.value),
-      z: parseFloat(offsetZ.value),
+      x: parseFloat(quickTaskToolOffsetsOffsetX.value),
+      z: parseFloat(quickTaskToolOffsetsOffsetZ.value),
       radius: probeRadius,
       toolType: 'Internal'
     };
@@ -574,8 +588,8 @@ function toolOffsetsTask() {
   } else { //Drill tools
 
     const offsets: ToolOffset = {
-      x: parseFloat(offsetX.value),
-      z: parseFloat(offsetZ.value),
+      x: parseFloat(quickTaskToolOffsetsOffsetX.value),
+      z: parseFloat(quickTaskToolOffsetsOffsetZ.value),
       radius: probeRadius,
       toolType: 'Drill'
     };
@@ -594,6 +608,10 @@ function toolOffsetsTask() {
 
   //send commands
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
+
+  //Alert user that tool offsets have been set
+
+  alert(`Tool offsets for T${toolNumberValue} have been set`);
 }
 
 interface ToolOffset {
