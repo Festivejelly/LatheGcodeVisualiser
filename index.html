@@ -243,6 +243,28 @@
                                 <p>Profiling</p>
                             </div>
                         </button>
+                        <button id="quickTaskDrillingButton" class="quick-tasks-innercontainer">
+                            <div class="quick-tasks-subinnercontainer">
+                                <div class="icon-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 50">
+                                        <!-- Top and bottom horizontal lines -->
+                                        <line x1="5" y1="18" x2="50" y2="18" stroke="white" stroke-width="2"></line>
+                                        <line x1="5" y1="32" x2="50" y2="32" stroke="white" stroke-width="2"></line>
+                                        
+                                        <!-- Pointed tip at left -->
+                                        <line x1="5" y1="18" x2="0" y2="25" stroke="white" stroke-width="2"></line>
+                                        <line x1="5" y1="32" x2="0" y2="25" stroke="white" stroke-width="2"></line>
+                                        
+                                        <!-- Diagonal flute lines -->
+                                        <line x1="10" y1="18" x2="15" y2="32" stroke="white" stroke-width="2"></line>
+                                        <line x1="20" y1="18" x2="25" y2="32" stroke="white" stroke-width="2"></line>
+                                        <line x1="30" y1="18" x2="35" y2="32" stroke="white" stroke-width="2"></line>
+                                        <line x1="40" y1="18" x2="45" y2="32" stroke="white" stroke-width="2"></line>
+                                    </svg>
+                                </div>
+                                <p>Drilling</p>
+                            </div>
+                        </button>
                         <button id="quickTaskBoringButton" class="quick-tasks-innercontainer">
                             <div class="quick-tasks-subinnercontainer">
                                 <div class="icon-container">
@@ -657,6 +679,52 @@
             </div>
         </div>
 
+        <!-- Quick Task Drilling Modal-->
+        <div id="quickTaskDrillingModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>Drilling Task</h2>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskDrillingDepth">Drilling Depth (mm)</label>
+                    <input type="text" id="quickTaskDrillingDepth" name="quickTaskDrillingDepth" placeholder="10">
+                </div>
+
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskDrillingFeedRate">Drilling feed rate</label>
+                    <input type="text" id="quickTaskDrillingFeedRate" name="quickTaskDrillingFeedRate" placeholder="50" value="50">
+                </div>
+
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskDrillingPeckCheckbox">Peck Drilling</label>
+                    <input type="checkbox" id="quickTaskDrillingPeckCheckbox" name="quickTaskDrillingPeckCheckbox" value="Pecking">
+                </div>
+
+                <div class="modal-pad-bottom" id="quickTaskDrillingPeckingDepthContainer" style="display: none;">
+                    <label for="quickTaskDrillingPeckingDepth">Pecking Depth (mm)</label>
+                    <input type="text" id="quickTaskDrillingPeckingDepth" name="quickTaskDrillingPeckingDepth" placeholder="2">
+                </div>
+
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskDrillingExecuteButton" class="execute" title="Execute drilling command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M8 5v14l11-7z" fill="green" />
+                        </svg>
+                    </button>
+                    <button id="quickTaskDrillingStopButton" class="execute" title="Stop drilling command" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M6 6h12v12H6z" fill="red" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-pad-bottom" style="display: none;">
+                    <span id="quickTaskDrillingLabel">Execution in progress...</span>
+                    <progress id="quickTaskDrillingProgressBar" max="1"></progress>
+                </div>
+                <div class="modal-pad">
+                    <button id="quickTaskDrillingCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick Task Boring Modal-->
         <div id="quickTaskBoringModal" class="task-modal">
             <div class="task-modal-content center-modal">
@@ -842,7 +910,10 @@
                     <input type="text" id="quickTaskThreadingLength" name="quickTaskThreadingLength" placeholder="10">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskThreadingPasses">Number of passes</label>
+                    <label for="quickTaskThreadingPasses">Number of passes
+                        <span class="tooltip-icon"
+                        data-tooltip="Automatically calculated based on 0.1mm per pass. But you can set your own passes.">?</span>
+                    </label>
                     <input type="text" id="quickTaskThreadingPasses" name="quickTaskThreadingPasses" placeholder="5">
                 </div>
                 <div class="modal-pad-bottom">
