@@ -334,7 +334,7 @@ export class Sender {
         this.notifyCurrentCommand(this.currentLine);
 
         this.waitForOkOrError = true;
-        console.log(`command: "${line}"`);
+        //console.log(`command: "${line}"`);
         appendLineToResponseEditor(`command: ${line}`);
         await this.write(line + '\n');
         await this.readFromPort();

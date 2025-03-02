@@ -33,6 +33,15 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
     progressBar: document.getElementById('quickTaskProfilingProgressBar') as HTMLProgressElement,
     taskFunction: profilingTask
   },
+  'quickTaskDrilling': {
+    openButton: document.getElementById('quickTaskDrillingButton') as HTMLButtonElement,
+    modal: document.getElementById('quickTaskDrillingModal') as HTMLDivElement,
+    closeButton: document.getElementById('quickTaskDrillingCloseButton') as HTMLButtonElement,
+    executeButton: document.getElementById('quickTaskDrillingExecuteButton') as HTMLButtonElement,
+    stopButton: document.getElementById('quickTaskDrillingStopButton') as HTMLButtonElement,
+    progressBar: document.getElementById('quickTaskDrillingProgressBar') as HTMLProgressElement,
+    taskFunction: drillingTask
+  },
   'quickTaskCone': {
     openButton: document.getElementById('quickTaskConeButton') as HTMLButtonElement,
     modal: document.getElementById('quickTaskConeModal') as HTMLDivElement,
@@ -88,6 +97,13 @@ const quickTaskProfilingPasses = document.getElementById('quickTaskProfilingPass
 const quickTaskProfilingType = document.getElementById('quickTaskProfilingType') as HTMLSelectElement;
 const quickTaskProfilingFinalDiameterContainer = document.getElementById('quickTaskProfilingFinalDiameterContainer') as HTMLDivElement;
 const quickTaskProfilingDepthContainer = document.getElementById('quickTaskProfilingDepthContainer') as HTMLDivElement;
+
+//Drilling
+const quickTaskDrillingDepth = document.getElementById('quickTaskDrillingDepth') as HTMLInputElement;
+const quickTaskDrillingFeedRate = document.getElementById('quickTaskDrillingFeedRate') as HTMLInputElement;
+const quickTaskDrillingPeckCheckbox = document.getElementById('quickTaskDrillingPeckCheckbox') as HTMLInputElement;
+const quickTaskDrillingPeckingDepthContainer = document.getElementById('quickTaskDrillingPeckingDepthContainer') as HTMLDivElement;
+const quickTaskDrillingPeckingDepth = document.getElementById('quickTaskDrillingPeckingDepth') as HTMLInputElement;
 
 //Threading
 const quickTaskThreadingType = document.getElementById('quickTaskThreadingType') as HTMLSelectElement;
@@ -248,6 +264,29 @@ document.addEventListener("DOMContentLoaded", () => {
   quickTaskProfilingFinalDiameter.addEventListener('input', () => profilingUpdateDepthOfPasses('Absolute'));
   quickTaskProfilingDepth.addEventListener('input', () => profilingUpdateDepthOfPasses('Relative'));
   quickTaskProfilingPasses.addEventListener('input', () => profilingUpdateDepthOfPasses(quickTaskProfilingType.value));
+
+
+  //<---- drilling event listeners ---->
+  quickTaskDrillingPeckCheckbox.addEventListener('change', () => {
+    if (quickTaskDrillingPeckCheckbox.checked) {
+      quickTaskDrillingPeckingDepthContainer.style.display = 'block';
+    } else {
+      quickTaskDrillingPeckingDepthContainer.style.display = 'none';
+    }
+  });
+
+
+  //<---- Threading event listeners ---->
+  quickTaskThreadingSize.addEventListener('change', () => {
+    const threadSpec = Threading.getThreadSpecByName(quickTaskThreadingSize.value) as ThreadSpec;
+    const threadingExternalOrInternal = quickTaskThreadingExternalOrInternal.value as ThreadingType;
+    const depth = threadSpec.getThreadDepth(threadingExternalOrInternal);
+
+    //calculate number of passes assuming 0.1mm per pass
+    const defaultPasses = Math.ceil(depth / 0.1) + 1;
+
+    quickTaskThreadingPasses.value = defaultPasses.toString();
+  });
 
 
   //<---- Tool offset event listeners ---->
@@ -439,6 +478,89 @@ function facingTask() {
   }
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
+}
+
+
+function drillingTask() {
+  
+  //drilling modal inputs
+  const drillingDepth = parseFloat(quickTaskDrillingDepth.value);
+  const drillingFeedRate = parseFloat(quickTaskDrillingFeedRate.value);
+  const drillingPeckCheckbox = quickTaskDrillingPeckCheckbox.checked;
+  let drillingPeckDepth = parseFloat(quickTaskDrillingPeckingDepth.value);
+  const retractFeedrate = 200;
+  const slowRetractFeedrate = 50;
+  const numberOfPecksUntilFullClearance = 3;
+  const chipClearanceDistance = 3;
+  let clearChips = false;
+  let numberOfPecksPerformed = 0;
+
+  let commands: string[] = [];
+
+
+  //go to centre line of the part
+  commands.push('G90'); //set to absolute positioning
+  commands.push('G0 X0');
+
+  commands.push('G91'); //set to relative positioning
+
+  if (drillingPeckCheckbox) {
+
+    let finalDepthAchieved = false;
+    let totalDepth = 0;
+
+    while (!finalDepthAchieved) {
+
+      //drill
+      commands.push(`G1 Z${drillingPeckDepth} F${drillingFeedRate}`);
+
+      numberOfPecksPerformed++;
+
+      totalDepth += drillingPeckDepth;
+
+      //clear chips every 3 pecks
+      if (numberOfPecksPerformed === numberOfPecksUntilFullClearance) {
+        commands.push(`G1 Z-${totalDepth + chipClearanceDistance} F${retractFeedrate}`);
+        clearChips = true;
+        numberOfPecksPerformed = 0;
+      } else {
+        commands.push(`G1 Z-${totalDepth} F${retractFeedrate}`);
+
+      }
+
+      if (totalDepth >= drillingDepth) {
+        finalDepthAchieved = true;
+        { break; }
+      } else if (totalDepth + drillingPeckDepth > drillingDepth) {
+        //if the next peck would go over the total depth, then set the next peck to the remaining depth
+        drillingPeckDepth = drillingDepth - totalDepth;
+      }
+
+      if(clearChips){
+        //unretract fast taking into account the longer retract distance for chip clearance
+        commands.push(`G1 Z${(totalDepth + chipClearanceDistance) - 0.2} F${retractFeedrate}`);
+
+        //unretract slow
+        commands.push(`G1 Z${0.2} F${slowRetractFeedrate}`);
+        clearChips = false;
+      } else {
+        //unretract fast
+        commands.push(`G1 Z${totalDepth - 0.2} F${retractFeedrate}`);
+
+        //unretract slow
+        commands.push(`G1 Z${0.2} F${slowRetractFeedrate}`);
+      }
+    }
+
+  } else {
+    commands.push(`G1 Z${drillingDepth} F${drillingFeedRate}`);
+    commands.push(`G1 Z-${drillingDepth} F${retractFeedrate}`);
+  }
+
+  commands.push('G90'); //set to absolute positioning
+
+  sender?.sendCommands(commands, SenderClient.QUICKTASKS);
+
 }
 
 function groovingTask() {
