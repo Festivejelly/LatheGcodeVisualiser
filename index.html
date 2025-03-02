@@ -568,22 +568,11 @@
             <div class="task-modal-content center-modal">
                 <h2>Facing Modal</h2>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskFacingFeedRate">Facing Feed Rate (mm per minute):</label>
-                    <input type="text" id="quickTaskFacingFeedRate" name="quickTaskFacingFeedRate" placeholder="100">
+                    <span id="quickTaskFacingDescription">The facing task will perform a facing operation based off of your current position to the centreline</span>
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskFacingMovementType">Movement Type
-                        <span class="tooltip-icon"
-                            data-tooltip="Absolute cuts all the way to the centre line. Relative cuts to a specific depth.">?</span>
-                    </label>
-                    <select id="quickTaskFacingMovementType" name="quickTaskFacingMovementType">
-                        <option value="Absolute" selected>Absolute</option>
-                        <option value="Relative">Relative</option>
-                    </select>
-                </div>
-                <div class="modal-pad-bottom" id="quickTaskFacingDepthContainer" style="display: none;">
-                    <label for="quickTaskFacingDepth">Facing Cutting Depth (mm)</label>
-                    <input type="text" id="quickTaskFacingDepth" name="quickTaskFacingDepth" placeholder="10">
+                    <label for="quickTaskFacingFeedRate">Facing Feed Rate</label>
+                    <input type="text" id="quickTaskFacingFeedRate" name="quickTaskFacingFeedRate" placeholder="100">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskFacingExecuteButton" class="execute" title="Execute facing command">
@@ -616,8 +605,12 @@
                     <input type="text" id="quickTaskProfilingLength" name="quickTaskProfilingLength" placeholder="10">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskProfilingFeedRate">Feed rate</label>
+                    <label for="quickTaskProfilingFeedRate">Cutting Feed rate</label>
                     <input type="text" id="quickTaskProfilingFeedRate" name="quickTaskProfilingFeedRate" placeholder="100">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskProfilingRetractFeedRate">Retract Feed rate</label>
+                    <input type="text" id="quickTaskProfilingRetractFeedRate" name="quickTaskProfilingRetractFeedRate" placeholder="200" value="200">
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskProfilingType">Profiling Type
@@ -634,14 +627,14 @@
                     <input type="number" id="quickTaskProfilingFinalDiameter" name="quickTaskProfilingFinalDiameter" placeholder="1">
                 </div>
                 <div class="modal-pad-bottom" id="quickTaskProfilingDepthContainer" style="display: none;">
-                    <label for="quickTaskProfilingDepth">Depth (mm)</label>
+                    <label for="quickTaskProfilingDepth">Depth of cut (mm)</label>
                     <input type="number" id="quickTaskProfilingDepth" name="quickTaskProfilingDepth" placeholder="1">
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskProfilingPasses">Passes
                         <span class="tooltip-icon" data-tooltip="This value is calculated">?</span>
                     </label>
-                    <input type="number" id="quickTaskProfilingPasses" name="quickTaskProfilingPasses" placeholder="4" min="1" step="1">
+                    <input type="number" id="quickTaskProfilingPasses" name="quickTaskProfilingPasses" placeholder="4" value="4" min="1" step="1">
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskProfilingDepthPerPass">Depth Per Pass (mm)
@@ -689,10 +682,13 @@
                 </div>
 
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskDrillingFeedRate">Drilling feed rate</label>
+                    <label for="quickTaskDrillingFeedRate">Drilling Feed Rate</label>
                     <input type="text" id="quickTaskDrillingFeedRate" name="quickTaskDrillingFeedRate" placeholder="50" value="50">
                 </div>
-
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskDrillingRetractFeedRate">Retract Feed Rate</label>
+                    <input type="text" id="quickTaskDrillingRetractFeedRate" name="quickTaskDrillingRetractFeedRate" placeholder="200" value="200">
+                </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskDrillingPeckCheckbox">Peck Drilling</label>
                     <input type="checkbox" id="quickTaskDrillingPeckCheckbox" name="quickTaskDrillingPeckCheckbox" value="Pecking">
@@ -734,11 +730,15 @@
                     <input type="text" id="quickTaskBoringDepth" name="quickTaskBoringDepth" placeholder="50">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskBoringFeedRate">Feed rate</label>
+                    <label for="quickTaskBoringFeedRate">Cut Feed Rate</label>
                     <input type="text" id="quickTaskBoringFeedRate" name="quickTaskBoringFeedRate" placeholder="100">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskBoringType">Profiling Type
+                    <label for="quickTaskBoringRetractFeedRate">Retract Feed Rate</label>
+                    <input type="text" id="quickTaskBoringRetractFeedRate" name="quickTaskBoringRetractFeedRate" placeholder="200" value="200">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskBoringType">Boring Type
                         <span class="tooltip-icon"
                             data-tooltip="Absolute cuts to a specified diameter. Relative cuts to a specified depth.">?</span>
                     </label>
@@ -751,9 +751,15 @@
                     <label for="quickTaskBoringFinalDiameter">Final Diameter</label>
                     <input type="number" id="quickTaskBoringFinalDiameter" name="quickTaskBoringFinalDiameter" placeholder="1">
                 </div>
-                <div class="modal-pad-bottom" id="quickTaskBoringWidthContainer" style="display: none;">
-                    <label for="quickTaskBoringWidth">Depth (mm)</label>
-                    <input type="number" id="quickTaskBoringWidth" name="quickTaskBoringWidth" placeholder="1">
+                <div class="modal-pad-bottom" id="quickTaskBoringDepthOfCutContainer" style="display: none;">
+                    <label for="quickTaskBoringDepthOfCut">Depth of cut (mm)</label>
+                    <input type="number" id="quickTaskBoringDepthOfCut" name="quickTaskBoringDepthOfCut" placeholder="1">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskBoringPasses">Passes
+                        <span class="tooltip-icon" data-tooltip="This value is calculated">?</span>
+                    </label>
+                    <input type="number" id="quickTaskBoringPasses" name="quickTaskBoringPasses" placeholder="1" value="4" min="1" step="1">
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskBoringDepthPerPass">Depth Per Pass (mm)
@@ -768,15 +774,7 @@
                     <input type="number" id="quickTaskBoringFinishingDepth" name="quickTaskBoringFinishingDepth" placeholder="0.1" value="0.1">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskBoringPasses">Passes
-                        <span class="tooltip-icon" data-tooltip="This value is calculated">?</span>
-                    </label>
-                    <input type="number" id="quickTaskBoringPasses" name="quickTaskBoringPasses" placeholder="1" readonly>
                 </div>
-                <div class="modal-pad-bottom">
-                </div>
-
-
                 <div class="modal-pad-bottom">
                     <button id="quickTaskBoringExecuteButton" class="execute" title="Execute Boring command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
@@ -788,6 +786,10 @@
                             <path d="M6 6h12v12H6z" fill="red" />
                         </svg>
                     </button>
+                </div>
+                <div class="modal-pad-bottom" style="display: none;">
+                    <span id="quickTaskBoringProgressBarLabel">Execution in progress...</span>
+                    <progress id="quickTaskBoringProgressBar" max="1"></progress>
                 </div>
                 <div class="modal-pad">
                     <button id="quickTaskBoringCloseButton">Close</button>
@@ -806,6 +808,14 @@
                 <div class="modal-pad-bottom">
                     <label for="quickTaskGroovingWidth">Width of groove in mm:</label>
                     <input type="text" id="quickTaskGroovingWidth" name="quickTaskGroovingWidth" placeholder="50">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskGroovingFeedRate">Cut Feed rate</label>
+                    <input type="text" id="quickTaskGroovingFeedRate" name="quickTaskGroovingFeedRate" placeholder="200" value="200">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskGroovingRetractFeedRate">Retract Feed rate</label>
+                    <input type="text" id="quickTaskGroovingRetractFeedRate" name="quickTaskGroovingRetractFeedRate" placeholder="200" value="200">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskGroovingExecuteButton" class="execute" title="Execute grooving command">
@@ -875,6 +885,10 @@
             <div class="task-modal-content center-modal">
                 <h2>Threading Quick Task</h2>
 
+                <div class="modal-pad-bottom">
+                    <span id="quickTaskThreadingDescription">The threading task will automatically cut a thread based on the outer diameter spec of the thread.<br>
+                        The beginning of the thread length will start from your current position</span>
+                </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskThreadingExternalOrInternal">External or Internal</label>
                     <select id="quickTaskThreadingExternalOrInternal" name="quickTaskThreadingExternalOrInternal">

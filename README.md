@@ -13,6 +13,7 @@ Existing features:
 Features I want to add:
 
 - Websockets communication with the controller.
+- Gcode generator.
 - Live visual representation of gcode movements.
 - Enhancements to gcode simulation to show tool shape and part shape.
 - Cloud storage for settings, jobs and tasks. (Google Drive, One Drive)
