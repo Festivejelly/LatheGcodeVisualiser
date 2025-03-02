@@ -81,16 +81,13 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
 };
 
 //Facing
-const quickTaskFacingMovementType = document.getElementById('quickTaskFacingMovementType') as HTMLSelectElement;
-//const quickTaskFacingDepth = document.getElementById('quickTaskFacingDepth') as HTMLInputElement;
-//const quickTaskFacingFeedRate = document.getElementById('quickTaskFacingFeedRate') as HTMLInputElement;
-const quickTaskFacingDepthContainer = document.getElementById('quickTaskFacingDepthContainer') as HTMLDivElement;
-const quickTaskFacingFinalDiameterContainer = document.getElementById('quickTaskFacingFinalDiameterContainer') as HTMLDivElement;
-
+const quickTaskFacingFeedRate = document.getElementById('quickTaskFacingFeedRate') as HTMLInputElement;
 
 //Profiling
 const quickTaskProfilingFinalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
 const quickTaskProfilingDepth = document.getElementById('quickTaskProfilingDepth') as HTMLInputElement;
+const quickTaskProfilingFeedRate = document.getElementById('quickTaskProfilingFeedRate') as HTMLInputElement;
+const quickTaskProfilingRetractFeedRate = document.getElementById('quickTaskProfilingRetractFeedRate') as HTMLInputElement;
 const quickTaskProfilingDepthPerPass = document.getElementById('quickTaskProfilingDepthPerPass') as HTMLInputElement;
 const quickTaskProfilingFinishingDepth = document.getElementById('quickTaskProfilingFinishingDepth') as HTMLInputElement;
 const quickTaskProfilingPasses = document.getElementById('quickTaskProfilingPasses') as HTMLInputElement;
@@ -101,6 +98,7 @@ const quickTaskProfilingDepthContainer = document.getElementById('quickTaskProfi
 //Drilling
 const quickTaskDrillingDepth = document.getElementById('quickTaskDrillingDepth') as HTMLInputElement;
 const quickTaskDrillingFeedRate = document.getElementById('quickTaskDrillingFeedRate') as HTMLInputElement;
+const quickTaskDrillingRetractFeedRate = document.getElementById('quickTaskDrillingRetractFeedRate') as HTMLInputElement;
 const quickTaskDrillingPeckCheckbox = document.getElementById('quickTaskDrillingPeckCheckbox') as HTMLInputElement;
 const quickTaskDrillingPeckingDepthContainer = document.getElementById('quickTaskDrillingPeckingDepthContainer') as HTMLDivElement;
 const quickTaskDrillingPeckingDepth = document.getElementById('quickTaskDrillingPeckingDepth') as HTMLInputElement;
@@ -114,16 +112,17 @@ const quickTaskThreadingLength = document.getElementById('quickTaskThreadingLeng
 const quickTaskThreadingPasses = document.getElementById('quickTaskThreadingPasses') as HTMLInputElement;
 
 //Boring
-//const quickTaskBoringDepth = document.getElementById('quickTaskBoringDepth') as HTMLInputElement;
-//const quickTaskBoringWidth = document.getElementById('quickTaskBoringWidth') as HTMLInputElement;
-//const quickTaskBoringFeedRate = document.getElementById('quickTaskBoringFeedRate') as HTMLInputElement;
-//const quickTaskBoringType = document.getElementById('quickTaskBoringType') as HTMLSelectElement;
-//const quickTaskBoringFinalDiameterContainer = document.getElementById('quickTaskBoringFinalDiameterContainer') as HTMLDivElement;
-//const quickTaskBoringWidthContainer = document.getElementById('quickTaskBoringWidthContainer') as HTMLDivElement;
-//const quickTaskBoringFinalDiameter = document.getElementById('quickTaskBoringFinalDiameter') as HTMLInputElement;
-//const quickTaskBoringDepthPerPass = document.getElementById('quickTaskBoringDepthPerPass') as HTMLInputElement;
-//const quickTaskBoringFinishingDepth = document.getElementById('quickTaskBoringFinishingDepth') as HTMLInputElement;
-//const quickTaskBoringPasses = document.getElementById('quickTaskBoringPasses') as HTMLInputElement;
+const quickTaskBoringDepth = document.getElementById('quickTaskBoringDepth') as HTMLInputElement;
+const quickTaskBoringDepthOfCut = document.getElementById('quickTaskBoringDepthOfCut') as HTMLInputElement;
+const quickTaskBoringFeedRate = document.getElementById('quickTaskBoringFeedRate') as HTMLInputElement;
+const quickTaskBoringRetractFeedRate = document.getElementById('quickTaskBoringRetractFeedRate') as HTMLInputElement;
+const quickTaskBoringType = document.getElementById('quickTaskBoringType') as HTMLSelectElement;
+const quickTaskBoringFinalDiameterContainer = document.getElementById('quickTaskBoringFinalDiameterContainer') as HTMLDivElement;
+const quickTaskBoringDepthOfCutContainer = document.getElementById('quickTaskBoringDepthOfCutContainer') as HTMLDivElement;
+const quickTaskBoringFinalDiameter = document.getElementById('quickTaskBoringFinalDiameter') as HTMLInputElement;
+const quickTaskBoringDepthPerPass = document.getElementById('quickTaskBoringDepthPerPass') as HTMLInputElement;
+const quickTaskBoringFinishingDepth = document.getElementById('quickTaskBoringFinishingDepth') as HTMLInputElement;
+const quickTaskBoringPasses = document.getElementById('quickTaskBoringPasses') as HTMLInputElement;
 
 //Tool offsets
 const quickTaskToolOffsetsProbeDiameter = document.getElementById('quickTaskToolOffsetsProbeDiameter') as HTMLInputElement;
@@ -236,20 +235,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-
-
-  //<---- Facing event listeners ---->
-  quickTaskFacingMovementType.addEventListener('change', () => {
-    if (quickTaskFacingMovementType.value === 'Absolute') {
-      quickTaskFacingFinalDiameterContainer!.style.display = 'block';
-      quickTaskFacingDepthContainer!.style.display = 'none';
-    } else {
-      quickTaskFacingFinalDiameterContainer!.style.display = 'none';
-      quickTaskFacingDepthContainer!.style.display = 'block';
-    }
-  });
-
-
   //<---- Profiling event listeners ---->
   quickTaskProfilingType.addEventListener('change', () => {
     if (quickTaskProfilingType.value === 'Absolute') {
@@ -265,6 +250,20 @@ document.addEventListener("DOMContentLoaded", () => {
   quickTaskProfilingDepth.addEventListener('input', () => profilingUpdateDepthOfPasses('Relative'));
   quickTaskProfilingPasses.addEventListener('input', () => profilingUpdateDepthOfPasses(quickTaskProfilingType.value));
 
+  //<---- Boring event listeners ---->
+  quickTaskBoringType.addEventListener('change', () => {
+    if (quickTaskBoringType.value === 'Absolute') {
+      quickTaskBoringFinalDiameterContainer.style.display = 'block';
+      quickTaskBoringDepthOfCutContainer.style.display = 'none';
+    } else {
+      quickTaskBoringFinalDiameterContainer.style.display = 'none';
+      quickTaskBoringDepthOfCutContainer.style.display = 'block';
+    }
+  });
+
+  quickTaskBoringFinalDiameter.addEventListener('input', () => boringUpdateDepthOfPasses('Absolute'));
+  quickTaskBoringDepthOfCut.addEventListener('input', () => boringUpdateDepthOfPasses('Relative'));
+  quickTaskBoringPasses.addEventListener('input', () => boringUpdateDepthOfPasses(quickTaskBoringType.value));
 
   //<---- drilling event listeners ---->
   quickTaskDrillingPeckCheckbox.addEventListener('change', () => {
@@ -295,6 +294,44 @@ document.addEventListener("DOMContentLoaded", () => {
   if (localStorageProbeDiameter !== null) {
     quickTaskToolOffsetsProbeDiameter.value = localStorageProbeDiameter;
   }
+
+  //<---- Populate default retract values from local storage ---->
+  const drillingRetractFeedRate = localStorage.getItem('drillingRetractFeedRate');
+  if (drillingRetractFeedRate !== null) {
+    quickTaskDrillingRetractFeedRate.value = drillingRetractFeedRate;
+  }
+
+  const boringRetractFeedrate = localStorage.getItem('boringRetractFeedrate');
+  if (boringRetractFeedrate !== null) {
+    quickTaskBoringRetractFeedRate.value = boringRetractFeedrate;
+  }
+
+  const profilingRetractFeedrate = localStorage.getItem('profilingRetractFeedrate');
+  if (profilingRetractFeedrate !== null) {
+    quickTaskProfilingRetractFeedRate.value = profilingRetractFeedrate;
+  }
+
+    //<---- Populate default feed values from local storage ---->
+  const drillingFeedRate = localStorage.getItem('drillingFeedRate');
+  if (drillingFeedRate !== null) {
+    quickTaskDrillingFeedRate.value = drillingFeedRate;
+  }
+
+  const boringFeedRate = localStorage.getItem('boringFeedRate');
+  if (boringFeedRate !== null) {
+    quickTaskBoringFeedRate.value = boringFeedRate;
+  }
+
+  const profilingFeedRate = localStorage.getItem('profilingFeedRate');
+  if (profilingFeedRate !== null) {
+    quickTaskProfilingFeedRate.value = profilingFeedRate;
+  }
+
+  const facingFeedRate = localStorage.getItem('facingFeedRate');
+  if (facingFeedRate !== null) {
+    quickTaskFacingFeedRate.value = facingFeedRate;
+  }
+
 
   const updateThreadSizes = () => {
 
@@ -332,7 +369,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //call on page load
   updateThreadSizes();
-
 
   function handleStatusChange() {
     if (!sender) return;
@@ -392,16 +428,17 @@ function profilingTask() {
   //profiling modal inputs
   const profilingLength = parseFloat((document.getElementById('quickTaskProfilingLength') as HTMLInputElement).value);
   const profilingPasses = parseInt((quickTaskProfilingPasses).value, 10);
-  const feedRate = parseFloat((document.getElementById('quickTaskProfilingFeedRate') as HTMLInputElement).value);
-  const retractFeedrate = 200;
+  const feedRate = parseFloat(quickTaskProfilingFeedRate.value);
+  const mainPassDepth = parseFloat(quickTaskProfilingDepthPerPass.value);
+  const finishingPassDepth = parseFloat(quickTaskProfilingFinishingDepth.value);
+  const retractFeedrate = parseFloat(quickTaskProfilingRetractFeedRate.value);
+
+  localStorage.setItem('profilingRetractFeedrate', retractFeedrate.toString());
+  localStorage.setItem('profilingFeedRate', feedRate.toString());
 
   const commands: string[] = [];
 
-
   commands.push('G91'); //set to relative positioning
-
-  const mainPassDepth = parseFloat(quickTaskProfilingDepthPerPass.value);
-  const finishingPassDepth = parseFloat(quickTaskProfilingFinishingDepth.value);
 
   //main passes
   for (let i = 0; i < profilingPasses - 1; i++) {
@@ -446,54 +483,73 @@ async function profilingUpdateDepthOfPasses(movementType: string) {
   //calculate depth per pass based on total depths and number of passes but account for a finish pass of 0.1mm
   const passes = parseInt(quickTaskProfilingPasses.value, 10);
   const finishingPassDepth = 0.1;
-  const depthPerPass = (totalDepth - finishingPassDepth) / (passes -1);
+  const depthPerPass = (totalDepth - finishingPassDepth) / (passes - 1);
 
   // Update the depth per pass input with the adjusted value
   quickTaskProfilingDepthPerPass.value = depthPerPass.toFixed(3);
   quickTaskProfilingFinishingDepth.value = finishingPassDepth.toFixed(3);
 }
 
+async function boringUpdateDepthOfPasses(movementType: string) {
+
+  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+
+  const startPosX = latestStatus?.x!;
+
+  let totalDepth: number;
+  if (movementType === 'Absolute') {
+    totalDepth = Math.abs(startPosX - (-parseFloat(quickTaskBoringFinalDiameter.value) / 2));
+  } else {
+    totalDepth = parseFloat(quickTaskBoringDepthOfCut.value);
+  }
+
+  //calculate depth per pass based on total depths and number of passes but account for a finish pass of 0.1mm
+  const passes = parseInt(quickTaskBoringPasses.value, 10);
+  const finishingPassDepth = 0.1;
+  const depthPerPass = (totalDepth - finishingPassDepth) / (passes - 1);
+
+  // Update the depth per pass input with the adjusted value
+  quickTaskBoringDepthPerPass.value = depthPerPass.toFixed(3);
+  quickTaskBoringFinishingDepth.value = finishingPassDepth.toFixed(3);
+}
+
 //other quick task functions
 function facingTask() {
 
   //facing modal inputs
-  const facingFeedRate = document.getElementById('quickTaskFacingFeedRate') as HTMLInputElement;
-  const facingMovementType = document.getElementById('quickTaskFacingMovementType') as HTMLSelectElement;
+  const facingFeedRate = quickTaskFacingFeedRate.value;
+
+  localStorage.setItem('facingFeedRate', facingFeedRate);
 
   let commands: string[] = [];
 
   const startPosition = sender?.getStatus().x;
 
-  if (facingMovementType.value === 'Absolute') {
-    commands.push('G90'); //set to absolute positioning
-    commands.push(`G1 X0 F${facingFeedRate.value}`);
-    commands.push(`G1 X${startPosition} F${facingFeedRate.value}`); //retract a bit
-    commands.push('G91'); //set to relative positioning    
-  } else {
-    const facingDepth = document.getElementById('quickTaskFacingDepth') as HTMLInputElement;
-    commands.push('G91'); //set to relative positioning
-    commands.push(`G1 X${facingDepth.value} F${facingFeedRate.value}`);
-    commands.push(`G1 X-${facingDepth.value} F${facingFeedRate.value}`); //retract a bit
-    commands.push('G90'); //set to absolute positioning
-  }
+  commands.push('G90'); //set to absolute positioning
+  commands.push(`G1 X0 F${facingFeedRate}`);
+  commands.push(`G1 X${startPosition} F${facingFeedRate}`); //retract a bit
+  commands.push('G91'); //set to relative positioning    
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
 
 function drillingTask() {
-  
+
   //drilling modal inputs
   const drillingDepth = parseFloat(quickTaskDrillingDepth.value);
   const drillingFeedRate = parseFloat(quickTaskDrillingFeedRate.value);
   const drillingPeckCheckbox = quickTaskDrillingPeckCheckbox.checked;
   let drillingPeckDepth = parseFloat(quickTaskDrillingPeckingDepth.value);
-  const retractFeedrate = 200;
+  const retractFeedrate = parseFloat(quickTaskDrillingRetractFeedRate.value);
   const slowRetractFeedrate = 50;
   const numberOfPecksUntilFullClearance = 3;
   const chipClearanceDistance = 3;
   let clearChips = false;
   let numberOfPecksPerformed = 0;
+
+  localStorage.setItem('drillingRetractFeedRate', retractFeedrate.toString());
+  localStorage.setItem('drillingFeedRate', drillingFeedRate.toString());
 
   let commands: string[] = [];
 
@@ -536,7 +592,7 @@ function drillingTask() {
         drillingPeckDepth = drillingDepth - totalDepth;
       }
 
-      if(clearChips){
+      if (clearChips) {
         //unretract fast taking into account the longer retract distance for chip clearance
         commands.push(`G1 Z${(totalDepth + chipClearanceDistance) - 0.2} F${retractFeedrate}`);
 
@@ -571,8 +627,81 @@ function coneTask() {
   alert('Not Yet Implemented');
 }
 
-function boringTask() {
-  alert('Not Yet Implemented');
+async function boringTask() {
+
+  //boring modal inputs
+  const boringDepth = Number(parseFloat(quickTaskBoringDepth.value).toFixed(3));
+  const boringFeedRate = Number(parseFloat(quickTaskBoringFeedRate.value).toFixed(3));
+  const boringDepthPerPass = Number(parseFloat(quickTaskBoringDepthPerPass.value).toFixed(3));
+  let boringFinishingDepth = Number(parseFloat(quickTaskBoringFinishingDepth.value).toFixed(3));
+  const boringFinalDiameter = Number(parseFloat(quickTaskBoringFinalDiameter.value).toFixed(3));
+  const boringDepthOfCut = Number(parseFloat(quickTaskBoringDepthOfCut.value).toFixed(3));
+  const boringType = quickTaskBoringType.value;
+  const boringPasses = parseInt(quickTaskBoringPasses.value, 10);
+  const retractFeedrate = Number(parseFloat(quickTaskBoringRetractFeedRate.value).toFixed(3));
+
+  localStorage.setItem('boringRetractFeedrate', retractFeedrate.toString());
+  localStorage.setItem('boringFeedRate', boringFeedRate.toString());
+
+  const commands: string[] = [];
+  const finishingCommands: string[] = [];
+
+  commands.push('G91'); //set to relative positioning
+
+  let totalBoringDepth = 0;
+  let remainingCut = 0;
+
+  //main passes
+  for (let i = 0; i < boringPasses - 1; i++) {
+
+    //cutting move x
+    commands.push(`G1 X-${boringDepthPerPass} F${boringFeedRate}`);
+    //cutting move Z
+    commands.push(`G1 Z${boringDepth} F${boringFeedRate}`);
+    //retract move
+    commands.push(`G1 X0.2 F${retractFeedrate}`);
+    //retract move
+    commands.push(`G1 Z-${boringDepth} F${retractFeedrate}`);
+    //unretract X
+    commands.push(`G1 X-0.2 F${retractFeedrate}`);
+
+    // Round to 3 decimal places to avoid floating point precision issues
+    totalBoringDepth = Number((totalBoringDepth + boringDepthPerPass).toFixed(3));
+  }
+
+  commands.push('G90'); // Set to absolute positioning
+
+  //send the main passes
+  sender?.sendCommands(commands, SenderClient.QUICKTASKS);
+  
+  await waitForOperationToComplete();
+
+  const updatedStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const currentPosX = updatedStatus?.x!;
+
+  if (boringType === 'Absolute') {
+    remainingCut = Number((boringFinalDiameter / 2 - Math.abs(currentPosX)).toFixed(3));
+  } else {
+    remainingCut = Number((boringDepthOfCut - totalBoringDepth).toFixed(3));
+  }
+
+  //if remaining cut is more then set finishing pass to the remaining cut
+  if (remainingCut > boringFinishingDepth) {
+    boringFinishingDepth = remainingCut;
+  }
+
+  finishingCommands.push('G91'); //set to relative positioning
+
+  //finishing pass
+  finishingCommands.push(`G1 X-${boringFinishingDepth} F${boringFeedRate}`);
+  finishingCommands.push(`G1 Z${boringDepth} F${boringFeedRate}`);
+  //retract move
+  finishingCommands.push(`G1 X0.2 F${retractFeedrate}`);
+  finishingCommands.push(`G1 Z-${boringDepth} F${retractFeedrate}`);
+
+  finishingCommands.push('G90'); // Set to absolute positioning
+
+  sender?.sendCommands(finishingCommands, SenderClient.QUICKTASKS);
 }
 
 function threadingTask() {
@@ -779,4 +908,23 @@ function calculateToolOffsets(input: ToolOffset): CalculatedOffset {
     x: roundToThree(xOffset),
     z: roundToThree(zOffset)
   };
+}
+
+async function waitForOperationToComplete() {
+  return new Promise<void>((resolve) => {
+    const checkStatus = () => {
+      const status = sender?.getStatus();
+      
+      if (!status || status.condition !== 'run') {
+        // Operation is complete
+        resolve();
+      } else {
+        // Check again in 100ms
+        setTimeout(checkStatus, 100);
+      }
+    };
+    
+    // Start checking
+    checkStatus();
+  });
 }
