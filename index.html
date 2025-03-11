@@ -1041,7 +1041,7 @@
                     <span id="manualTaskName"></span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="manualTaskInstructions" name="manualTaskInstructions" rows="4" cols="50" disabled></textarea>
+                    <textarea id="manualTaskInstructions" name="manualTaskInstructions" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelManualTask">Cancel</button>
@@ -1058,7 +1058,7 @@
                     <span id="cncTaskName"></span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="cncTaskGcode" name="cncTaskGcode" rows="4" cols="50" disabled></textarea>
+                    <textarea id="cncTaskGcode" name="cncTaskGcode" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelCncTask">Cancel</button>
@@ -1219,14 +1219,22 @@
                     </div>
                     <div class="modal-pad">Task Description:</div>
                     <div>
-                        <textarea id="newTaskDescription" name="newTaskDescription" rows="4" cols="50" placeholder="Enter Description..."></textarea>
+                        <textarea id="newTaskDescription" name="newTaskDescription" class="full-width-textarea" rows="4" cols="50" placeholder="Enter Description..."></textarea>
                     </div>
                     <div id="gcodeTaskContainer" style="display:none">
                         <div class="modal-pad">Task GCode:</div>
                         <div>
-                            <textarea id="newTaskGcode" name="newTaskGcode" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
+                            <textarea id="newTaskGcode" name="newTaskGcode" class="full-width-textarea" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
+                        </div>
+
+                        <div class="modal-pad">
+                            <label for="newTaskGcodeRepeatable">
+                                <input type="checkbox" id="newTaskGcodeRepeatable" name="newTaskGcodeRepeatable">
+                                Check to make task repeatable
+                            </label>
                         </div>
                     </div>
+                    <hr>
                     <div id="emulationOuterContainer" class="emulate-noselect" style="display:none">
                         <div>
                             <span>Use built in controller functions by emulating button presses

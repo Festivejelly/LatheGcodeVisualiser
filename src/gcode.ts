@@ -188,7 +188,7 @@ export class GCode {
                 }
 
                 let positiveModifier = positive === true ? '' : '-';
-                let command = `${axis}${positiveModifier}${distance} F${feedrate}`;
+                let command = `G0 ${axis}${positiveModifier}${distance} F${feedrate}`;
                 if (this.sender) {
                     let commands = new Array(3);
                     commands[0] = 'G91'; //set to relative positioning

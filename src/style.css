@@ -1375,6 +1375,12 @@ input[type="file"]::file-selector-button:hover {
     flex-direction: column;
 }
 
+.full-width-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
 .center-modal {
     text-align: center;
 }

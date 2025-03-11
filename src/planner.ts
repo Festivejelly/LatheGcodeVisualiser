@@ -15,6 +15,7 @@ const gcodeTaskContainer = document.getElementById('gcodeTaskContainer') as HTML
 const newTaskGcode = document.getElementById('newTaskGcode') as HTMLTextAreaElement;
 const emulationOuterContainer = document.getElementById('emulationOuterContainer') as HTMLDivElement;
 const saveNewTaskButton = document.getElementById('saveNewTaskButton') as HTMLButtonElement;
+const newTaskGcodeRepeatable = document.getElementById('newTaskGcodeRepeatable') as HTMLInputElement;
 const newTaskName = document.getElementById('newTaskName') as HTMLInputElement;
 const taskTextTitle = document.getElementById('taskTextTitle') as HTMLHeadingElement;
 const newTaskDescription = document.getElementById('newTaskDescription') as HTMLInputElement;
@@ -121,6 +122,7 @@ type TaskData = {
   type: string;
   description: string;
   gcode?: string;
+  isRepeatable?: boolean;
   buttonKeys?: string;
   order?: number;
 };
@@ -529,6 +531,17 @@ document.addEventListener('DOMContentLoaded', () => {
       completeCncTaskButton.classList.add('interaction-ready-button');
       cncTaskSenderProgressLabel.innerText = "Task completed";
 
+      //if gcode task is repeatable then enable the execute button. We can read the execute button attribute to see if the task is repeatable
+      if(executeGcodeButton.attributes.getNamedItem('data-repeatable')?.value === 'true') {
+        executeGcodeButton.disabled = false;
+        executeGcodeButton.classList.remove('disabled-button');
+        executeGcodeButton.classList.add('interaction-ready-button');
+        executeGcodeButton.textContent = 'Execute Again?';
+
+      } else  {
+        executeGcodeButton.disabled = true;
+      }
+
     } else if (isRun) {
       executeGcodeButton.disabled = true;
       executeGcodeButton.classList.add('disabled-button');
@@ -911,6 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (newTaskType.value === 'gcode') {
       taskData.gcode = newTaskGcode.value;
+      taskData.isRepeatable = newTaskGcodeRepeatable.checked;
     }
 
     if (newTaskType.value === 'emulation') {
@@ -984,6 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newTaskType.value = taskData.type;
         newTaskDescription.value = taskData.description;
         newTaskGcode.value = taskData.gcode || '';
+        newTaskGcodeRepeatable.checked = taskData.isRepeatable || false;
         collectionToSaveTo.value = currentCollectionName || 'default';
         taskTextTitle.textContent = 'Edit Task';
 
@@ -1052,6 +1067,15 @@ document.addEventListener('DOMContentLoaded', () => {
       executeGcodeButton.disabled = false;
       executeGcodeButton.classList.remove('disabled-button');
       executeGcodeButton.classList.add('interaction-ready-button');
+      executeGcodeButton.textContent = 'Execute Gcode';
+      
+      //add an attribute that indicates if the task is repeatable
+      if (task.isRepeatable) {
+        executeGcodeButton.setAttribute('data-repeatable', 'true');
+      } else {
+        executeGcodeButton.removeAttribute('data-repeatable');
+      }
+
       cncTaskName.textContent = `Task ${task.order}: ${task.name}`;
       cncTaskGcode.value = task.gcode ?? '';
       cncTaskModal.style.display = 'block';
