@@ -8,10 +8,10 @@ export interface ThreadSpec {
     nominalDiameter: number;
     pitch: number;         
     isCoarse: boolean;     
-    getInternalMajorDiameter: () => number;
-    getExternalMajorDiameter: () => number;
+    getInternalMinorDiameter: () => number;
+    getMajorDiameter: () => number;
     getThreadDepth: (type: ThreadingType) => number;
-    getMajorDiameter: (type: ThreadingType) => number;
+    getMinorDiameter: (type: ThreadingType) => number;
 }
 
 export interface ThreadGroup {
@@ -31,10 +31,10 @@ export class Threading {
             nominalDiameter,
             pitch,
             isCoarse,
-            getInternalMajorDiameter(): number {
+            getInternalMinorDiameter(): number {
                 return Number((this.nominalDiameter - (1.082532 * this.pitch)).toFixed(3));
             },
-            getExternalMajorDiameter(): number {
+            getMajorDiameter(): number {
                 return this.nominalDiameter;
             },
             getThreadDepth(type: ThreadingType): number {
@@ -44,10 +44,10 @@ export class Threading {
                     return Number((this.pitch * 0.54127).toFixed(3));
                 }
             },
-            getMajorDiameter(type: ThreadingType): number {
+            getMinorDiameter(type: ThreadingType): number {
                 return type === 'External' ? 
-                    this.getExternalMajorDiameter() : 
-                    this.getInternalMajorDiameter();
+                    this.nominalDiameter - (2 * this.getThreadDepth(type)) : 
+                    this.getInternalMinorDiameter();
             }
         };
     }
@@ -102,22 +102,24 @@ export class Threading {
     //   Q - Start Z position (optional, defaults to current position)
     //   R - Start X position (optional, defaults to current position)
     public static generateThreadingGcode(thread: ThreadSpec, type: ThreadingType, direction: ThreadingDirection, length: number, passes: number): string {
-        const depth = thread.getThreadDepth(type);
-        const majorDiameter = thread.getMajorDiameter(type);
+        const majorDiameter = thread.getMajorDiameter();
+        const minorDiameter = thread.getMinorDiameter(type);
 
 
         let startRadius: number;
         let endRadius: number;
 
         if (type === 'External') {
-            startRadius = majorDiameter / 2;
-            endRadius = startRadius - depth;  // Cut inward
-            endRadius = Math.round(endRadius * 1000) / 1000;
+            startRadius = majorDiameter / 2;            // Start at outside
+            endRadius = minorDiameter / 2;              // Cut to minor diameter
         } else {
-            startRadius = (majorDiameter / 2) - depth;  // Starting at bore
-            startRadius = Math.round(startRadius * 1000) / 1000;
-            endRadius = (majorDiameter / 2);  // Cut outward to major diameter
+            startRadius = (minorDiameter / 2) - 0.1;    // Start slightly inside the minor diameter
+            endRadius = majorDiameter / 2;              // Cut to major diameter
         }
+
+        // Round values for precision
+        startRadius = Math.round(startRadius * 1000) / 1000;
+        endRadius = Math.round(endRadius * 1000) / 1000;
 
         const zEnd = direction === 'Right' ? length : -length;
 
