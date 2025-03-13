@@ -1385,6 +1385,11 @@ input[type="file"]::file-selector-button:hover {
     text-align: center;
 }
 
+.left-modal {
+    text-align: left !important;
+    display: block;
+}
+
 .icon-tooltip {
     position: relative;
     cursor: pointer;

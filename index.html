@@ -568,21 +568,21 @@
             <div class="task-modal-content center-modal">
                 <h2>Facing Modal</h2>
                 <div class="modal-pad-bottom">
-                    <span id="quickTaskFacingDescription">The facing task will perform a facing operation based off of your current position to the centreline</span>
+                    <span id="quickTaskFacingDescription" class="left-modal">The facing task will perform a facing operation based off of your current position to the centreline</span>
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskFacingFeedRate">Facing Feed Rate</label>
-                    <input type="text" id="quickTaskFacingFeedRate" name="quickTaskFacingFeedRate" placeholder="100">
+                    <input type="text" id="quickTaskFacingFeedRate" name="quickTaskFacingFeedRate" placeholder="50" value="50">
                 </div>
                 <div class="modal-pad-bottom">
-                    <button id="quickTaskFacingExecuteButton" class="execute" title="Execute facing command">
+                    <button id="quickTaskFacingExecuteButton" class="execute interaction-ready-button" title="Execute facing command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M8 5v14l11-7z" fill="green" />
+                            <path d="M8 5v14l11-7z" fill="white" />
                         </svg>
                     </button>
                     <button id="quickTaskFacingStopButton" class="execute" title="Stop facing command" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M6 6h12v12H6z" fill="red" />
+                            <path d="M6 6h12v12H6z" fill="white" />
                         </svg>
                     </button>
                 </div>
@@ -696,19 +696,24 @@
 
                 <div class="modal-pad-bottom" id="quickTaskDrillingPeckingDepthContainer" style="display: none;">
                     <label for="quickTaskDrillingPeckingDepth">Pecking Depth (mm)</label>
-                    <input type="text" id="quickTaskDrillingPeckingDepth" name="quickTaskDrillingPeckingDepth" placeholder="2">
+                    <input type="text" id="quickTaskDrillingPeckingDepth" name="quickTaskDrillingPeckingDepth" placeholder="2" value="2">
                 </div>
 
                 <div class="modal-pad-bottom">
-                    <button id="quickTaskDrillingExecuteButton" class="execute" title="Execute drilling command">
+                    <button id="quickTaskDrillingExecuteButton" class="execute disabled-button" title="Execute drilling command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M8 5v14l11-7z" fill="green" />
+                            <path d="M8 5v14l11-7z" fill="white" />
                         </svg>
                     </button>
                     <button id="quickTaskDrillingStopButton" class="execute" title="Stop drilling command" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M6 6h12v12H6z" fill="red" />
+                            <path d="M6 6h12v12H6z" fill="white" />
                         </svg>
+                    </button>
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskDrillingCopyToClipboardButton" class="disabled-button" title="Copy command to clipboard" disabled>
+                        Copy command<br>to clipboard
                     </button>
                 </div>
                 <div class="modal-pad-bottom" style="display: none;">
@@ -931,16 +936,21 @@
                     <input type="text" id="quickTaskThreadingPasses" name="quickTaskThreadingPasses" placeholder="5">
                 </div>
                 <div class="modal-pad-bottom">
-                    <button id="quickTaskThreadingExecuteButton" class="execute" title="Execute threading command">
+                    <button id="quickTaskThreadingExecuteButton" class="execute disabled-button" title="Execute threading command" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M8 5v14l11-7z" fill="green" />
+                            <path d="M8 5v14l11-7z" fill="white" />
                         </svg>
                     </button>
                     <button id="quickTaskThreadingStopButton" class="execute" title="Stop threading command" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M6 6h12v12H6z" fill="red" />
+                            <path d="M6 6h12v12H6z" fill="white" />
                         </svg>
                     </button>
+                    <div class="modal-pad">
+                        <button id="quickTaskThreadingCopyToClipboardButton" class="disabled-button" title="Copy command to clipboard" disabled>
+                            Copy command<br>to clipboard
+                        </button>
+                    </div>
                     <div class="modal-pad-bottom" style="display: none;">
                         <span id="quickTaskThreadingProgressBarLabel">Execution in progress...</span>
                         <progress id="quickTaskThreadingProgressBar" max="1"></progress>
