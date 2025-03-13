@@ -102,6 +102,7 @@ const quickTaskDrillingRetractFeedRate = document.getElementById('quickTaskDrill
 const quickTaskDrillingPeckCheckbox = document.getElementById('quickTaskDrillingPeckCheckbox') as HTMLInputElement;
 const quickTaskDrillingPeckingDepthContainer = document.getElementById('quickTaskDrillingPeckingDepthContainer') as HTMLDivElement;
 const quickTaskDrillingPeckingDepth = document.getElementById('quickTaskDrillingPeckingDepth') as HTMLInputElement;
+const quickTaskDrillingCopyToClipboardButton = document.getElementById('quickTaskDrillingCopyToClipboardButton') as HTMLButtonElement;
 
 //Threading
 const quickTaskThreadingType = document.getElementById('quickTaskThreadingType') as HTMLSelectElement;
@@ -110,6 +111,7 @@ const quickTaskThreadingDirection = document.getElementById('quickTaskThreadingD
 const quickTaskThreadingExternalOrInternal = document.getElementById('quickTaskThreadingExternalOrInternal') as HTMLSelectElement;
 const quickTaskThreadingLength = document.getElementById('quickTaskThreadingLength') as HTMLInputElement;
 const quickTaskThreadingPasses = document.getElementById('quickTaskThreadingPasses') as HTMLInputElement;
+const quickTaskThreadingCopyToClipboardButton = document.getElementById('quickTaskThreadingCopyToClipboardButton') as HTMLButtonElement;
 
 //Boring
 const quickTaskBoringDepth = document.getElementById('quickTaskBoringDepth') as HTMLInputElement;
@@ -274,6 +276,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  const checkDrillingFields = () => {
+    // Enable button only if all required fields have values
+    if (quickTaskDrillingDepth.value && quickTaskDrillingFeedRate.value && quickTaskDrillingRetractFeedRate.value) {
+      activeQuickTaskConfig.executeButton.disabled = false;
+      activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');
+      quickTaskDrillingCopyToClipboardButton.disabled = false;
+      quickTaskDrillingCopyToClipboardButton.classList.remove('disabled-button');
+      quickTaskDrillingCopyToClipboardButton.classList.add('interaction-ready-button');
+    } else {
+      activeQuickTaskConfig.executeButton.disabled = true;
+      activeQuickTaskConfig.executeButton.classList.add('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.remove('interaction-ready-button');
+      quickTaskDrillingCopyToClipboardButton.disabled = true;
+      quickTaskDrillingCopyToClipboardButton.classList.add('disabled-button');
+      quickTaskDrillingCopyToClipboardButton.classList.remove('interaction-ready-button');
+    }
+  }
+
+  quickTaskDrillingDepth.addEventListener('input', checkDrillingFields);
+  quickTaskDrillingFeedRate.addEventListener('input', checkDrillingFields);
+  quickTaskDrillingRetractFeedRate.addEventListener('input', checkDrillingFields);
+
+  quickTaskDrillingCopyToClipboardButton.addEventListener('click', () => drillingTask(true));
+
 
   //<---- Threading event listeners ---->
   quickTaskThreadingSize.addEventListener('change', () => {
@@ -287,6 +314,66 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTaskThreadingPasses.value = defaultPasses.toString();
   });
 
+  const updateThreadSizes = () => {
+
+    const threadingType = quickTaskThreadingType.value;
+    const threadSpecs = Threading.getThreadsForGroup(threadingType);
+    //const externalOrInternal = quickTaskThreadingExternalOrInternal.value;
+
+    // Clear existing options
+    quickTaskThreadingSize.innerHTML = '<option value="">Select Thread Size</option>';
+
+    if (threadSpecs.length > 0) {
+
+      threadSpecs
+        .sort((a, b) => {
+          // First sort by diameter
+          if (a.nominalDiameter !== b.nominalDiameter) {
+            return a.nominalDiameter - b.nominalDiameter;
+          }
+          // Then by pitch (smaller pitch/fine first)
+          return a.pitch - b.pitch;
+        })
+        .forEach(thread => {
+          const option = document.createElement('option');
+          option.value = thread.name;
+          option.textContent = thread.name;
+          quickTaskThreadingSize.appendChild(option);
+        });
+      quickTaskThreadingSize.disabled = false;
+    } else {
+      quickTaskThreadingSize.disabled = true;
+    }
+  }
+
+  const checkThreadingFields = () => {
+    // Enable button only if all required fields have values
+    if (quickTaskThreadingSize.value && quickTaskThreadingLength.value && quickTaskThreadingPasses.value) {
+      activeQuickTaskConfig.executeButton.disabled = false;
+      activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');
+      quickTaskThreadingCopyToClipboardButton.disabled = false;
+      quickTaskThreadingCopyToClipboardButton.classList.remove('disabled-button');
+      quickTaskThreadingCopyToClipboardButton.classList.add('interaction-ready-button');
+    } else {
+      quickTaskThreadingCopyToClipboardButton.disabled = true;
+      quickTaskThreadingCopyToClipboardButton.classList.add('disabled-button');
+      quickTaskThreadingCopyToClipboardButton.classList.remove('interaction-ready-button');
+      activeQuickTaskConfig.executeButton.disabled = true;
+      activeQuickTaskConfig.executeButton.classList.add('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.remove('interaction-ready-button');
+    }
+  }
+
+  quickTaskThreadingSize.addEventListener('change', checkThreadingFields);
+  quickTaskThreadingLength.addEventListener('input', checkThreadingFields);
+  quickTaskThreadingPasses.addEventListener('input', checkThreadingFields);
+  quickTaskThreadingType.addEventListener('change', updateThreadSizes);
+  quickTaskThreadingCopyToClipboardButton.addEventListener('click', () => threadingTask(true));
+
+  //call on page load
+  updateThreadSizes();
+  checkThreadingFields();
 
   //<---- Tool offset event listeners ---->
   const localStorageProbeDiameter = localStorage.getItem('probeDiameter');
@@ -331,44 +418,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (facingFeedRate !== null) {
     quickTaskFacingFeedRate.value = facingFeedRate;
   }
-
-
-  const updateThreadSizes = () => {
-
-    const threadingType = quickTaskThreadingType.value;
-    const threadSpecs = Threading.getThreadsForGroup(threadingType);
-    //const externalOrInternal = quickTaskThreadingExternalOrInternal.value;
-
-    // Clear existing options
-    quickTaskThreadingSize.innerHTML = '<option value="">Select Thread Size</option>';
-
-    if (threadSpecs.length > 0) {
-
-      threadSpecs
-        .sort((a, b) => {
-          // First sort by diameter
-          if (a.nominalDiameter !== b.nominalDiameter) {
-            return a.nominalDiameter - b.nominalDiameter;
-          }
-          // Then by pitch (smaller pitch/fine first)
-          return a.pitch - b.pitch;
-        })
-        .forEach(thread => {
-          const option = document.createElement('option');
-          option.value = thread.name;
-          option.textContent = thread.name;
-          quickTaskThreadingSize.appendChild(option);
-        });
-      quickTaskThreadingSize.disabled = false;
-    } else {
-      quickTaskThreadingSize.disabled = true;
-    }
-  }
-
-  quickTaskThreadingType.addEventListener('change', updateThreadSizes);
-
-  //call on page load
-  updateThreadSizes();
 
   function handleStatusChange() {
     if (!sender) return;
@@ -526,15 +575,19 @@ function facingTask() {
   const startPosition = sender?.getStatus().x;
 
   commands.push('G90'); //set to absolute positioning
-  commands.push(`G1 X0 F${facingFeedRate}`);
+  commands.push(`G0 X0 F${facingFeedRate}`); //slowl feed towards face
+  commands.push('G91'); //set to relative positioning    
+  commands.push(`G1 Z-0.2 F${facingFeedRate}`) //retract from face a bit
+  commands.push('G90'); //set to absolute positioning
   commands.push(`G1 X${startPosition} F${facingFeedRate}`); //retract a bit
   commands.push('G91'); //set to relative positioning    
+  commands.push(`G1 Z0.2 F${facingFeedRate}`) //untract from initial retraction
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
 
-function drillingTask() {
+function drillingTask(copyToClipboard: boolean = false) {
 
   //drilling modal inputs
   const drillingDepth = parseFloat(quickTaskDrillingDepth.value);
@@ -614,6 +667,18 @@ function drillingTask() {
   }
 
   commands.push('G90'); //set to absolute positioning
+
+  //if copy to clipboard is true then copy the gcode to the clipboard
+
+  if (copyToClipboard) {
+    // Copy to clipboard
+    navigator.clipboard.writeText(commands.join('\n')).then(() => {
+      alert('G-code copied to clipboard');
+    }).catch(() => {
+      alert('Failed to copy G-code to clipboard');
+    });
+    return;
+  }
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 
@@ -704,7 +769,7 @@ async function boringTask() {
   sender?.sendCommands(finishingCommands, SenderClient.QUICKTASKS);
 }
 
-function threadingTask() {
+function threadingTask(copyToClipboard: boolean = false) {
   const status = sender?.getStatus();
   if (!status || !status.isConnected) {
     alert('Please connect to the machine first');
@@ -731,6 +796,16 @@ function threadingTask() {
       const threadSpec = Threading.getThreadSpecByName(threadingSize) as ThreadSpec;
 
       const gcode = Threading.generateThreadingGcode(threadSpec, threadingExternalOrInternal, threadingDirection, threadingLength, threadingPasses);
+
+      if(copyToClipboard) {
+        // Copy to clipboard
+        navigator.clipboard.writeText(gcode).then(() => {
+          alert('G-code copied to clipboard');
+        }).catch(() => {
+          alert('Failed to copy G-code to clipboard');
+        });
+        return;
+      }
 
       const commands: string[] = [];
       commands.push('G90'); //set to absolute positioning
