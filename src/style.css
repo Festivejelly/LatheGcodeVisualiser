@@ -135,6 +135,10 @@ input[readonly] {
     background-color: green;
 }
 
+.interaction-ready-warn-button {
+    background-color: red;
+}
+
 .icon-container {
     width: 60px;
     height: 50px;
