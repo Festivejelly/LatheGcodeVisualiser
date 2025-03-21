@@ -468,7 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
     drawableCommands = [];
     const lines = data.split('\n');
     lines.forEach((line, index) => {
-      const movementType: MovementType = line.includes('; cut') ? MovementType.Cut : line.includes('; retract') ? MovementType.Retract : MovementType.Travel;
+      const movementType: MovementType = determineMovementType(line);
 
       const command: GCodeCommand = { isRelative: isRelative, movementType };
       const parts = line.match(/([GXYZF])([0-9.-]+)/g);
@@ -519,6 +519,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
     return commands;
+  }
+
+  function determineMovementType(line: string): MovementType {
+    // Convert to lowercase and get the comment part (if any)
+    const lowerLine = line.toLowerCase();
+    const commentPart = lowerLine.includes(';') ? lowerLine.substring(lowerLine.indexOf(';')).trim() : '';
+    
+    // Check for various cutting-related terms
+    if (commentPart.includes('cut') || 
+        commentPart.includes('rough') || 
+        commentPart.includes('finish') || 
+        commentPart.includes('facing') || 
+        commentPart.includes('turn')) {
+      return MovementType.Cut;
+    }
+    
+    // Check for retract operations
+    if (commentPart.includes('retract') || 
+        commentPart.includes('return') || 
+        commentPart.includes('safe')) {
+      return MovementType.Retract;
+    }
+    
+    // Default to travel movement
+    return MovementType.Travel;
   }
 
   function handleCheckboxChange() {
