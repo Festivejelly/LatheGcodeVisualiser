@@ -94,6 +94,7 @@ const quickTaskProfilingPasses = document.getElementById('quickTaskProfilingPass
 const quickTaskProfilingType = document.getElementById('quickTaskProfilingType') as HTMLSelectElement;
 const quickTaskProfilingFinalDiameterContainer = document.getElementById('quickTaskProfilingFinalDiameterContainer') as HTMLDivElement;
 const quickTaskProfilingDepthContainer = document.getElementById('quickTaskProfilingDepthContainer') as HTMLDivElement;
+const quickTaskProfilingCopyToClipboardButton = document.getElementById('quickTaskProfilingCopyToClipboardButton') as HTMLButtonElement;
 
 //Drilling
 const quickTaskDrillingDepth = document.getElementById('quickTaskDrillingDepth') as HTMLInputElement;
@@ -125,6 +126,7 @@ const quickTaskBoringFinalDiameter = document.getElementById('quickTaskBoringFin
 const quickTaskBoringDepthPerPass = document.getElementById('quickTaskBoringDepthPerPass') as HTMLInputElement;
 const quickTaskBoringFinishingDepth = document.getElementById('quickTaskBoringFinishingDepth') as HTMLInputElement;
 const quickTaskBoringPasses = document.getElementById('quickTaskBoringPasses') as HTMLInputElement;
+const quickTaskBoringCopyToClipboardButton = document.getElementById('quickTaskBoringCopyToClipboardButton') as HTMLButtonElement;
 
 //Tool offsets
 const quickTaskToolOffsetsProbeDiameter = document.getElementById('quickTaskToolOffsetsProbeDiameter') as HTMLInputElement;
@@ -238,6 +240,26 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   //<---- Profiling event listeners ---->
+
+  const checkProfilingFields = () => {
+    // Enable button only if all required fields have values
+    if ((quickTaskProfilingDepth.value || quickTaskBoringFinalDiameter) && quickTaskProfilingFeedRate.value && quickTaskProfilingRetractFeedRate.value && quickTaskProfilingPasses.value && quickTaskProfilingDepthPerPass.value && quickTaskProfilingFinishingDepth.value) {
+      activeQuickTaskConfig.executeButton.disabled = false;
+      activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');
+      quickTaskProfilingCopyToClipboardButton.disabled = false;
+      quickTaskProfilingCopyToClipboardButton.classList.remove('disabled-button');
+      quickTaskProfilingCopyToClipboardButton.classList.add('interaction-ready-button');
+    } else {
+      activeQuickTaskConfig.executeButton.disabled = true;
+      activeQuickTaskConfig.executeButton.classList.add('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.remove('interaction-ready-button');
+      quickTaskProfilingCopyToClipboardButton.disabled = true;
+      quickTaskProfilingCopyToClipboardButton.classList.add('disabled-button');
+      quickTaskProfilingCopyToClipboardButton.classList.remove('interaction-ready-button');
+    }
+  };
+
   quickTaskProfilingType.addEventListener('change', () => {
     if (quickTaskProfilingType.value === 'Absolute') {
       quickTaskProfilingDepthContainer!.style.display = 'none';
@@ -246,13 +268,81 @@ document.addEventListener("DOMContentLoaded", () => {
       quickTaskProfilingDepthContainer!.style.display = 'block';
       quickTaskProfilingFinalDiameterContainer!.style.display = 'none';
     }
+
+    updateProfilingPassesFromDepthPerPass();
+    updateProfilingDepthPerPassFromPasses();
+    checkProfilingFields();
   });
 
-  quickTaskProfilingFinalDiameter.addEventListener('input', () => profilingUpdateDepthOfPasses('Absolute'));
-  quickTaskProfilingDepth.addEventListener('input', () => profilingUpdateDepthOfPasses('Relative'));
-  quickTaskProfilingPasses.addEventListener('input', () => profilingUpdateDepthOfPasses(quickTaskProfilingType.value));
+  quickTaskProfilingFinalDiameter.addEventListener('input', () => {
+    updateProfilingPassesFromDepthPerPass();
+    updateProfilingDepthPerPassFromPasses();
+    checkProfilingFields();
+  });
+  quickTaskProfilingDepth.addEventListener('input', () => {
+    updateProfilingPassesFromDepthPerPass();
+    updateProfilingDepthPerPassFromPasses();
+    checkProfilingFields();
+  });
+  quickTaskProfilingPasses.addEventListener('input', () => {
+    updateProfilingDepthPerPassFromPasses();
+    checkProfilingFields();
+  });
+  quickTaskProfilingDepthPerPass.addEventListener('input', () => {
+    updateProfilingPassesFromDepthPerPass();
+    checkProfilingFields();
+  });
+  quickTaskProfilingFinishingDepth.addEventListener('input', () => {
+    updateProfilingPassesFromDepthPerPass();
+    updateProfilingDepthPerPassFromPasses();
+    checkProfilingFields();
+  });
+
+  quickTaskProfilingCopyToClipboardButton.addEventListener('click', () => profilingTask(true));
 
   //<---- Boring event listeners ---->
+
+  const checkBoringFields = () => {
+    // Get the current boring type
+    const boringType = quickTaskBoringType.value;
+
+    // Common required fields for both types
+    const commonFieldsValid = quickTaskBoringDepth.value &&
+      quickTaskBoringFeedRate.value &&
+      quickTaskBoringRetractFeedRate.value &&
+      quickTaskBoringPasses.value &&
+      quickTaskBoringFinishingDepth.value;
+
+    // Type-specific field validation
+    let typeSpecificFieldValid = false;
+    if (boringType === 'Absolute') {
+      typeSpecificFieldValid = !!quickTaskBoringFinalDiameter.value;
+    } else { // 'Relative'
+      typeSpecificFieldValid = !!quickTaskBoringDepthOfCut.value;
+    }
+
+    // Enable/disable buttons based on validation result
+    if (commonFieldsValid && typeSpecificFieldValid) {
+      activeQuickTaskConfig.executeButton.disabled = false;
+      activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');
+      quickTaskBoringCopyToClipboardButton.disabled = false;
+      quickTaskBoringCopyToClipboardButton.classList.remove('disabled-button');
+      quickTaskBoringCopyToClipboardButton.classList.add('interaction-ready-button');
+    } else {
+      activeQuickTaskConfig.executeButton.disabled = true;
+      activeQuickTaskConfig.executeButton.classList.add('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.remove('interaction-ready-button');
+      quickTaskBoringCopyToClipboardButton.disabled = true;
+      quickTaskBoringCopyToClipboardButton.classList.add('disabled-button');
+      quickTaskBoringCopyToClipboardButton.classList.remove('interaction-ready-button');
+    }
+  }
+
+  quickTaskBoringDepth.addEventListener('input', checkBoringFields);
+  quickTaskBoringFeedRate.addEventListener('input', checkBoringFields);
+  quickTaskBoringRetractFeedRate.addEventListener('input', checkBoringFields);
+
   quickTaskBoringType.addEventListener('change', () => {
     if (quickTaskBoringType.value === 'Absolute') {
       quickTaskBoringFinalDiameterContainer.style.display = 'block';
@@ -261,11 +351,38 @@ document.addEventListener("DOMContentLoaded", () => {
       quickTaskBoringFinalDiameterContainer.style.display = 'none';
       quickTaskBoringDepthOfCutContainer.style.display = 'block';
     }
+    updatePassesFromDepthPerPass();
+    updateDepthPerPassFromPasses();
+    checkBoringFields();
   });
 
-  quickTaskBoringFinalDiameter.addEventListener('input', () => boringUpdateDepthOfPasses('Absolute'));
-  quickTaskBoringDepthOfCut.addEventListener('input', () => boringUpdateDepthOfPasses('Relative'));
-  quickTaskBoringPasses.addEventListener('input', () => boringUpdateDepthOfPasses(quickTaskBoringType.value));
+  quickTaskBoringFinalDiameter.addEventListener('input', () => {
+    updatePassesFromDepthPerPass();
+    updateDepthPerPassFromPasses();
+    checkBoringFields();
+  });
+  quickTaskBoringDepthOfCut.addEventListener('input', () => {
+    updatePassesFromDepthPerPass();
+    updateDepthPerPassFromPasses();
+    checkBoringFields();
+  });
+  quickTaskBoringPasses.addEventListener('input', () => {
+    updateDepthPerPassFromPasses();
+    checkBoringFields();
+  });
+
+  quickTaskBoringDepthPerPass.addEventListener('input', () => {
+    updatePassesFromDepthPerPass();
+    checkBoringFields()
+  });
+
+  quickTaskBoringFinishingDepth.addEventListener('input', () => {
+    updatePassesFromDepthPerPass();
+    updateDepthPerPassFromPasses();
+    checkBoringFields()
+  });
+
+  quickTaskBoringCopyToClipboardButton.addEventListener('click', () => boringTask(true));
 
   //<---- drilling event listeners ---->
   quickTaskDrillingPeckCheckbox.addEventListener('change', () => {
@@ -398,7 +515,7 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTaskProfilingRetractFeedRate.value = profilingRetractFeedrate;
   }
 
-    //<---- Populate default feed values from local storage ---->
+  //<---- Populate default feed values from local storage ---->
   const drillingFeedRate = localStorage.getItem('drillingFeedRate');
   if (drillingFeedRate !== null) {
     quickTaskDrillingFeedRate.value = drillingFeedRate;
@@ -472,94 +589,196 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 //<---- Profiling functions ---->
-function profilingTask() {
+async function profilingTask(copyToClipboard = false) {
+  const currentStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const currentPosX = currentStatus?.x!;
 
-  //profiling modal inputs
-  const profilingLength = parseFloat((document.getElementById('quickTaskProfilingLength') as HTMLInputElement).value);
-  const profilingPasses = parseInt((quickTaskProfilingPasses).value, 10);
-  const feedRate = parseFloat(quickTaskProfilingFeedRate.value);
-  const mainPassDepth = parseFloat(quickTaskProfilingDepthPerPass.value);
-  const finishingPassDepth = parseFloat(quickTaskProfilingFinishingDepth.value);
-  const retractFeedrate = parseFloat(quickTaskProfilingRetractFeedRate.value);
+  // Profiling modal inputs with precise handling
+  const profilingLength = Number(parseFloat((document.getElementById('quickTaskProfilingLength') as HTMLInputElement).value).toFixed(3));
+  const profilingPasses = parseInt(quickTaskProfilingPasses.value, 10);
+  const feedRate = Number(parseFloat(quickTaskProfilingFeedRate.value).toFixed(3));
+  const retractFeedrate = Number(parseFloat(quickTaskProfilingRetractFeedRate.value).toFixed(3));
+  const profilingType = quickTaskProfilingType.value;
 
   localStorage.setItem('profilingRetractFeedrate', retractFeedrate.toString());
   localStorage.setItem('profilingFeedRate', feedRate.toString());
 
   const commands: string[] = [];
+  commands.push('G91'); // Set to relative positioning
 
-  commands.push('G91'); //set to relative positioning
+  // Calculate target position and total depth required with exact precision
+  let targetX = 0;
+  let totalRequired = 0;
 
-  //main passes
-  for (let i = 0; i < profilingPasses - 1; i++) {
-
-    //cutting move x
-    commands.push(`G1 X${mainPassDepth} F${feedRate}`);
-    //cutting move Z
-    commands.push(`G1 Z${profilingLength} F${feedRate}`);
-    //retract move
-    commands.push(`G1 X-0.2 F${retractFeedrate}`);
-    //retract move
-    commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
-    //unretract X
-    commands.push(`G1 X0.2 F${retractFeedrate}`);
+  if (profilingType === 'Absolute') {
+    // For absolute, calculate based on final diameter
+    const profilingFinalDiameter = Number(parseFloat(quickTaskProfilingFinalDiameter.value).toFixed(3));
+    targetX = -profilingFinalDiameter / 2; // X position for the final diameter
+    totalRequired = Math.abs(targetX - currentPosX);
+    totalRequired = Number(totalRequired.toFixed(3));
+  } else {
+    // For relative, use the specified depth
+    totalRequired = Number(parseFloat(quickTaskProfilingDepth.value).toFixed(3));
   }
 
-  //finishing pass
-  commands.push(`G1 X${finishingPassDepth} F${feedRate}`);
-  commands.push(`G1 Z${profilingLength} F${feedRate}`);
-  //retract move
-  commands.push(`G1 X-0.2 F${retractFeedrate}`);
-  commands.push(`G1 Z-${profilingLength} F${retractFeedrate}`);
+  // Get finishing depth - this will be used for the last pass
+  let finishingDepth = Number(parseFloat(quickTaskProfilingFinishingDepth.value).toFixed(3));
+
+  // Ensure finishing depth doesn't exceed total required depth
+  if (finishingDepth > totalRequired) {
+    finishingDepth = totalRequired;
+  }
+
+  // Calculate roughing depth
+  const roughingDepth = Number((totalRequired - finishingDepth).toFixed(3));
+
+  // Calculate depth per roughing pass with high precision
+  let depthPerRoughingPass = 0;
+  if (profilingPasses > 1) {
+    depthPerRoughingPass = roughingDepth / (profilingPasses - 1);
+    depthPerRoughingPass = Number(depthPerRoughingPass.toFixed(3));
+  }
+
+  // Track the total depth cut with high precision
+  let totalCut = 0;
+
+  // Execute roughing passes
+  for (let i = 0; i < profilingPasses - 1; i++) {
+    let thisPassDepth = depthPerRoughingPass;
+
+    // Cutting move X (positive for profiling, outward)
+    commands.push(`G1 X${thisPassDepth} F${feedRate} ; roughing cut ${i + 1}`);
+    // Cutting move Z
+    commands.push(`G1 Z${profilingLength} F${feedRate} ; cut`);
+    // Retract move
+    commands.push(`G1 X-0.2 F${retractFeedrate} ; retract`);
+    // Retract move Z
+    commands.push(`G1 Z-${profilingLength} F${retractFeedrate} ; retract`);
+    // Unretract X
+    commands.push(`G1 X0.2 F${retractFeedrate} ; travel`);
+
+    // Update total cut with high precision
+    totalCut += thisPassDepth;
+    totalCut = Number(totalCut.toFixed(3));
+  }
+
+  // Calculate exact finishing pass depth to achieve target diameter
+  let finalPass = 0;
+  if (profilingType === 'Absolute') {
+    const currentPosition = Number((currentPosX + totalCut).toFixed(3));
+    finalPass = Number(Math.abs(targetX - currentPosition).toFixed(3));
+  } else {
+    finalPass = finishingDepth;
+  }
+
+  // Only do the finishing pass if there's a meaningful amount to cut
+  if (finalPass > 0.001) {
+    // Finishing pass
+    commands.push(`G1 X${finalPass} F${feedRate} ; finishing cut`);
+    commands.push(`G1 Z${profilingLength} F${feedRate} ; cut`);
+    // Retract move
+    commands.push(`G1 X-0.2 F${retractFeedrate} ; retract`);
+    commands.push(`G1 Z-${profilingLength} F${retractFeedrate} ; retract`);
+  }
 
   commands.push('G90'); // Set to absolute positioning
 
+  if (copyToClipboard) {
+    // Copy to clipboard
+    navigator.clipboard.writeText(commands.join('\n')).then(() => {
+      alert('G-code copied to clipboard');
+    }).catch(() => {
+      alert('Failed to copy G-code to clipboard');
+    });
+    return;
+  }
+
+  // Send all commands at once
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
-async function profilingUpdateDepthOfPasses(movementType: string) {
-
+// Calculate passes based on depth per pass for profiling
+async function updateProfilingPassesFromDepthPerPass() {
   const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-
   const startPosX = latestStatus?.x!;
 
+  // Calculate total depth required
   let totalDepth: number;
-  if (movementType === 'Absolute') {
-    totalDepth = Math.abs(startPosX - (-parseFloat(quickTaskProfilingFinalDiameter.value) / 2));
+  if (quickTaskProfilingType.value === 'Absolute') {
+    const finalDiameter = Number(parseFloat(quickTaskProfilingFinalDiameter.value).toFixed(3));
+    const targetX = -finalDiameter / 2;
+    totalDepth = Math.abs(targetX - startPosX);
+    totalDepth = Number(totalDepth.toFixed(3));
   } else {
-    totalDepth = parseFloat(quickTaskProfilingDepth.value);
+    totalDepth = Number(parseFloat(quickTaskProfilingDepth.value).toFixed(3));
   }
 
-  //calculate depth per pass based on total depths and number of passes but account for a finish pass of 0.1mm
-  const passes = parseInt(quickTaskProfilingPasses.value, 10);
-  const finishingPassDepth = 0.1;
-  const depthPerPass = (totalDepth - finishingPassDepth) / (passes - 1);
+  // Get current values with high precision
+  const depthPerPass = Number(parseFloat(quickTaskProfilingDepthPerPass.value).toFixed(3));
+  let finishingDepth = Number(parseFloat(quickTaskProfilingFinishingDepth.value).toFixed(3));
 
-  // Update the depth per pass input with the adjusted value
-  quickTaskProfilingDepthPerPass.value = depthPerPass.toFixed(3);
-  quickTaskProfilingFinishingDepth.value = finishingPassDepth.toFixed(3);
+  // Ensure finishing depth isn't greater than total depth
+  if (finishingDepth > totalDepth) {
+    finishingDepth = totalDepth;
+    quickTaskProfilingFinishingDepth.value = finishingDepth.toFixed(3);
+  }
+
+  // Calculate roughing depth
+  const roughingDepth = Number((totalDepth - finishingDepth).toFixed(3));
+
+  // Calculate required passes (minimum 1)
+  let requiredPasses = 1;  // Default to 1 pass
+
+  if (depthPerPass > 0) {
+    // Calculate how many complete passes we can do
+    requiredPasses = Math.ceil(roughingDepth / depthPerPass) + 1; // +1 for finishing pass
+  }
+
+  // Update the passes input
+  quickTaskProfilingPasses.value = requiredPasses.toString();
 }
 
-async function boringUpdateDepthOfPasses(movementType: string) {
-
+// Calculate depth per pass based on passes for profiling
+async function updateProfilingDepthPerPassFromPasses() {
   const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-
   const startPosX = latestStatus?.x!;
 
+  // Calculate total depth required with high precision
   let totalDepth: number;
-  if (movementType === 'Absolute') {
-    totalDepth = Math.abs(startPosX - (-parseFloat(quickTaskBoringFinalDiameter.value) / 2));
+  if (quickTaskProfilingType.value === 'Absolute') {
+    const finalDiameter = Number(parseFloat(quickTaskProfilingFinalDiameter.value).toFixed(3));
+    const targetX = -finalDiameter / 2;
+    totalDepth = Math.abs(targetX - startPosX);
+    totalDepth = Number(totalDepth.toFixed(3));
   } else {
-    totalDepth = parseFloat(quickTaskBoringDepthOfCut.value);
+    totalDepth = Number(parseFloat(quickTaskProfilingDepth.value).toFixed(3));
   }
 
-  //calculate depth per pass based on total depths and number of passes but account for a finish pass of 0.1mm
-  const passes = parseInt(quickTaskBoringPasses.value, 10);
-  const finishingPassDepth = 0.1;
-  const depthPerPass = (totalDepth - finishingPassDepth) / (passes - 1);
+  // Get current values
+  const passes = parseInt(quickTaskProfilingPasses.value, 10);
+  let finishingDepth = Number(parseFloat(quickTaskProfilingFinishingDepth.value).toFixed(3));
 
-  // Update the depth per pass input with the adjusted value
-  quickTaskBoringDepthPerPass.value = depthPerPass.toFixed(3);
-  quickTaskBoringFinishingDepth.value = finishingPassDepth.toFixed(3);
+  // Ensure finishing depth isn't greater than total depth
+  if (finishingDepth > totalDepth) {
+    finishingDepth = totalDepth;
+    quickTaskProfilingFinishingDepth.value = finishingDepth.toFixed(3);
+  }
+
+  // Calculate roughing depth with high precision
+  const roughingDepth = Number((totalDepth - finishingDepth).toFixed(3));
+
+  // Calculate depth per pass based on number of passes
+  let depthPerPass = 0;
+  if (passes > 1) {
+    depthPerPass = roughingDepth / (passes - 1);
+    depthPerPass = Number(depthPerPass.toFixed(3));
+  } else {
+    // If only one pass, it's just the finishing pass
+    depthPerPass = 0;
+  }
+
+  // Update the depth per pass input
+  quickTaskProfilingDepthPerPass.value = depthPerPass.toFixed(3);
 }
 
 //other quick task functions
@@ -692,15 +911,13 @@ function coneTask() {
   alert('Not Yet Implemented');
 }
 
-async function boringTask() {
+async function boringTask(copyToClipboard: boolean = false) {
+  const currentStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const currentPosX = currentStatus?.x!;
 
-  //boring modal inputs
+  // Boring modal inputs with precise handling
   const boringDepth = Number(parseFloat(quickTaskBoringDepth.value).toFixed(3));
   const boringFeedRate = Number(parseFloat(quickTaskBoringFeedRate.value).toFixed(3));
-  const boringDepthPerPass = Number(parseFloat(quickTaskBoringDepthPerPass.value).toFixed(3));
-  let boringFinishingDepth = Number(parseFloat(quickTaskBoringFinishingDepth.value).toFixed(3));
-  const boringFinalDiameter = Number(parseFloat(quickTaskBoringFinalDiameter.value).toFixed(3));
-  const boringDepthOfCut = Number(parseFloat(quickTaskBoringDepthOfCut.value).toFixed(3));
   const boringType = quickTaskBoringType.value;
   const boringPasses = parseInt(quickTaskBoringPasses.value, 10);
   const retractFeedrate = Number(parseFloat(quickTaskBoringRetractFeedRate.value).toFixed(3));
@@ -709,64 +926,183 @@ async function boringTask() {
   localStorage.setItem('boringFeedRate', boringFeedRate.toString());
 
   const commands: string[] = [];
-  const finishingCommands: string[] = [];
+  commands.push('G91'); // Set to relative positioning
 
-  commands.push('G91'); //set to relative positioning
+  // Calculate target position and total depth required with exact precision
+  let targetX = 0;
+  let totalRequired = 0;
 
-  let totalBoringDepth = 0;
-  let remainingCut = 0;
+  if (boringType === 'Absolute') {
+    // For absolute, calculate based on final diameter with exact precision
+    const boringFinalDiameter = Number(parseFloat(quickTaskBoringFinalDiameter.value).toFixed(3));
+    targetX = -boringFinalDiameter / 2;
+    totalRequired = Math.abs(currentPosX - targetX);
+    totalRequired = Number(totalRequired.toFixed(3));
+  } else {
+    // For relative, use the specified depth of cut
+    totalRequired = Number(parseFloat(quickTaskBoringDepthOfCut.value).toFixed(3));
+  }
 
-  //main passes
+  // Get finishing depth - this will be used for the last pass
+  let finishingDepth = Number(parseFloat(quickTaskBoringFinishingDepth.value).toFixed(3));
+
+  // Ensure finishing depth doesn't exceed total required depth
+  if (finishingDepth > totalRequired) {
+    finishingDepth = totalRequired;
+  }
+
+  // Calculate roughing depth
+  const roughingDepth = Number((totalRequired - finishingDepth).toFixed(3));
+
+  // Calculate depth per roughing pass with high precision
+  let depthPerRoughingPass = 0;
+  if (boringPasses > 1) {
+    depthPerRoughingPass = roughingDepth / (boringPasses - 1);
+    depthPerRoughingPass = Number(depthPerRoughingPass.toFixed(3));
+  }
+
+  // Track the total depth cut with high precision
+  let totalCut = 0;
+
+  // Execute roughing passes
   for (let i = 0; i < boringPasses - 1; i++) {
+    // For the last roughing pass, adjust to ensure we're at the right position for finishing
+    let thisPassDepth = depthPerRoughingPass;
 
-    //cutting move x
-    commands.push(`G1 X-${boringDepthPerPass} F${boringFeedRate}`);
-    //cutting move Z
-    commands.push(`G1 Z${boringDepth} F${boringFeedRate}`);
-    //retract move
-    commands.push(`G1 X0.2 F${retractFeedrate}`);
-    //retract move
-    commands.push(`G1 Z-${boringDepth} F${retractFeedrate}`);
-    //unretract X
-    commands.push(`G1 X-0.2 F${retractFeedrate}`);
+    // Cutting move X
+    commands.push(`G1 X-${thisPassDepth} F${boringFeedRate} ; roughing cut ${i + 1}`);
+    // Cutting move Z
+    commands.push(`G1 Z${boringDepth} F${boringFeedRate} ; cut`);
+    // Retract move
+    commands.push(`G0 X0.2 F${retractFeedrate} ; retract`);
+    // Retract move Z
+    commands.push(`G0 Z-${boringDepth} F${retractFeedrate} ; retract`);
+    // Unretract X
+    commands.push(`G0 X-0.2 F${retractFeedrate} ; travel`);
 
-    // Round to 3 decimal places to avoid floating point precision issues
-    totalBoringDepth = Number((totalBoringDepth + boringDepthPerPass).toFixed(3));
+    // Update total cut with high precision
+    totalCut += thisPassDepth;
+    totalCut = Number(totalCut.toFixed(3));
+  }
+
+  // Calculate exact finishing pass depth to achieve target diameter
+  let finalPass = 0;
+  if (boringType === 'Absolute') {
+    const currentPosition = Number((currentPosX - totalCut).toFixed(3));
+    finalPass = Number(Math.abs(currentPosition - targetX).toFixed(3));
+  } else {
+    finalPass = finishingDepth;
+  }
+
+  // Only do the finishing pass if there's a meaningful amount to cut
+  if (finalPass > 0.001) {
+    // Finishing pass
+    commands.push(`G1 X-${finalPass} F${boringFeedRate} ; finishing cut`);
+    commands.push(`G1 Z${boringDepth} F${boringFeedRate} ; cut`);
+    // Retract move
+    commands.push(`G0 X0.2 F${retractFeedrate} ; retract`);
+    commands.push(`G0 Z-${boringDepth} F${retractFeedrate} ; retract`);
   }
 
   commands.push('G90'); // Set to absolute positioning
 
-  //send the main passes
+  if (copyToClipboard) {
+    // Copy to clipboard
+    navigator.clipboard.writeText(commands.join('\n')).then(() => {
+      alert('G-code copied to clipboard');
+    }).catch(() => {
+      alert('Failed to copy G-code to clipboard');
+    });
+    return;
+  }
+
+  // Send all commands at once
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
-  
-  await waitForOperationToComplete();
+}
 
-  const updatedStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-  const currentPosX = updatedStatus?.x!;
+//<---- Boring functions ---->
+async function updatePassesFromDepthPerPass() {
+  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const startPosX = latestStatus?.x!;
 
-  if (boringType === 'Absolute') {
-    remainingCut = Number((boringFinalDiameter / 2 - Math.abs(currentPosX)).toFixed(3));
+  // Calculate total depth required with high precision
+  let totalDepth: number;
+  if (quickTaskBoringType.value === 'Absolute') {
+    const finalDiameter = Number(parseFloat(quickTaskBoringFinalDiameter.value).toFixed(3));
+    const targetX = -finalDiameter / 2;
+    totalDepth = Math.abs(startPosX - targetX);
+    totalDepth = Number(totalDepth.toFixed(3));
   } else {
-    remainingCut = Number((boringDepthOfCut - totalBoringDepth).toFixed(3));
+    totalDepth = Number(parseFloat(quickTaskBoringDepthOfCut.value).toFixed(3));
   }
 
-  //if remaining cut is more then set finishing pass to the remaining cut
-  if (remainingCut > boringFinishingDepth) {
-    boringFinishingDepth = remainingCut;
+  // Get current values with high precision
+  const depthPerPass = Number(parseFloat(quickTaskBoringDepthPerPass.value).toFixed(3));
+  let finishingDepth = Number(parseFloat(quickTaskBoringFinishingDepth.value).toFixed(3));
+
+  // Ensure finishing depth isn't greater than total depth
+  if (finishingDepth > totalDepth) {
+    finishingDepth = totalDepth;
+    quickTaskBoringFinishingDepth.value = finishingDepth.toFixed(3);
   }
 
-  finishingCommands.push('G91'); //set to relative positioning
+  // Calculate roughing depth
+  const roughingDepth = Number((totalDepth - finishingDepth).toFixed(3));
 
-  //finishing pass
-  finishingCommands.push(`G1 X-${boringFinishingDepth} F${boringFeedRate}`);
-  finishingCommands.push(`G1 Z${boringDepth} F${boringFeedRate}`);
-  //retract move
-  finishingCommands.push(`G1 X0.2 F${retractFeedrate}`);
-  finishingCommands.push(`G1 Z-${boringDepth} F${retractFeedrate}`);
+  // Calculate required passes (minimum 1)
+  let requiredPasses = 1;  // Default to 1 pass
 
-  finishingCommands.push('G90'); // Set to absolute positioning
+  if (depthPerPass > 0) {
+    // Calculate how many complete passes we can do
+    requiredPasses = Math.ceil(roughingDepth / depthPerPass) + 1; // +1 for finishing pass
+  }
 
-  sender?.sendCommands(finishingCommands, SenderClient.QUICKTASKS);
+  // Update the passes input
+  quickTaskBoringPasses.value = requiredPasses.toString();
+}
+
+// Function to handle when passes are manually changed
+async function updateDepthPerPassFromPasses() {
+  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const startPosX = latestStatus?.x!;
+
+  // Calculate total depth required with high precision
+  let totalDepth: number;
+  if (quickTaskBoringType.value === 'Absolute') {
+    const finalDiameter = Number(parseFloat(quickTaskBoringFinalDiameter.value).toFixed(3));
+    const targetX = -finalDiameter / 2;
+    totalDepth = Math.abs(startPosX - targetX);
+    totalDepth = Number(totalDepth.toFixed(3));
+  } else {
+    totalDepth = Number(parseFloat(quickTaskBoringDepthOfCut.value).toFixed(3));
+  }
+
+  // Get current values
+  const passes = parseInt(quickTaskBoringPasses.value, 10);
+  let finishingDepth = Number(parseFloat(quickTaskBoringFinishingDepth.value).toFixed(3));
+
+  // Ensure finishing depth isn't greater than total depth
+  if (finishingDepth > totalDepth) {
+    finishingDepth = totalDepth;
+    quickTaskBoringFinishingDepth.value = finishingDepth.toFixed(3);
+  }
+
+  // Calculate roughing depth with high precision
+  const roughingDepth = Number((totalDepth - finishingDepth).toFixed(3));
+
+  // Calculate depth per pass based on number of passes
+  let depthPerPass = 0;
+  if (passes > 1) {
+    depthPerPass = roughingDepth / (passes - 1);
+    depthPerPass = Number(depthPerPass.toFixed(3));
+  } else {
+    // If only one pass, it's just the finishing pass
+    // Depth per pass is irrelevant, but we'll set a reasonable value
+    depthPerPass = 0;
+  }
+
+  // Update the depth per pass input
+  quickTaskBoringDepthPerPass.value = depthPerPass.toFixed(3);
 }
 
 function threadingTask(copyToClipboard: boolean = false) {
@@ -797,7 +1133,7 @@ function threadingTask(copyToClipboard: boolean = false) {
 
       const gcode = Threading.generateThreadingGcode(threadSpec, threadingExternalOrInternal, threadingDirection, threadingLength, threadingPasses);
 
-      if(copyToClipboard) {
+      if (copyToClipboard) {
         // Copy to clipboard
         navigator.clipboard.writeText(gcode).then(() => {
           alert('G-code copied to clipboard');
@@ -983,23 +1319,4 @@ function calculateToolOffsets(input: ToolOffset): CalculatedOffset {
     x: roundToThree(xOffset),
     z: roundToThree(zOffset)
   };
-}
-
-async function waitForOperationToComplete() {
-  return new Promise<void>((resolve) => {
-    const checkStatus = () => {
-      const status = sender?.getStatus();
-      
-      if (!status || status.condition !== 'run') {
-        // Operation is complete
-        resolve();
-      } else {
-        // Check again in 100ms
-        setTimeout(checkStatus, 100);
-      }
-    };
-    
-    // Start checking
-    checkStatus();
-  });
 }

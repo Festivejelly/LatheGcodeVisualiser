@@ -651,15 +651,20 @@
                 <div class="modal-pad-bottom">
                 </div>
                 <div class="modal-pad-bottom">
-                    <button id="quickTaskProfilingExecuteButton" class="execute" title="Execute profiling command">
+                    <button id="quickTaskProfilingExecuteButton" class="execute disabled-button" title="Execute profiling command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M8 5v14l11-7z" fill="green" />
+                            <path d="M8 5v14l11-7z" fill="white" />
                         </svg>
                     </button>
                     <button id="quickTaskProfilingStopButton" class="execute" title="Stop profiling command" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M6 6h12v12H6z" fill="red" />
+                            <path d="M6 6h12v12H6z" fill="white" />
                         </svg>
+                    </button>
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskProfilingCopyToClipboardButton" class="disabled-button" title="Copy command to clipboard" disabled>
+                        Copy command<br>to clipboard
                     </button>
                 </div>
                 <div class="modal-pad-bottom" style="display: none;">
@@ -767,7 +772,7 @@
                     <input type="number" id="quickTaskBoringPasses" name="quickTaskBoringPasses" placeholder="1" value="4" min="1" step="1">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskBoringDepthPerPass">Depth Per Pass (mm)
+                    <label for="quickTaskBoringDepthPerPass">Max Depth Per Pass (mm)
                         <span class="tooltip-icon"
                             data-tooltip="This value might get adjusted if the depth isnt devisible exactly by this value">?</span>
                     </label>
@@ -781,15 +786,20 @@
                 <div class="modal-pad-bottom">
                 </div>
                 <div class="modal-pad-bottom">
-                    <button id="quickTaskBoringExecuteButton" class="execute" title="Execute Boring command">
+                    <button id="quickTaskBoringExecuteButton" class="execute disabled-button" title="Execute Boring command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M8 5v14l11-7z" fill="green" />
+                            <path d="M8 5v14l11-7z" fill="white" />
                         </svg>
                     </button>
                     <button id="quickTaskBoringStopButton" class="execute" title="Stop boring command" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M6 6h12v12H6z" fill="red" />
+                            <path d="M6 6h12v12H6z" fill="white" />
                         </svg>
+                    </button>
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskBoringCopyToClipboardButton" class="disabled-button" title="Copy command to clipboard" disabled>
+                        Copy command<br>to clipboard
                     </button>
                 </div>
                 <div class="modal-pad-bottom" style="display: none;">
