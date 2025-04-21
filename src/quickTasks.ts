@@ -490,7 +490,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //call on page load
   updateThreadSizes();
-  checkThreadingFields();
 
   //<---- Tool offset event listeners ---->
   const localStorageProbeDiameter = localStorage.getItem('probeDiameter');

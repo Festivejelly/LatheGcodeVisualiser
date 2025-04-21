@@ -21,6 +21,7 @@ export class SenderStatus {
         readonly feedRate: number,
         readonly z: number,
         readonly x: number,
+        readonly y: number,
         readonly feed: number,
         readonly rpm: number,
         readonly version: string,
@@ -52,6 +53,7 @@ export class Sender {
     private feedRate = 0;
     private z = 0;
     private x = 0;
+    private y = 0;
     private feed = 0;
     private rpm = 0;
     private isDisconnecting = false;
@@ -88,6 +90,7 @@ export class Sender {
             this.feedRate,
             this.z,
             this.x,
+            this.y,
             this.feed,
             this.rpm,
             this.version,
@@ -145,8 +148,10 @@ export class Sender {
             this.statusReceived = true;
             if (parts[1].startsWith('WPos:')) {
                 const coords = parts[1].substring('WPos:'.length).split(',');
-                this.z = Number(coords[2]);
                 this.x = Number(coords[0]);
+                this.y = Number(coords[1]);
+                this.z = Number(coords[2]);
+
             }
             if (parts[2].startsWith('FS:')) {
                 const coords = parts[2].substring('FS:'.length).split(',');

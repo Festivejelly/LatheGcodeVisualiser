@@ -11,10 +11,13 @@ Existing features:
 - Quick Tasks for performing common simple operations such as profiling, facing and threading.
 - Planner for building up complex jobs using simple tasks that can be be generic or specific.
 
-Features I want to add:
+Features im working on now:
+
+- Enhancements to gcode simulation to show tool shape and part shape.
+
+Features I want to add in the future:
 
 - Websockets communication with the controller.
-- Gcode generator.
-- Live visual representation of gcode movements.
-- Enhancements to gcode simulation to show tool shape and part shape.
+- Gcode generator based on conversational programming.
+- Live visual representation of gcode movements when being executed.
 - Cloud storage for settings, jobs and tasks. (Google Drive, One Drive)
