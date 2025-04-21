@@ -2,44 +2,21 @@ import { GCode } from './gcode.ts';
 import { exampleGcode } from './example.ts';
 import './planner';
 import './quickTasks';
+import { CanvasDrawer, GCodeCommand } from './canvas-drawer.ts';
 
 export const editor = ace.edit("gcodeEditor");
 export const gcodeResponseEditor = ace.edit("gcodeResponseEditor");
 export const gcodeSenderEditor = ace.edit("gcodeSenderEditor");
 export let gCode: GCode;
 
-enum MovementType {
-  Cut,
-  Travel,
-  Retract
-}
-
-type GCodeCommand = {
-  x?: number;
-  z?: number;
-  isRelative: boolean;
-  absolutePosition?: AbsolutePosition;
-  movementType?: MovementType;
-  lineNumber?: number; // Line number in the original G-code file
-  originalLine?: string; // Original line text from the G-code file
-};
-
-type AbsolutePosition = { z: number, x: number };
-
-let absolutePosition: AbsolutePosition = { z: 0, x: 0 };
-
-const cutLineColour = '#DC143C'
-const travelLineColour = '#6B8E23'
-const retractLineColour = '#FFA500'
-const currentLineColour = '#242424'
-
 document.addEventListener("DOMContentLoaded", () => {
 
   gCode = new GCode();
+  const canvasDrawer = new CanvasDrawer();
+  let drawableCommands: GCodeCommand[] = [];
 
   const standardCanvas = document.getElementById('gcodeCanvas') as HTMLCanvasElement;
   const zoomCanvas = document.getElementById('zoomCanvas') as HTMLCanvasElement;
-  let ctx: CanvasRenderingContext2D | null = null;
   const fileInput = document.getElementById('fileInput') as HTMLInputElement;
   const simulateButton = document.getElementById('simulateButton') as HTMLButtonElement;
   const showCuts = document.getElementById('showCuts') as HTMLInputElement;
@@ -90,7 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Jog buttons
-
   incrementButtons.forEach(function (btn) {
     btn.addEventListener('click', function () {
       // Remove active class from all buttons
@@ -159,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
   zoomCanvas.width = window.visualViewport!.width - 100;
   zoomCanvas.height = window.visualViewport!.height - 150;
 
-  //on widnow resize, resize the zoom canvas
+  //on window resize, resize the zoom canvas
   window.addEventListener('resize', function () {
     zoomCanvas.width = window.visualViewport!.width - 100;
     zoomCanvas.height = window.visualViewport!.height - 150;
@@ -169,7 +145,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     //redraw the zoom canvas
     drawToCanvas(zoomCanvas);
-
   });
 
   //zoom modal event listeners
@@ -213,7 +188,6 @@ document.addEventListener("DOMContentLoaded", () => {
   updateLoadSelect();
 
   // Initialize the Ace Editor
-
   editor.setTheme("ace/theme/github_dark");
   editor.session.setMode("ace/mode/plain_text");
   editor.setShowPrintMargin(false);
@@ -245,24 +219,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   updatePlaceholder();
 
-  let currentX = 0;
-  let currentZ = 0;
-  let previousCanvasX = 0;
-  let previousCanvasZ = 0;
-  let absX = 0;
-  let absZ = 0;
-  let offSetFromScreenEdgeZ = 5;
-  let canvasX = 0;
-  let canvasZ = 0;
-  let drawableCommands: GCodeCommand[] = [];
-
   progressSlider.oninput = () => {
     const progress = Math.floor(parseInt(progressSlider.value));
 
     if (progress < drawableCommands.length) {
       const command = drawableCommands[progress];
-      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, standardCanvas);
-      draw(standardCanvas, drawableCommands, scaleFactor, progress);
+      let scaleFactor = canvasDrawer.calculateDynamicScaleFactor(drawableCommands, standardCanvas);
+      canvasDrawer.draw(standardCanvas, drawableCommands, scaleFactor, progress, showCuts.checked, showNonCuts.checked);
       updateSliderLabel(command);
     }
   };
@@ -272,12 +235,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (progress < drawableCommands.length) {
       const command = drawableCommands[progress];
-      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, zoomCanvas);
-      draw(zoomCanvas, drawableCommands, scaleFactor, progress);
+      let scaleFactor = canvasDrawer.calculateDynamicScaleFactor(drawableCommands, zoomCanvas);
+      canvasDrawer.draw(zoomCanvas, drawableCommands, scaleFactor, progress, showCutsZoom.checked, showNonCutsZoom.checked);
       updateZoomSliderLabel(command);
     }
   };
-
 
   clearButton.addEventListener('click', () => {
     gcodeSenderEditor.setValue('');
@@ -287,7 +249,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const ctx = standardCanvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, standardCanvas.width, standardCanvas.height); // Clear the canvas
-
 
     fileInput.value = '';
 
@@ -313,14 +274,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function drawToCanvas(canvas?: HTMLCanvasElement) {
-    if (!canvas) return; // Ensure cavnas is not null
+    if (!canvas) return; // Ensure canvas is not null
 
     const content = editor.getValue();
     if (content) {
-      parseGCode(content);
+      drawableCommands = canvasDrawer.parseGCode(content);
 
-      let scaleFactor = calculateDynamicScaleFactor(drawableCommands, canvas);
-      draw(canvas, drawableCommands, scaleFactor);
+      let scaleFactor = canvasDrawer.calculateDynamicScaleFactor(drawableCommands, canvas);
+      canvasDrawer.draw(canvas, drawableCommands, scaleFactor, undefined, showCuts.checked, showNonCuts.checked);
 
       sliderContainer.style.display = 'block';
       displayOptionsContainer.style.display = 'block';
@@ -462,97 +423,13 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsText(file);
   }
 
-  function parseGCode(data: string): GCodeCommand[] {
-    const commands: GCodeCommand[] = [];
-    let isRelative = false; // Track the relative positioning mode
-    drawableCommands = [];
-    const lines = data.split('\n');
-    lines.forEach((line, index) => {
-      const movementType: MovementType = determineMovementType(line);
-
-      const command: GCodeCommand = { isRelative: isRelative, movementType };
-      const parts = line.match(/([GXYZF])([0-9.-]+)/g);
-
-      parts?.forEach(part => {
-        const value = parseFloat(part.slice(1));
-        switch (part[0]) {
-          case 'G':
-            if (value === 90) {
-              command.isRelative = false;
-              isRelative = false;
-            }
-            if (value === 91) {
-              command.isRelative = true;
-              isRelative = true;
-            }
-            break;
-          case 'X':
-            command.x = parseFloat(value.toFixed(3));
-            if (!isRelative) {
-              absolutePosition.x = parseFloat(value.toFixed(3));
-            } else {
-              absolutePosition.x = parseFloat((absolutePosition.x + value).toFixed(3));
-            }
-            break;
-          case 'Z':
-            command.z = parseFloat(value.toFixed(3));
-            if (!isRelative) {
-              absolutePosition.z = parseFloat(value.toFixed(3));
-            } else {
-              absolutePosition.z = parseFloat((absolutePosition.z + value).toFixed(3));
-            }
-            break;
-        }
-      });
-
-      const newCommand: GCodeCommand = {
-        ...command,
-        lineNumber: index + 1,
-        originalLine: line,
-        absolutePosition: { ...absolutePosition } // Add the 'absolutePosition' property
-      };
-
-      if ((command.z !== undefined) || (command.x !== undefined)) {
-        drawableCommands.push(newCommand);
-      }
-      commands.push(newCommand);
-
-    });
-    return commands;
-  }
-
-  function determineMovementType(line: string): MovementType {
-    // Convert to lowercase and get the comment part (if any)
-    const lowerLine = line.toLowerCase();
-    const commentPart = lowerLine.includes(';') ? lowerLine.substring(lowerLine.indexOf(';')).trim() : '';
-    
-    // Check for various cutting-related terms
-    if (commentPart.includes('cut') || 
-        commentPart.includes('rough') || 
-        commentPart.includes('finish') || 
-        commentPart.includes('facing') || 
-        commentPart.includes('turn')) {
-      return MovementType.Cut;
-    }
-    
-    // Check for retract operations
-    if (commentPart.includes('retract') || 
-        commentPart.includes('return') || 
-        commentPart.includes('safe')) {
-      return MovementType.Retract;
-    }
-    
-    // Default to travel movement
-    return MovementType.Travel;
-  }
-
   function handleCheckboxChange() {
     //sync checkboxes
     showCutsZoom.checked = showCuts.checked;
     showNonCutsZoom.checked = showNonCuts.checked;
     progressSlider.value = '0';
-    const scaleFactor = calculateDynamicScaleFactor(drawableCommands, standardCanvas);
-    draw(standardCanvas, drawableCommands, scaleFactor, drawableCommands.length); // Redraw the entire set of commands
+    const scaleFactor = canvasDrawer.calculateDynamicScaleFactor(drawableCommands, standardCanvas);
+    canvasDrawer.draw(standardCanvas, drawableCommands, scaleFactor, undefined, showCuts.checked, showNonCuts.checked);
   }
 
   function handleCheckboxChangeZoom() {
@@ -560,173 +437,8 @@ document.addEventListener("DOMContentLoaded", () => {
     showCuts.checked = showCutsZoom.checked;
     showNonCuts.checked = showNonCutsZoom.checked;
     zoomProgressSlider.value = '0';
-    const scaleFactor = calculateDynamicScaleFactor(drawableCommands, zoomCanvas);
-    draw(zoomCanvas, drawableCommands, scaleFactor, drawableCommands.length); // Redraw the entire set of commands
-  }
-
-  function calculateDynamicScaleFactor(commands: GCodeCommand[], canvas: HTMLCanvasElement): number {
-
-    let maxZ = 0;
-    let minX = 0;
-
-    let initialCommand = commands.find(command => !command.isRelative);
-    let cumulativeXRelative = initialCommand && initialCommand.x ? initialCommand.x : 0;
-    let cumulativeZRelative = initialCommand && initialCommand.z ? initialCommand.z : 0;
-
-    const screenEdgeMargin = 5;
-
-    commands.forEach(command => {
-      if (command.x !== undefined) {
-        if (command.isRelative) {
-          // For relative moves, add to the current position
-          cumulativeXRelative += command.x;
-          if (cumulativeXRelative < minX) {
-            minX = cumulativeXRelative;
-          }
-        } else {
-          // For absolute moves, update minX directly
-          if (command.x < minX) {
-            minX = command.x;
-          }
-        }
-      }
-      if (command.z !== undefined) {
-        if (command.isRelative) {
-          // For relative moves, add to the current position
-          cumulativeZRelative += command.z;
-          if (cumulativeZRelative > maxZ) {
-            maxZ = cumulativeZRelative;
-          }
-        } else {
-          // For absolute moves, update maxZ directly
-          if (command.z > maxZ) {
-            maxZ = command.z;
-          }
-        }
-      }
-    });
-    
-    // Object size in mm
-    const objectSizeX = Math.abs(minX);
-    const objectSizeZ = Math.abs(maxZ);
-    
-    // Calculate available screen size, taking into account the margin
-    const availableScreenSizeX = (canvas.height / 2) - screenEdgeMargin;
-    const availableScreenSizeZ = canvas.width - screenEdgeMargin - offSetFromScreenEdgeZ;
-    
-    // Adjust scale for larger objects to fit within canvas
-    const scaleX = availableScreenSizeX / objectSizeX;
-    const scaleZ = availableScreenSizeZ / objectSizeZ;
-    
-    // Choose the smaller scale factor to ensure the object fits within the canvas
-    let scale = Math.min(scaleX, scaleZ);
-    
-    return scale;
-  }
-
-  function draw(canvas: HTMLCanvasElement, drawableCommands: GCodeCommand[], scalingFactor: number, progress?: number) {
-    ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    currentX = 0;
-    currentZ = 0;
-    absX = 0;
-    absZ = 0;
-    previousCanvasX = 0;
-    previousCanvasZ = 0;
-
-    // These values will always be the ABS Zero from the start of the program
-    previousCanvasX = (canvas.height / 2);
-    previousCanvasZ = canvas.width - offSetFromScreenEdgeZ;
-
-    const maxCount = progress !== undefined ? Math.min(progress + 1, drawableCommands.length) : drawableCommands.length;
-
-    for (let i = 0; i < maxCount; i++) {
-      drawCommand(canvas, drawableCommands[i], scalingFactor, i === progress);
-    }
-  }
-
-  function drawCommand(canvas: HTMLCanvasElement, drawableCommand: GCodeCommand, scaleFactor: number, isCurrentLine: boolean) {
-    ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let drawCuts = showCuts.checked || showCutsZoom.checked;
-    let drawNonCuts = showNonCuts.checked || showNonCutsZoom.checked;
-
-    ctx.lineWidth = 2;
-    if (drawableCommand.isRelative) {
-      currentX += drawableCommand.x ?? 0;
-      currentZ += drawableCommand.z ?? 0;
-    }
-    else {
-      currentX = drawableCommand.x ?? absX;
-      currentZ = drawableCommand.z ?? absZ;
-      absX = currentX;
-      absZ = currentZ;
-    }
-
-    canvasX = (canvas.height / 2) - (currentX * scaleFactor);
-    canvasZ = canvas.width - (currentZ * scaleFactor) - offSetFromScreenEdgeZ;
-
-    let lineColor = "";
-
-    if ((drawableCommand.movementType == MovementType.Cut && drawCuts) || (drawableCommand.movementType == MovementType.Travel && drawNonCuts) || drawableCommand.movementType == MovementType.Retract && drawNonCuts) {
-      ctx.beginPath();
-      lineColor = drawableCommand.movementType == MovementType.Cut ? cutLineColour : drawableCommand.movementType == MovementType.Travel ? travelLineColour : retractLineColour;
-      ctx.moveTo(previousCanvasZ, previousCanvasX);
-      ctx.lineTo(canvasZ, canvasX);
-
-
-      if (isCurrentLine) {
-        ctx.strokeStyle = lineColor;
-        ctx.setLineDash([5, 5]); // set the line to be dashed for the current line
-        ctx.lineDashOffset = 0;
-
-        ctx.stroke();
-
-        // draw a dashed line with the color of the gaps
-        ctx.strokeStyle = currentLineColour;
-        ctx.setLineDash([5, 5]); // set the line to be dashed
-        ctx.lineDashOffset = -5; // start the dash pattern 5 pixels into the gaps of the first line
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = lineColor;
-        ctx.setLineDash([]); // reset the line to be solid for other lines
-        ctx.stroke();
-      }
-
-      // draw markers for the start and end points of the current line
-      if (isCurrentLine) {
-        // calculate the angle of the line
-        let dx = canvasZ - previousCanvasZ;
-        let dy = canvasX - previousCanvasX;
-        let angle = Math.atan2(dy, dx);
-
-        // draw a green triangle for the start point, rotated to the direction of travel
-        ctx.save(); // save the current state of the context
-        ctx.translate(previousCanvasZ, previousCanvasX); // move the origin to the start point
-        ctx.rotate(angle + Math.PI / 2); // rotate the context to the angle of the line
-        ctx.beginPath();
-        ctx.moveTo(0, -5); // top vertex of the triangle
-        ctx.lineTo(-5, 5); // bottom left vertex of the triangle
-        ctx.lineTo(5, 5); // bottom right vertex of the triangle
-        ctx.closePath(); // close the path to create a complete triangle
-        ctx.fillStyle = 'green';
-        ctx.fill();
-        ctx.restore(); // restore the context to its original state
-
-        // draw a red circle for the end point
-        ctx.beginPath();
-        ctx.rect(canvasZ - 3, canvasX - 3, 6, 6); // square with side length of 6
-        ctx.fillStyle = 'red';
-        ctx.fill();
-      }
-    }
-
-    previousCanvasX = canvasX;
-    previousCanvasZ = canvasZ;
+    const scaleFactor = canvasDrawer.calculateDynamicScaleFactor(drawableCommands, zoomCanvas);
+    canvasDrawer.draw(zoomCanvas, drawableCommands, scaleFactor, undefined, showCutsZoom.checked, showNonCutsZoom.checked);
   }
 
   function loadExample() {

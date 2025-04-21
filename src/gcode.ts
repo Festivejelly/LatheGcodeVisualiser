@@ -7,6 +7,8 @@ const gcodeCommands = [
     { command: '#', description: 'Display tool offsets' },
     { command: '!', description: 'Stop running Gcode' },
     { command: '~', description: 'Continue running Gcode' },
+    { command: 'M17 Y', description: 'Enable Y axis' },
+    { command: 'M18 Y', description: 'Disable Y axis' },
     { command: 'G90', description: 'Set to absolute positioning' },
     { command: 'G91', description: 'Set to relative positioning' }
 ];
@@ -108,14 +110,17 @@ export class GCode {
 
         if (fastFeedrate) {
             this.fastFeedrateInput.value = fastFeedrate;
+            localStorage.setItem('fastFeedrate', fastFeedrate);
         }
 
         if (slowFeedrate) {
             this.slowFeedrateInput.value = slowFeedrate;
+            localStorage.setItem('slowFeedrate', slowFeedrate);
         }
 
         if (moveDistance) {
             this.moveDistanceInput.value = moveDistance;
+            localStorage.setItem('moveDistance', moveDistance);
         }
 
         //if user changes feedrate save to local storage
@@ -183,6 +188,26 @@ export class GCode {
                 } else if (btn.id == 'slowRight') {
                     feedrate = this.slowFeedrateInput.value;
                     axis = 'Z';
+                    distance = this.moveDistanceInput.value;
+                    positive = false;
+                } else if (btn.id == 'fastUp') {
+                    feedrate = this.fastFeedrateInput.value;
+                    axis = 'Y';
+                    distance = this.moveDistanceInput.value;
+                    positive = true;
+                } else if (btn.id == 'slowUp') {
+                    feedrate = this.slowFeedrateInput.value;
+                    axis = 'Y';
+                    distance = this.moveDistanceInput.value;
+                    positive = true;
+                } else if (btn.id == 'fastDown') {
+                    feedrate = this.fastFeedrateInput.value;
+                    axis = 'Y';
+                    distance = this.moveDistanceInput.value;
+                    positive = false;
+                } else if (btn.id == 'slowDown') {
+                    feedrate = this.slowFeedrateInput.value;
+                    axis = 'Y';
                     distance = this.moveDistanceInput.value;
                     positive = false;
                 }
@@ -261,7 +286,6 @@ export class GCode {
                 alert("Please connect to the controller first.");
                 return;
             }
-            
             
             const tbody = document.getElementById('toolOffsetTableBody');
             if (!tbody) return;
