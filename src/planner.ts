@@ -55,12 +55,16 @@ const saveJobNameInput = document.getElementById('saveJobNameInput') as HTMLInpu
 const saveJobNameSelect = document.getElementById('saveJobNameSelect') as HTMLSelectElement;
 const newJobNameContainer = document.getElementById('newJobNameContainer') as HTMLDivElement;
 
+const saveProjectNameSelect = document.getElementById('saveProjectNameSelect') as HTMLSelectElement;
+const saveProjectNameInput = document.getElementById('saveProjectNameInput') as HTMLInputElement;
+const newProjectNameContainer = document.getElementById('newProjectNameContainer') as HTMLDivElement;
 const saveJobGroupNameInput = document.getElementById('saveJobGroupNameInput') as HTMLInputElement;
 const saveJobGroupNameSelect = document.getElementById('saveJobGroupNameSelect') as HTMLSelectElement;
 const newJobGroupNameContainer = document.getElementById('newJobGroupNameContainer') as HTMLDivElement;
 
 const saveJobSaveButton = document.getElementById('saveJobSaveButton') as HTMLButtonElement;
 const jobLoadSelect = document.getElementById('jobLoadSelect') as HTMLSelectElement;
+const projectLoadSelect = document.getElementById('projectLoadSelect') as HTMLSelectElement;
 const groupLoadSelect = document.getElementById('groupLoadSelect') as HTMLSelectElement;
 const loadJobButton = document.getElementById('loadJobButton') as HTMLButtonElement;
 const deleteJobButton = document.getElementById('deleteJobButton') as HTMLButtonElement;
@@ -69,6 +73,7 @@ const exportJobButton = document.getElementById('exportJobButton') as HTMLButton
 const exportJobModal = document.getElementById('exportJobModal') as HTMLDivElement;
 const exportJobModalCloseButton = document.getElementById('exportJobModalClose') as HTMLButtonElement;
 const exportJobSaveButton = document.getElementById('exportJobSaveButton') as HTMLButtonElement;
+const exportJobProjectNameSelect = document.getElementById('exportJobProjectNameSelect') as HTMLSelectElement;
 const exportJobGroupNameSelect = document.getElementById('exportJobGroupNameSelect') as HTMLSelectElement;
 const exportJobNameSelect = document.getElementById('exportJobNameSelect') as HTMLSelectElement;
 
@@ -112,6 +117,7 @@ const emulationTaskModal = document.getElementById('emulationTaskModal') as HTML
 //create type to represent job which is an array of tasks: {"name": "","tasks": [{"id": "","collectionName": ""}]}
 type Job = {
   name: string;
+  projectName: string;
   groupName: string;
   tasks: { id: string, collectionName: string }[];
 };
@@ -132,6 +138,15 @@ type TaskCollection = {
   tasks: TaskData[];
 };
 
+// Add this type definition for Project structure
+type Project = {
+  name: string;
+  groups: {
+    name: string;
+    jobs: Job[];
+  }[];
+};
+
 document.addEventListener('DOMContentLoaded', () => {
 
 
@@ -148,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     rebuildTaskElements();
+    updateProjectLoadSelect();
     updateGroupLoadSelect();
     updateJobLoadSelect();
 
@@ -185,6 +201,14 @@ document.addEventListener('DOMContentLoaded', () => {
       newJobGroupNameContainer.style.display = 'block';
     } else {
       newJobGroupNameContainer.style.display = 'none';
+    }
+  });
+
+  saveProjectNameSelect.addEventListener('change', () => {
+    if (saveProjectNameSelect.value === 'new') {
+      saveProjectNameInput.style.display = 'block';
+    } else {
+      saveProjectNameInput.style.display = 'none';
     }
   });
 
@@ -369,68 +393,77 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateGroupLoadSelect() {
     groupLoadSelect.innerHTML = '';
 
-    const groups = Object.keys(localStorage).filter(key => key.includes('savedGroup_')).sort();
-    groups.forEach(group => {
-      const groupName = group.replace('savedGroup_', '');
+    if (!projectLoadSelect || !projectLoadSelect.value) {
+      return;
+    }
+
+    const projectData = localStorage.getItem(`savedProject_${projectLoadSelect.value}`);
+    if (!projectData) return;
+
+    const project = JSON.parse(projectData) as Project;
+
+    project.groups.forEach(group => {
       const option = document.createElement('option');
-      option.value = groupName;
-      option.textContent = groupName;
+      option.value = group.name;
+      option.textContent = group.name;
       groupLoadSelect.appendChild(option);
     });
 
-    //set the selected group to the last selected group
+    // Set to last selected group if available
     const selectedGroup = localStorage.getItem('selectedGroup');
-
     if (selectedGroup) {
-      groupLoadSelect.value = selectedGroup;
+      const groupExists = project.groups.some(g => g.name === selectedGroup);
+      if (groupExists) {
+        groupLoadSelect.value = selectedGroup;
+      }
     }
   }
 
   function getSelectedJobFromSelectedGroup() {
+
+    const selectedProject = projectLoadSelect.value;
     const selectedGroup = groupLoadSelect.value;
     const selectedJob = jobLoadSelect.value;
 
-    const groupJobs = localStorage.getItem(`savedGroup_${selectedGroup}`);
+    if (!selectedProject || !selectedGroup || !selectedJob) return null;
 
-    if (groupJobs) {
-      const groupJobsData = JSON.parse(groupJobs) as { jobs: Job[] };
-      const job = groupJobsData.jobs.find((job) => job.name === selectedJob);
+    const projectData = localStorage.getItem(`savedProject_${selectedProject}`);
+    if (!projectData) return null;
 
-      if (job) {
-        // Ensure job has a groupName
-        if (!job.groupName) {
-          job.groupName = selectedGroup;
-        }
-        return job;
-      } else {
-        // Handle case where job is not found
-        console.warn(`Job with name ${selectedJob} not found.`);
-        return null;
-      }
+    const project = JSON.parse(projectData) as Project;
+    const group = project.groups.find(g => g.name === selectedGroup);
+    if (!group) return null;
+
+    const job = group.jobs.find(j => j.name === selectedJob);
+    if (!job) return null;
+
+    // Ensure job has a groupName
+    if (!job.groupName) {
+      job.groupName = selectedGroup;
     }
-    return null;
+
+    return job;
   }
 
   function updateJobLoadSelect() {
     jobLoadSelect.innerHTML = '';
 
+    if (!projectLoadSelect || !projectLoadSelect.value) return;
+
+    const projectData = localStorage.getItem(`savedProject_${projectLoadSelect.value}`);
+    if (!projectData) return;
+
+    const project = JSON.parse(projectData) as Project;
     const selectedGroup = groupLoadSelect.value;
 
-    //get all jobs from group savedGroup_groupName
-    const groupJobs = localStorage.getItem(`savedGroup_${selectedGroup}`);
+    const group = project.groups.find(g => g.name === selectedGroup);
+    if (!group) return;
 
-    //read the jobs so that we can iterate through them
-    let jobNames = [];
-    if (groupJobs) {
-      const groupJobsData = JSON.parse(groupJobs);
-      jobNames = groupJobsData.jobs.map((job: { name: string; }) => job.name);
-    }
-
-    jobNames.forEach((jobName: string) => {
-      const jobNameOption = document.createElement('option');
-      jobNameOption.value = jobName;
-      jobNameOption.textContent = jobName;
-      jobLoadSelect.appendChild(jobNameOption);
+    group.jobs.forEach(job => {
+      const option = document.createElement('option');
+      option.value = job.name;
+      option.textContent = job.name;
+      jobLoadSelect.appendChild(option);
     });
   }
 
@@ -532,13 +565,13 @@ document.addEventListener('DOMContentLoaded', () => {
       cncTaskSenderProgressLabel.innerText = "Task completed";
 
       //if gcode task is repeatable then enable the execute button. We can read the execute button attribute to see if the task is repeatable
-      if(executeGcodeButton.attributes.getNamedItem('data-repeatable')?.value === 'true') {
+      if (executeGcodeButton.attributes.getNamedItem('data-repeatable')?.value === 'true') {
         executeGcodeButton.disabled = false;
         executeGcodeButton.classList.remove('disabled-button');
         executeGcodeButton.classList.add('interaction-ready-button');
         executeGcodeButton.textContent = 'Execute Again?';
 
-      } else  {
+      } else {
         executeGcodeButton.disabled = true;
       }
 
@@ -597,9 +630,9 @@ document.addEventListener('DOMContentLoaded', () => {
     saveJob('currentJob');
   });
 
-  function saveJob(name: string, group: string = '') {
+  function saveJob(name: string, group: string = '', project: string = '') {
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
-    const jobData: Job = { name: '', groupName: '', tasks: [] };
+    const jobData: Job = { name: '', projectName: '', groupName: '', tasks: [] };
     tasks.forEach(task => {
       const taskId = task.getAttribute('data-task-id');
       const collectionName = task.getAttribute('data-collection-name');
@@ -613,20 +646,38 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem(name, JSON.stringify(jobData));
     }
     else {
-      if (group) {
-        //first check if group exists, if not create it
-        let groupData = localStorage.getItem(`savedGroup_${group}`);
-        if (!groupData) {
-          localStorage.setItem(`savedGroup_${group}`, JSON.stringify({ jobs: [] }));
-          groupData = localStorage.getItem(`savedGroup_${group}`);
+      if (project && group) {
+        // Check if project exists, if not create it
+        let projectData = localStorage.getItem(`savedProject_${project}`);
+        let projectObj: Project;
+
+        if (!projectData) {
+          projectObj = { name: project, groups: [] };
+        } else {
+          projectObj = JSON.parse(projectData) as Project;
         }
-        if (groupData) {
-          //parse the group data
-          let groupDataParsed = groupData ? JSON.parse(groupData) : null;
-          groupDataParsed.jobs.push({ name: name, tasks: jobData.tasks });
-          //save the group data
-          localStorage.setItem(`savedGroup_${group}`, JSON.stringify(groupDataParsed));
+
+        // Find or create the group
+        let groupObj = projectObj.groups.find(g => g.name === group);
+
+        if (!groupObj) {
+          groupObj = { name: group, jobs: [] };
+          projectObj.groups.push(groupObj);
         }
+
+        // Check if job already exists
+        const existingJobIndex = groupObj.jobs.findIndex(job => job.name === name);
+
+        if (existingJobIndex !== -1) {
+          // Replace existing job
+          groupObj.jobs[existingJobIndex] = { name: name, projectName: project, groupName: group, tasks: jobData.tasks };
+        } else {
+          // Add new job
+          groupObj.jobs.push({ name: name,  projectName: project, groupName: group, tasks: jobData.tasks });
+        }
+
+        // Save the updated project
+        localStorage.setItem(`savedProject_${project}`, JSON.stringify(projectObj));
       }
     }
   }
@@ -1068,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
       executeGcodeButton.classList.remove('disabled-button');
       executeGcodeButton.classList.add('interaction-ready-button');
       executeGcodeButton.textContent = 'Execute Gcode';
-      
+
       //add an attribute that indicates if the task is repeatable
       if (task.isRepeatable) {
         executeGcodeButton.setAttribute('data-repeatable', 'true');
@@ -1169,50 +1220,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   saveJobButton.onclick = function () {
     saveJobModal.style.display = 'block';
-    //set the selected job to the loaded job
 
     //clear html of the select elements
+    saveProjectNameSelect.innerHTML = '';
     saveJobGroupNameSelect.innerHTML = '';
     saveJobNameSelect.innerHTML = '';
 
     //clear text inputs
+    saveProjectNameInput.value = '';
     saveJobGroupNameInput.value = '';
     saveJobNameInput.value = '';
 
+    //get all the projects
+    const projects = Object.keys(localStorage).filter(key => key.startsWith('savedProject_')).sort();
+    //if there are projects then fill the project name select with the projects
+    if (projects.length > 0) {
+      projects.forEach(project => {
+        const projectName = project.replace('savedProject_', '');
+        const option = document.createElement('option');
+        option.value = projectName;
+        option.textContent = projectName;
+        saveProjectNameSelect.appendChild(option);
+      });
 
-      //get all groups
-      const groups = Object.keys(localStorage).filter(key => key.startsWith('savedGroup_')).sort();
-
-      //if there are groups then fill the group name select with the groups
-      if (groups.length > 0) {
-        groups.forEach(group => {
-          const groupName = group.replace('savedGroup_', '');
-          const option = document.createElement('option');
-          option.value = groupName;
-          option.textContent = groupName;
-          saveJobGroupNameSelect.appendChild(option);
-        });
-
-        //fill the job name select with the jobs from the first group
-        const firstGroup = groups[0];
-        const groupData = localStorage.getItem(firstGroup);
-        if (groupData) {
-          const group = JSON.parse(groupData);
-          group.jobs.forEach((job: { name: string; }) => {
-            const option = document.createElement('option');
-            option.value = job.name;
-            option.textContent = job.name;
-            saveJobNameSelect.appendChild(option);
-          });
-        }
-      } else {
-        //if there are no groups then show the new group and new job name inputs
-        newJobGroupNameContainer.style.display = 'block';
-        newJobNameContainer.style.display = 'block';
+      // Set up handlers for existing projects
+      if (saveProjectNameSelect.selectedIndex >= 0) {
+        const selectedProject = saveProjectNameSelect.value;
+        updateGroupSelectForProject(selectedProject);
       }
-    
+    } else {
+      //if there are no projects then show the new project name input
+      newProjectNameContainer.style.display = 'block';
+      newJobGroupNameContainer.style.display = 'block';
+      newJobNameContainer.style.display = 'block';
+    }
 
-    //at the end of the group name and job name lists add a new option
+    //add new options to the end
+    const newProjectOption = document.createElement('option');
+    newProjectOption.value = 'new';
+    newProjectOption.textContent = '--new project--';
+    saveProjectNameSelect.appendChild(newProjectOption);
+
     const newGroupNameOption = document.createElement('option');
     newGroupNameOption.value = 'new';
     newGroupNameOption.textContent = '--new group--';
@@ -1222,19 +1270,129 @@ document.addEventListener('DOMContentLoaded', () => {
     newJobNameOption.value = 'new';
     newJobNameOption.textContent = '--new job--';
     saveJobNameSelect.appendChild(newJobNameOption);
+  };
 
+  // Add function to update groups dropdown when project changes
+  function updateGroupSelectForProject(projectName: string) {
+    saveJobGroupNameSelect.innerHTML = '';
+    saveJobNameSelect.innerHTML = '';
+
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    if (projectData) {
+      const project = JSON.parse(projectData) as Project;
+
+      // Add groups to selection
+      project.groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.name;
+        option.textContent = group.name;
+        saveJobGroupNameSelect.appendChild(option);
+      });
+
+      // Add jobs from the first group if it exists
+      if (project.groups.length > 0) {
+        project.groups[0].jobs.forEach(job => {
+          const option = document.createElement('option');
+          option.value = job.name;
+          option.textContent = job.name;
+          saveJobNameSelect.appendChild(option);
+        });
+      }
+    }
   }
 
-  newJobButton.onclick = function () {
-    localStorage.setItem('loadedJob', '');
-    localStorage.setItem('currentJob', '');
-    tasksToExecute.innerHTML = '';
+  // Add project selection change handler
+  saveProjectNameSelect.addEventListener('change', () => {
+    if (saveProjectNameSelect.value === 'new') {
+      newProjectNameContainer.style.display = 'block';
+      newJobGroupNameContainer.style.display = 'block';
+      newJobNameContainer.style.display = 'block';
+
+      // Clear group and job selects
+      saveJobGroupNameSelect.innerHTML = '';
+      saveJobNameSelect.innerHTML = '';
+      saveJobGroupNameInput.value = '';
+      saveJobNameInput.value = '';
+
+    } else {
+      newProjectNameContainer.style.display = 'none';
+      newJobGroupNameContainer.style.display = 'none';
+      newJobNameContainer.style.display = 'none';
+
+      // update groups for selected project
+      updateGroupSelectForProject(saveProjectNameSelect.value);
+
+      // update the jobs for the first group
+      updateJobSelectForGroup(saveProjectNameSelect.value, saveJobGroupNameSelect.value);
+
+    }
+
+    // Add new group and job options
+    const newGroupOption = document.createElement('option');
+    newGroupOption.value = 'new';
+    newGroupOption.textContent = '--new group--';
+    saveJobGroupNameSelect.appendChild(newGroupOption);
+
+    const newJobOption = document.createElement('option');
+    newJobOption.value = 'new';
+    newJobOption.textContent = '--new job--';
+    saveJobNameSelect.appendChild(newJobOption);
+  });
+
+  // Add handler for group selection change
+  saveJobGroupNameSelect.addEventListener('change', () => {
+    if (saveJobGroupNameSelect.value === 'new') {
+      newJobGroupNameContainer.style.display = 'block';
+      // When selecting new group, clear job list and add only new job option
+      saveJobNameSelect.innerHTML = '';
+      newJobNameContainer.style.display = 'block';
+      const newJobOption = document.createElement('option');
+      newJobOption.value = 'new';
+      newJobOption.textContent = '--new job--';
+      saveJobNameSelect.appendChild(newJobOption);
+    } else {
+      newJobGroupNameContainer.style.display = 'none';
+
+      // Update jobs for selected group
+      const projectName = saveProjectNameSelect.value;
+      const groupName = saveJobGroupNameSelect.value;
+
+      if (projectName !== 'new') {
+        updateJobSelectForGroup(projectName, groupName);
+      }
+    }
+  });
+
+  // Add function to update jobs dropdown when group changes
+  function updateJobSelectForGroup(projectName: string, groupName: string) {
+    saveJobNameSelect.innerHTML = '';
+
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    if (projectData) {
+      const project = JSON.parse(projectData) as Project;
+      const group = project.groups.find(g => g.name === groupName);
+
+      if (group) {
+        group.jobs.forEach(job => {
+          const option = document.createElement('option');
+          option.value = job.name;
+          option.textContent = job.name;
+          saveJobNameSelect.appendChild(option);
+        });
+      }
+    }
   }
 
+  // Update save job button handler
   saveJobSaveButton.onclick = function () {
-
+    let projectName = saveProjectNameSelect.value === 'new' ? saveProjectNameInput.value : saveProjectNameSelect.value;
     let groupName = saveJobGroupNameSelect.value === 'new' ? saveJobGroupNameInput.value : saveJobGroupNameSelect.value;
     let jobName = saveJobNameSelect.value === 'new' ? saveJobNameInput.value : saveJobNameSelect.value;
+
+    if (projectName === '' || projectName === null) {
+      alert('Please enter a name for the project');
+      return;
+    }
 
     if (groupName === '' || groupName === null) {
       alert('Please enter a name for the group');
@@ -1246,42 +1404,63 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const jobGroupData = localStorage.getItem(`savedGroup_${groupName}`);
-    // search through json array to see if job name already exists
-    if (jobGroupData) {
-      const jobGroup = JSON.parse(jobGroupData);
-      const jobExists = jobGroup.jobs.find((job: { name: string; }) => job.name === jobName);
-      if (jobExists) {
-        const confirmOverwrite = confirm('A job with this name in this group already exists. Do you want to overwrite it?');
-        if (!confirmOverwrite) {
-          return;
-        }
+    // Check if job exists
+    let jobExists = false;
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+
+    if (projectData) {
+      const project = JSON.parse(projectData) as Project;
+      const group = project.groups.find(g => g.name === groupName);
+
+      if (group) {
+        jobExists = group.jobs.some(job => job.name === jobName);
       }
     }
 
-    saveJob(jobName, groupName);
+    if (jobExists) {
+      const confirmOverwrite = confirm('A job with this name already exists in this group. Do you want to overwrite it?');
+      if (!confirmOverwrite) {
+        return;
+      }
+    }
+
+    saveJob(jobName, groupName, projectName);
+
     //update loadedJob to the saved job
     localStorage.setItem('loadedJob', JSON.stringify({
       name: jobName,
-      groupName: groupName
+      groupName: groupName,
+      projectName: projectName
     }));
 
+    //update selected Project and Selected Group
+    localStorage.setItem('selectedProject', projectName);
+    localStorage.setItem('selectedGroup', groupName);
 
     saveJobModal.style.display = 'none';
 
     //clear inputs and hide them
+    newProjectNameContainer.style.display = 'none';
     newJobGroupNameContainer.style.display = 'none';
     newJobNameContainer.style.display = 'none';
 
-    saveJobNameInput.value = '';
+    saveProjectNameInput.value = '';
     saveJobGroupNameInput.value = '';
+    saveJobNameInput.value = '';
 
-    //update the group and job select elements
+    //update the project, group and job select elements
+    updateProjectLoadSelect();
     updateGroupLoadSelect();
     updateJobLoadSelect();
 
     //show modal saying job saved
     alert(`${jobName} saved`);
+  };
+
+  newJobButton.onclick = function () {
+    localStorage.setItem('loadedJob', '');
+    localStorage.setItem('currentJob', '');
+    tasksToExecute.innerHTML = '';
   }
 
   saveJobModalCloseButton.onclick = function () {
@@ -1302,76 +1481,81 @@ document.addEventListener('DOMContentLoaded', () => {
     //first clear any existing tasks
     tasksToExecute.innerHTML = '';
 
+    const projectName = projectLoadSelect.value;
     const groupName = groupLoadSelect.value;
     const jobName = jobLoadSelect.value;
-    //get job data from group
-    const groupData = localStorage.getItem(`savedGroup_${groupName}`);
-    const jobData = groupData ? JSON.parse(groupData).jobs.find((job: { name: string; }) => job.name === jobName) as Job | undefined
-      : null;
 
-    if (jobData) {
-      const tasks = jobData.tasks;
-      tasks.forEach((task: { collectionName: string; id: any; }) => {
-        const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
-        if (collectionData) {
-          const collection = JSON.parse(collectionData);
-          const taskData = collection.tasks.find((t: any) => t.id === task.id);
-          if (taskData) {
-            const newTask = document.createElement('div');
-            newTask.classList.add(`task-${taskData.type}`);
-            newTask.classList.add('task-to-execute');
-            newTask.setAttribute('data-task-id', taskData.id.toString());
-            newTask.setAttribute('data-task-name', taskData.name);
-            newTask.setAttribute('data-collection-name', task.collectionName);
-            newTask.textContent = taskData.name;
-            tasksToExecute.appendChild(newTask);
-          }
-        }
-      });
-
-      //set the current job to the loaded job
-      localStorage.setItem('currentJob', JSON.stringify(jobData.tasks));
+    if (!projectName || !groupName || !jobName) {
+      alert('Please select a project, group, and job to load');
+      return;
     }
 
-    //store the loaded job name in local storage
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    if (!projectData) return;
+
+    const project = JSON.parse(projectData) as Project;
+    const group = project.groups.find(g => g.name === groupName);
+
+    if (!group) return;
+
+    const job = group.jobs.find(j => j.name === jobName);
+
+    if (!job) return;
+
+    loadJob(job);
+
+    // Save selected project/group/job
+    localStorage.setItem('selectedProject', projectName);
+    localStorage.setItem('selectedGroup', groupName);
     localStorage.setItem('loadedJob', JSON.stringify({
       name: jobName,
-      groupName: groupName
+      groupName: groupName,
+      projectName: projectName
     }));
 
     updateTaskNumbers();
     rebuildTaskElements();
-  }
+  };
 
   //delete selected job from local storage
   deleteJobButton.onclick = function () {
-    const jobName = jobLoadSelect.value;
+
+    const projectName = projectLoadSelect.value;
     const groupName = groupLoadSelect.value;
+    const jobName = jobLoadSelect.value;
 
-    //get the group
-    const groupData = localStorage.getItem(`savedGroup_${groupName}`);
-
-    //remove the job from the group data
-    if (groupData) {
-      const group = JSON.parse(groupData);
-      group.jobs = group.jobs.filter((job: { name: string; }) => job.name !== jobName);
-
-      //if this is the last job in the group then remove the group
-      if (group.jobs.length === 0) {
-        localStorage.removeItem(`savedGroup_${groupName}`);
-        updateGroupLoadSelect();
-        //select first group in list
-        groupLoadSelect.selectedIndex = 0;
-
-      } else {
-        localStorage.setItem(`savedGroup_${groupName}`, JSON.stringify(group));
-        updateGroupLoadSelect();
-      }
+    if (!projectName || !groupName || !jobName) {
+      alert('Please select a project, group, and job to delete');
+      return;
     }
 
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    if (!projectData) return;
+
+    const project = JSON.parse(projectData) as Project;
+    const groupIndex = project.groups.findIndex(g => g.name === groupName);
+
+    if (groupIndex === -1) return;
+
+    const group = project.groups[groupIndex];
+    group.jobs = group.jobs.filter(job => job.name !== jobName);
+
+    // If group is now empty, remove it
+    if (group.jobs.length === 0) {
+      project.groups.splice(groupIndex, 1);
+    }
+
+    // If project is now empty, remove it
+    if (project.groups.length === 0) {
+      localStorage.removeItem(`savedProject_${projectName}`);
+      updateProjectLoadSelect();
+    } else {
+      localStorage.setItem(`savedProject_${projectName}`, JSON.stringify(project));
+    }
+
+    updateGroupLoadSelect();
     updateJobLoadSelect();
-    rebuildTaskElements();
-    updateTaskNumbers();
+    tasksToExecute.innerHTML = '';
   }
 
   //import job from file
@@ -1385,37 +1569,81 @@ document.addEventListener('DOMContentLoaded', () => {
       if (files) {
         tasksToExecute.innerHTML = '';
 
-        const promises = Array.from(files).map(file => new Promise<{ job: Job }>((resolve, reject) => {
+        const promises = Array.from(files).map(file => new Promise<{ job: Job; projectName: string; }>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = function (e) {
             const contents = e.target?.result;
             if (contents) {
-              const job = JSON.parse(contents as string) as Job;
-              localStorage.setItem('loadedJob', JSON.stringify({
-                name: job.name,
-                groupName: job.groupName
-              }));
-
-              //Check if job exists in group
-              let groupData = localStorage.getItem(`savedGroup_${job.groupName}`);
-              let groupDataParsed = JSON.parse(groupData!);
-              if (groupDataParsed) {
-                const jobExists = groupDataParsed.jobs.find((j: { name: string; }) => j.name === job.name);
-
-                //check if the job already exists
-                if (jobExists) {
-                  const confirmOverwrite = confirm('A job with this name in this group already exists. Do you want to overwrite it?');
+              try {
+                const importedData = JSON.parse(contents as string);
+                let job: Job;
+                let projectName: string;
+                let groupName: string;
+                
+                // Check if the imported data has the new format with projectName
+                if (importedData.projectName) {
+                  // New format
+                  job = importedData as Job;
+                  projectName = job.projectName;
+                  groupName = job.groupName;
+                } else {
+                  // Legacy format - migrate to "Imported" project
+                  job = importedData as Job;
+                  projectName = "Imported";
+                  groupName = job.groupName || "Legacy";
+                  job.projectName = projectName; // Add projectName to the job
+                }
+                
+                // Check if project exists, if not create it
+                let projectData = localStorage.getItem(`savedProject_${projectName}`);
+                let projectObj: Project;
+                
+                if (!projectData) {
+                  projectObj = { name: projectName, groups: [] };
+                } else {
+                  projectObj = JSON.parse(projectData) as Project;
+                }
+                
+                // Find or create the group
+                let groupObj = projectObj.groups.find(g => g.name === groupName);
+                
+                if (!groupObj) {
+                  groupObj = { name: groupName, jobs: [] };
+                  projectObj.groups.push(groupObj);
+                }
+                
+                // Check if job already exists in this group
+                const existingJobIndex = groupObj.jobs.findIndex(j => j.name === job.name);
+                
+                if (existingJobIndex !== -1) {
+                  const confirmOverwrite = confirm(`A job with name "${job.name}" already exists in project "${projectName}", group "${groupName}". Do you want to overwrite it?`);
                   if (!confirmOverwrite) {
+                    resolve({ job, projectName });
                     return;
                   }
+                  // Replace existing job
+                  groupObj.jobs[existingJobIndex] = job;
+                } else {
+                  // Add new job
+                  groupObj.jobs.push(job);
                 }
-              } else {
-                groupDataParsed = { jobs: [] };
+                
+                // Save the updated project
+                localStorage.setItem(`savedProject_${projectName}`, JSON.stringify(projectObj));
+                
+                // Update current selections
+                localStorage.setItem('selectedProject', projectName);
+                localStorage.setItem('selectedGroup', groupName);
+                localStorage.setItem('loadedJob', JSON.stringify({
+                  name: job.name,
+                  groupName: groupName,
+                  projectName: projectName
+                }));
+                
+                resolve({ job, projectName });
+              } catch (error) {
+                reject(new Error('Invalid JSON format'));
               }
-
-              groupDataParsed.jobs.push({ name: job.name, tasks: job.tasks });
-              localStorage.setItem(`savedGroup_${job.groupName}`, JSON.stringify(groupDataParsed));
-              resolve({ job: job });
             } else {
               reject(new Error('No contents'));
             }
@@ -1423,20 +1651,28 @@ document.addEventListener('DOMContentLoaded', () => {
           reader.readAsText(file);
         }));
 
-        Promise.all<{ job: Job }>(promises).then(results => {
-          const [firstResult] = results;
-
-          rebuildavailableTasksElements();
-
-          updateGroupLoadSelect();
-          updateJobLoadSelect();
-          loadJob(firstResult.job);
-
-          rebuildTaskElements();
-          updateTaskNumbers();
-
+        Promise.all(promises).then(results => {
+          if (results.length > 0) {
+            const [firstResult] = results;
+            
+            rebuildavailableTasksElements();
+            
+            updateProjectLoadSelect();
+            if (projectLoadSelect && firstResult) {
+              projectLoadSelect.value = firstResult.projectName;
+            }
+            updateGroupLoadSelect();
+            updateJobLoadSelect();
+            
+            if (firstResult && firstResult.job) {
+              loadJob(firstResult.job);
+              rebuildTaskElements();
+              updateTaskNumbers();
+            }
+          }
         }).catch(error => {
-          console.error('Error reading files:', error);
+          console.error('Error importing job:', error);
+          alert('Error importing job: ' + error.message);
         });
       }
     }
@@ -1445,29 +1681,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
   exportJobButton.onclick = function () {
     exportJobGroupNameSelect.innerHTML = '';
-    const groups = Object.keys(localStorage).filter(key => key.includes('savedGroup_')).sort();
-    groups.forEach(group => {
-      const groupName = group.replace('savedGroup_', '');
-      const option = document.createElement('option');
-      option.value = groupName;
-      option.textContent = groupName;
-      exportJobGroupNameSelect.appendChild(option);
-    });
-    populateExportJobNames();
+    exportJobNameSelect.innerHTML = '';
+    exportJobProjectNameSelect.innerHTML = '';
+
+    //get all the projects
+    const projects = Object.keys(localStorage).filter(key => key.startsWith('savedProject_')).sort();
+
+    //if there are projects then fill the project name select with the projects
+    if (projects.length > 0) {
+      projects.forEach(project => {
+        const projectName = project.replace('savedProject_', '');
+        const option = document.createElement('option');
+        option.value = projectName;
+        option.textContent = projectName;
+        exportJobProjectNameSelect.appendChild(option);
+      });
+    } else {
+      alert('No projects found. Please create a project first.');
+      return;
+    }
+
+    //show the current project, group and job as the default selected values
+    const selectedProject = localStorage.getItem('selectedProject');
+    const selectedGroup = localStorage.getItem('selectedGroup');
+    const selectedJob = localStorage.getItem('loadedJob');
+
+    if (selectedProject) {
+      exportJobProjectNameSelect.value = selectedProject;
+    }
+
+    if (selectedGroup) {
+      //create all the group name options for the selected project
+      const projectData = localStorage.getItem(`savedProject_${selectedProject}`);
+      if (projectData) {
+        const project = JSON.parse(projectData) as Project;
+        project.groups.forEach((group: { name: string; }) => {
+          const groupNameOption = document.createElement('option');
+          groupNameOption.value = group.name;
+          groupNameOption.textContent = group.name;
+          exportJobGroupNameSelect.appendChild(groupNameOption);
+        });
+      }
+
+      //set the group name select to the selected group 
+      exportJobGroupNameSelect.value = selectedGroup;
+    }
+
+    if (selectedJob) {
+      const jobData = JSON.parse(selectedJob) as { name: string; groupName: string; };
+
+      //create job name option
+      const jobNameOption = document.createElement('option');
+      jobNameOption.value = jobData.name;
+      jobNameOption.textContent = jobData.name;
+      exportJobNameSelect.appendChild(jobNameOption);
+      //set the job name select to the selected job
+      exportJobNameSelect.value = jobData.name;
+    }
+
     exportJobModal.style.display = 'block';
   }
+
+  exportJobProjectNameSelect.addEventListener('change', () => {
+    const projectName = exportJobProjectNameSelect.value;
+    localStorage.setItem('selectedProject', projectName);
+    exportJobGroupNameSelect.innerHTML = '';
+    exportJobNameSelect.innerHTML = '';
+    populateExportGroupNames();
+  });
 
   exportJobGroupNameSelect.addEventListener('change', () => {
     populateExportJobNames();
   });
 
+  function populateExportGroupNames() {
+    const projectName = exportJobProjectNameSelect.value;
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    if (projectData) {
+      const project = JSON.parse(projectData) as Project;
+      exportJobGroupNameSelect.innerHTML = '';
+      project.groups.forEach((group: { name: string; }) => {
+        const groupNameOption = document.createElement('option');
+        groupNameOption.value = group.name;
+        groupNameOption.textContent = group.name;
+        exportJobGroupNameSelect.appendChild(groupNameOption);
+      });
+    }
+  }
+
   function populateExportJobNames() {
     const groupName = exportJobGroupNameSelect.value;
-    const groupData = localStorage.getItem(`savedGroup_${groupName}`);
+    const projectName = exportJobProjectNameSelect.value;
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const groupData = projectData ? JSON.parse(projectData).groups.find((g: { name: string; }) => g.name === groupName) : null;
     if (groupData) {
-      const group = JSON.parse(groupData);
       exportJobNameSelect.innerHTML = '';
-      group.jobs.forEach((job: { name: string; }) => {
+      groupData.jobs.forEach((job: { name: string; }) => {
         const jobNameOption = document.createElement('option');
         jobNameOption.value = job.name;
         jobNameOption.textContent = job.name;
@@ -1479,19 +1788,26 @@ document.addEventListener('DOMContentLoaded', () => {
   exportJobSaveButton.onclick = function () {
     //get the name of the selected job
 
+    const projectName = exportJobProjectNameSelect.value;
     const groupName = exportJobGroupNameSelect.value;
     const jobName = exportJobNameSelect.value;
 
-    //load job from local storage
-    const groupData = localStorage.getItem(`savedGroup_${groupName}`);
+    //load project from local storage
+    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+
+    if (!projectData) return;
+    const project = JSON.parse(projectData) as Project;
+    const group = project.groups.find((g: { name: string; }) => g.name === groupName);
+    if (!group) return;
 
     //get jobData from group data
-    const jobData = groupData ? JSON.parse(groupData).jobs.find((job: { name: string; }) => job.name === jobName) as Job | undefined : null;
+    const jobData = group.jobs.find((j: { name: string; }) => j.name === jobName);
+    if (!jobData) return;
 
     if (jobData) {
       const tasks = jobData.tasks;
 
-      const job: Job = { name: jobData.name, groupName: groupName, tasks: [] };
+      const job: Job = { name: jobData.name, projectName: projectName, groupName: groupName, tasks: [] };
 
       tasks.forEach((task: { collectionName: any; id: any; }) => {
         const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
@@ -1514,5 +1830,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
       exportJobModal.style.display = 'none';
     }
+  }
+
+  // Add function to update project selection dropdown
+  function updateProjectLoadSelect() {
+    if (!projectLoadSelect) return;
+
+    projectLoadSelect.innerHTML = '';
+
+    const projects = Object.keys(localStorage)
+      .filter(key => key.startsWith('savedProject_'))
+      .sort();
+
+    projects.forEach(projectKey => {
+      const projectName = projectKey.replace('savedProject_', '');
+      const option = document.createElement('option');
+      option.value = projectName;
+      option.textContent = projectName;
+      projectLoadSelect.appendChild(option);
+    });
+
+    // Set to last selected project if available
+    const selectedProject = localStorage.getItem('selectedProject');
+    if (selectedProject && projects.includes(`savedProject_${selectedProject}`)) {
+      projectLoadSelect.value = selectedProject;
+    }
+  }
+
+  // Add project change event listener
+  if (projectLoadSelect) {
+    projectLoadSelect.addEventListener('change', () => {
+      const projectName = projectLoadSelect.value;
+      localStorage.setItem('selectedProject', projectName);
+      updateGroupLoadSelect();
+      updateJobLoadSelect();
+    });
   }
 });

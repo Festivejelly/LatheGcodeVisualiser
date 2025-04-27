@@ -425,6 +425,11 @@
                                         <button id="deleteJobButton" class="planner-load-delete-buttons" title="Delete Job from local browser storage">Delete</button>
                                     </div>
                                     <div class="innerContainer toolbar">
+                                        <span class="planner-saving-label">Project:</span>
+                                        <select id="projectLoadSelect" class="planner-load-select">
+                                        </select>
+                                    </div>
+                                    <div class="innerContainer toolbar">
                                         <span class="planner-saving-label">Group:</span>
                                         <select id="groupLoadSelect" class="planner-load-select">
                                         </select>
@@ -1163,13 +1168,24 @@
                 <span id="saveJobModalClose" class="close-modal">&times;</span>
                 <h2>Save Job</h2>
                 <hr>
-                <div class="modal-pad">Job Group Name:</div>
+                <div class="modal-pad">Project:</div>
+                <div>
+                    <select id="saveProjectNameSelect">
+                    </select>
+                </div>
+                <div id="newProjectNameContainer" style="display: none;">
+                    <div class="modal-pad">New project name:</div>
+                    <div>
+                        <input id="saveProjectNameInput" type="text" class="planner-save-text" placeholder="Name of Project"></input>
+                    </div>
+                </div>
+                <div class="modal-pad">Group name:</div>
                 <div>
                     <select id="saveJobGroupNameSelect">
                     </select>
                 </div>
                 <div id="newJobGroupNameContainer" style="display: none;">
-                    <div class="modal-pad">New Job Group name:</div>
+                    <div class="modal-pad">New group name:</div>
                     <div>
                         <input id="saveJobGroupNameInput" type="text" class="planner-save-text" placeholder="Name of Group"></input>
                     </div>
@@ -1196,7 +1212,12 @@
                 <span id="exportJobModalClose" class="close-modal">&times;</span>
                 <h2>Export Job</h2>
                 <hr>
-                <div class="modal-pad">Job Group:</div>
+                <div class="modal-pad">Project:</div>
+                <div>
+                    <select id="exportJobProjectNameSelect">
+                    </select>
+                </div>
+                <div class="modal-pad">Group:</div>
                 <div>
                     <select id="exportJobGroupNameSelect">
                     </select>
