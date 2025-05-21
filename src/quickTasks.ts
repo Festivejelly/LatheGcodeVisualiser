@@ -95,6 +95,8 @@ const quickTaskProfilingType = document.getElementById('quickTaskProfilingType')
 const quickTaskProfilingFinalDiameterContainer = document.getElementById('quickTaskProfilingFinalDiameterContainer') as HTMLDivElement;
 const quickTaskProfilingDepthContainer = document.getElementById('quickTaskProfilingDepthContainer') as HTMLDivElement;
 const quickTaskProfilingCopyToClipboardButton = document.getElementById('quickTaskProfilingCopyToClipboardButton') as HTMLButtonElement;
+const quickTaskProfilingRefreshPositionButton = document.getElementById('quickTaskProfilingRefreshPositionButton') as HTMLButtonElement;
+const quickTaskProfilingCurrentPosition = document.getElementById('quickTaskProfilingCurrentPosition') as HTMLInputElement;
 
 //Drilling
 const quickTaskDrillingDepth = document.getElementById('quickTaskDrillingDepth') as HTMLInputElement;
@@ -127,6 +129,8 @@ const quickTaskBoringDepthPerPass = document.getElementById('quickTaskBoringDept
 const quickTaskBoringFinishingDepth = document.getElementById('quickTaskBoringFinishingDepth') as HTMLInputElement;
 const quickTaskBoringPasses = document.getElementById('quickTaskBoringPasses') as HTMLInputElement;
 const quickTaskBoringCopyToClipboardButton = document.getElementById('quickTaskBoringCopyToClipboardButton') as HTMLButtonElement;
+const quickTaskBoringRefreshPositionButton = document.getElementById('quickTaskBoringRefreshPositionButton') as HTMLButtonElement;
+const quickTaskBoringCurrentPosition = document.getElementById('quickTaskBoringCurrentPosition') as HTMLInputElement;
 
 //Tool offsets
 const quickTaskToolOffsetsProbeDiameter = document.getElementById('quickTaskToolOffsetsProbeDiameter') as HTMLInputElement;
@@ -198,6 +202,22 @@ document.addEventListener("DOMContentLoaded", () => {
           config.modal.style.display = 'block';
         }
 
+        if(taskId === 'quickTaskProfiling') {
+          //set current position to the current X and Z position
+          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const currentPosX = latestStatus?.x!;
+          const currentPosZ = latestStatus?.z!;
+          quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+        }
+
+        if(taskId === 'quickTaskBoring') {
+          //set current position to the current X and Z position
+          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const currentPosX = latestStatus?.x!;
+          const currentPosZ = latestStatus?.z!;
+          quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+        }
+
         //if task is tool offsets, populate the tool number select with the available tools
         if (taskId === 'quickTaskToolOffsets') {
 
@@ -259,6 +279,13 @@ document.addEventListener("DOMContentLoaded", () => {
       quickTaskProfilingCopyToClipboardButton.classList.remove('interaction-ready-button');
     }
   };
+
+  quickTaskProfilingRefreshPositionButton.addEventListener('click', async () => {
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    const currentPosZ = latestStatus?.z!;
+    quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+  });
 
   quickTaskProfilingType.addEventListener('change', () => {
     if (quickTaskProfilingType.value === 'Absolute') {
@@ -342,6 +369,13 @@ document.addEventListener("DOMContentLoaded", () => {
   quickTaskBoringDepth.addEventListener('input', checkBoringFields);
   quickTaskBoringFeedRate.addEventListener('input', checkBoringFields);
   quickTaskBoringRetractFeedRate.addEventListener('input', checkBoringFields);
+
+  quickTaskBoringRefreshPositionButton.addEventListener('click', async () => {
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    const currentPosZ = latestStatus?.z!;
+    quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+  });
 
   quickTaskBoringType.addEventListener('change', () => {
     if (quickTaskBoringType.value === 'Absolute') {
@@ -634,15 +668,35 @@ async function profilingTask(copyToClipboard = false) {
   // Calculate depth per roughing pass with high precision
   let depthPerRoughingPass = 0;
   if (profilingPasses > 1) {
-    depthPerRoughingPass = roughingDepth / (profilingPasses - 1);
+    if (finishingDepth > 0) {
+      // If there's a finishing pass, we need to account for it
+      depthPerRoughingPass = roughingDepth / (profilingPasses - 1);
+    } else {
+      depthPerRoughingPass = roughingDepth / (profilingPasses);
+    }
     depthPerRoughingPass = Number(depthPerRoughingPass.toFixed(3));
+  } else if (profilingPasses === 1) {
+    depthPerRoughingPass = roughingDepth;
   }
 
   // Track the total depth cut with high precision
   let totalCut = 0;
 
   // Execute roughing passes
-  for (let i = 0; i < profilingPasses - 1; i++) {
+
+  let cuttingPasses = 0;
+  if (profilingPasses > 1) {
+    if (finishingDepth > 0) {
+      cuttingPasses = profilingPasses - 1; // -1 for finishing pass
+    } else {
+      cuttingPasses = profilingPasses; // No finishing pass
+    }
+  } else {
+    cuttingPasses = profilingPasses; // -1 for finishing pass
+  }
+  
+
+  for (let i = 0; i < cuttingPasses; i++) {
     let thisPassDepth = depthPerRoughingPass;
 
     // Cutting move X (positive for profiling, outward)
@@ -700,6 +754,7 @@ async function profilingTask(copyToClipboard = false) {
 async function updateProfilingPassesFromDepthPerPass() {
   const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
   const startPosX = latestStatus?.x!;
+  let depthPerPass = 0;
 
   // Calculate total depth required
   let totalDepth: number;
@@ -713,7 +768,7 @@ async function updateProfilingPassesFromDepthPerPass() {
   }
 
   // Get current values with high precision
-  const depthPerPass = Number(parseFloat(quickTaskProfilingDepthPerPass.value).toFixed(3));
+  depthPerPass = Number(parseFloat(quickTaskProfilingDepthPerPass.value).toFixed(3));
   let finishingDepth = Number(parseFloat(quickTaskProfilingFinishingDepth.value).toFixed(3));
 
   // Ensure finishing depth isn't greater than total depth
@@ -769,11 +824,18 @@ async function updateProfilingDepthPerPassFromPasses() {
   // Calculate depth per pass based on number of passes
   let depthPerPass = 0;
   if (passes > 1) {
-    depthPerPass = roughingDepth / (passes - 1);
+    if (finishingDepth > 0) {
+      // Calculate depth per pass for roughing passes
+      depthPerPass = roughingDepth / (passes - 1);
+    } else {
+      // If no finishing depth, use total depth for all passes
+      depthPerPass = roughingDepth / (passes);
+    }
+
     depthPerPass = Number(depthPerPass.toFixed(3));
   } else {
     // If only one pass, it's just the finishing pass
-    depthPerPass = 0;
+    depthPerPass = totalDepth;
   }
 
   // Update the depth per pass input
@@ -956,15 +1018,35 @@ async function boringTask(copyToClipboard: boolean = false) {
   // Calculate depth per roughing pass with high precision
   let depthPerRoughingPass = 0;
   if (boringPasses > 1) {
-    depthPerRoughingPass = roughingDepth / (boringPasses - 1);
+    if (finishingDepth > 0) {
+      // Calculate depth per pass for roughing passes
+      depthPerRoughingPass = roughingDepth / (boringPasses - 1);
+    } else {
+      // If no finishing depth, use total depth for all passes
+      depthPerRoughingPass = roughingDepth / (boringPasses);
+    }
     depthPerRoughingPass = Number(depthPerRoughingPass.toFixed(3));
+  } else if (boringPasses === 1) {
+    depthPerRoughingPass = roughingDepth;
   }
 
   // Track the total depth cut with high precision
   let totalCut = 0;
 
+  let cuttingPasses = 0;
+  if (boringPasses > 1) {
+    if(finishingDepth > 0) {
+      cuttingPasses = boringPasses - 1; // -1 for finishing pass
+    }
+    else {
+      cuttingPasses = boringPasses;
+    }
+  } else {
+    cuttingPasses = boringPasses;
+  }
+
   // Execute roughing passes
-  for (let i = 0; i < boringPasses - 1; i++) {
+  for (let i = 0; i < cuttingPasses; i++) {
     // For the last roughing pass, adjust to ensure we're at the right position for finishing
     let thisPassDepth = depthPerRoughingPass;
 
@@ -1092,12 +1174,18 @@ async function updateDepthPerPassFromPasses() {
   // Calculate depth per pass based on number of passes
   let depthPerPass = 0;
   if (passes > 1) {
-    depthPerPass = roughingDepth / (passes - 1);
+    if (finishingDepth > 0) {
+      // Calculate depth per pass for roughing passes
+      depthPerPass = roughingDepth / (passes - 1);
+    } else {
+      // If no finishing depth, use total depth for all passes
+      depthPerPass = roughingDepth / (passes);
+    }
     depthPerPass = Number(depthPerPass.toFixed(3));
   } else {
     // If only one pass, it's just the finishing pass
     // Depth per pass is irrelevant, but we'll set a reasonable value
-    depthPerPass = 0;
+    depthPerPass = totalDepth;
   }
 
   // Update the depth per pass input
