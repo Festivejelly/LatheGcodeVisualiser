@@ -622,6 +622,12 @@
             <div class="task-modal-content center-modal">
                 <h2>Profiling Quick Task</h2>
                 <div class="modal-pad-bottom">
+                    <!-- Current position -->
+                    <label for="quickTaskProfilingCurrentPosition">Current Position</label>
+                    <input type="text" id="quickTaskProfilingCurrentPosition" name="quickTaskProfilingCurrentPosition" placeholder="0" readonly>
+                    <button id="quickTaskProfilingRefreshPositionButton" title="Refresh current position">Refresh</button>
+                </div>
+                <div class="modal-pad-bottom">
                     <label for="quickTaskProfilingLength">Length to profile (mm)</label>
                     <input type="text" id="quickTaskProfilingLength" name="quickTaskProfilingLength" placeholder="10">
                 </div>
@@ -756,6 +762,12 @@
         <div id="quickTaskBoringModal" class="task-modal">
             <div class="task-modal-content center-modal">
                 <h2>Boring Quick Task</h2>
+                <div class="modal-pad-bottom">
+                    <!-- Current position -->
+                    <label for="quickTaskBoringCurrentPosition">Current Position</label>
+                    <input type="text" id="quickTaskBoringCurrentPosition" name="quickTasBoringCurrentPosition" placeholder="0" readonly>
+                    <button id="quickTaskBoringRefreshPositionButton" title="Refresh current position">Refresh</button>
+                </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskBoringDepth">Boring Hole Depth (mm)</label>
                     <input type="text" id="quickTaskBoringDepth" name="quickTaskBoringDepth" placeholder="50">

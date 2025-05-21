@@ -79,8 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       var incrementValue = this.dataset.increment;
       moveDistanceInput.value = incrementValue as string;
-      console.log('Jog increment set to:', incrementValue);
-      // Additional code to adjust jog distance based on incrementValue
+      // save the increment value to local storage
+      localStorage.setItem('moveDistance', incrementValue as string);
     });
   });
 
