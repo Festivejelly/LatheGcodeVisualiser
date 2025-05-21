@@ -84,9 +84,9 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
 const quickTaskFacingTravelFeedRate = document.getElementById('quickTaskFacingTravelFeedRate') as HTMLInputElement;
 
 const quickTaskFacingEndDiameter = document.getElementById('quickTaskFacingEndDiameter') as HTMLInputElement;
-const quickTaskFacingStepDown = document.getElementById('quickTaskFacingStepDown') as HTMLInputElement;     
-const quickTaskFacingFeedStart = document.getElementById('quickTaskFacingFeedStart') as HTMLInputElement;    
-const quickTaskFacingFeedEnd  = document.getElementById('quickTaskFacingFeedEnd') as HTMLInputElement;
+const quickTaskFacingStepDown = document.getElementById('quickTaskFacingStepDown') as HTMLInputElement;
+const quickTaskFacingFeedStart = document.getElementById('quickTaskFacingFeedStart') as HTMLInputElement;
+const quickTaskFacingFeedEnd = document.getElementById('quickTaskFacingFeedEnd') as HTMLInputElement;
 const quickTaskFacingCopyToClipboardButton = document.getElementById('quickTaskFacingCopyToClipboardButton') as HTMLButtonElement;
 
 //Profiling
@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
           config.modal.style.display = 'block';
         }
 
-        if(taskId === 'quickTaskProfiling') {
+        if (taskId === 'quickTaskProfiling') {
           //set current position to the current X and Z position
           const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
           const currentPosX = latestStatus?.x!;
@@ -216,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
           quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
         }
 
-        if(taskId === 'quickTaskBoring') {
+        if (taskId === 'quickTaskBoring') {
           //set current position to the current X and Z position
           const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
           const currentPosX = latestStatus?.x!;
@@ -338,7 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const checkFacingFields = () => {
     // Enable button only if all required fields have values
-    if (quickTaskFacingEndDiameter.value && Number(quickTaskFacingStepDown.value) >= 0.1 && Number(quickTaskFacingFeedStart.value) > 0 &&  Number(quickTaskFacingFeedEnd.value) > 0) {
+    if (quickTaskFacingEndDiameter.value && Number(quickTaskFacingStepDown.value) >= 0.1 && Number(quickTaskFacingFeedStart.value) > 0 && Number(quickTaskFacingFeedEnd.value) > 0) {
       activeQuickTaskConfig.executeButton.disabled = false;
       activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
       activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');
@@ -751,7 +751,7 @@ async function profilingTask(copyToClipboard = false) {
   } else {
     cuttingPasses = profilingPasses; // -1 for finishing pass
   }
-  
+
 
   for (let i = 0; i < cuttingPasses; i++) {
     let thisPassDepth = depthPerRoughingPass;
@@ -921,21 +921,19 @@ function facingTask(copyToClipboard: boolean = false) {
 
   commands.push('G90'); //set to absolute positioning
 
-const xStart = startDiameter / 2;
-const xEnd = endDiameter / 2;
+  const xStart = startDiameter / 2;
+  const xEnd = endDiameter / 2;
 
-for (let xPos = xStart; xPos >= xEnd; xPos -= stepSize / 2) {
-  const ratio = (xStart - xPos) / (xStart - xEnd);
-  const feed = feedStart + (feedEnd - feedStart) * ratio;
-  const x = xPos.toFixed(3);
-  const f = feed.toFixed(1);
-  commands.push(`G0 X-${x} F${f}`);
-}
+  for (let xPos = xStart; xPos >= xEnd; xPos -= stepSize / 2) {
+    const ratio = (xStart - xPos) / (xStart - xEnd);
+    const feed = feedStart + (feedEnd - feedStart) * ratio;
+    const x = xPos.toFixed(3);
+    const f = feed.toFixed(1);
+    commands.push(`G0 X-${x} F${f}`);
+  }
 
   commands.push('G91'); //set to relative positioning    
-  commands.push(`G1 Z0.2 F${travelFeedRate}`) //untract from initial retraction
-  commands.push(`G1 X${startPosition} F${travelFeedRate}`); //go back to start position
-  commands.push(`G1 Z-0.2 F${travelFeedRate}`) //untract from initial retraction
+  commands.push(`G1 X${startPosition} F${travelFeedRate} ; retract`); //go back to start position
 
   if (copyToClipboard) {
     // Copy to clipboard
@@ -1119,7 +1117,7 @@ async function boringTask(copyToClipboard: boolean = false) {
 
   let cuttingPasses = 0;
   if (boringPasses > 1) {
-    if(finishingDepth > 0) {
+    if (finishingDepth > 0) {
       cuttingPasses = boringPasses - 1; // -1 for finishing pass
     }
     else {
