@@ -82,6 +82,7 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
 
 //Facing
 const quickTaskFacingFeedRate = document.getElementById('quickTaskFacingFeedRate') as HTMLInputElement;
+const quickTaskFacingTravelFeedRate = document.getElementById('quickTaskFacingTravelFeedRate') as HTMLInputElement;
 
 //Profiling
 const quickTaskProfilingFinalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
@@ -569,6 +570,11 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTaskFacingFeedRate.value = facingFeedRate;
   }
 
+  const facingTravelFeedRate = localStorage.getItem('facingTravelFeedRate');
+  if (facingTravelFeedRate !== null) {
+    quickTaskFacingTravelFeedRate.value = facingTravelFeedRate;
+  }
+
   function handleStatusChange() {
     if (!sender) return;
     const status = sender.getStatus();
@@ -847,21 +853,23 @@ function facingTask() {
 
   //facing modal inputs
   const facingFeedRate = quickTaskFacingFeedRate.value;
+  const travelFeedRate = quickTaskFacingTravelFeedRate.value;
 
   localStorage.setItem('facingFeedRate', facingFeedRate);
+  localStorage.setItem('facingTravelFeedRate', travelFeedRate);
 
   let commands: string[] = [];
 
   const startPosition = sender?.getStatus().x;
 
   commands.push('G90'); //set to absolute positioning
-  commands.push(`G0 X0 F${facingFeedRate}`); //slowl feed towards face
+  commands.push(`G0 X0 F${facingFeedRate}`); //slowly feed towards face
   commands.push('G91'); //set to relative positioning    
-  commands.push(`G1 Z-0.2 F${facingFeedRate}`) //retract from face a bit
+  commands.push(`G1 Z-0.2 F${travelFeedRate}`) //retract from face a bit
   commands.push('G90'); //set to absolute positioning
-  commands.push(`G1 X${startPosition} F${facingFeedRate}`); //retract a bit
+  commands.push(`G1 X${startPosition} F${travelFeedRate}`); //retract a bit
   commands.push('G91'); //set to relative positioning    
-  commands.push(`G1 Z0.2 F${facingFeedRate}`) //untract from initial retraction
+  commands.push(`G1 Z0.2 F${travelFeedRate}`) //untract from initial retraction
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
