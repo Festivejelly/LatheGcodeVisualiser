@@ -592,12 +592,33 @@
                     <span id="quickTaskFacingDescription" class="left-modal">This task will perform a facing or parting operation based off of your current position to the centreline</span>
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskFacingFeedRate">Facing Feed Rate</label>
-                    <input type="text" id="quickTaskFacingFeedRate" name="quickTaskFacingFeedRate" placeholder="50" value="50">
+                    <label for="quickTaskFacingFeedStart">Starting Feed Rate (mm/m)</label>
+                    <input type="text" id="quickTaskFacingFeedStart" name="quickTaskFacingFeedStart" placeholder="50" value="50">
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskFacingTravelFeedRate">Travel/Retract Feed Rate</label>
+                    <label for="quickTaskFacingFeedEnd">End Feed Rate (mm/m)</label>
+                    <input type="text" id="quickTaskFacingFeedEnd" name="quickTaskFacingFeedEnd" placeholder="100" value="100">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskFacingTravelFeedRate">Travel/Retract Feed Rate (mm/m)</label>
                     <input type="text" id="quickTaskFacingTravelFeedRate" name="quickTaskFacingTravelFeedRate" placeholder="200" value="200">
+                </div>
+                <div class="modal-pad-bottom">
+                    <hr>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskFacingEndDiameter">End Diameter (mm)
+                          <span class="tooltip-icon"
+                            data-tooltip="Default is centreline which is 0">?</span>
+                    </label>
+                    <input type="text" id="quickTaskFacingEndDiameter" name="quickTaskFacingEndDiameter" placeholder="0" value="0">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskFacingStepDown">Step down (mm)
+                          <span class="tooltip-icon"
+                            data-tooltip="Step down for each feedrate increase (minimum 0.1mm)">?</span>
+                    </label>
+                    <input type="number" id="quickTaskFacingStepDown" name="quickTaskFacingStepDown" placeholder="1" value="1" min="0.1">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskFacingExecuteButton" class="execute interaction-ready-button" title="Execute facing command">
@@ -609,6 +630,11 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
                             <path d="M6 6h12v12H6z" fill="white" />
                         </svg>
+                    </button>
+                </div>
+                <div class="modal-pad-bottom">
+                    <button id="quickTaskFacingCopyToClipboardButton" class="interaction-ready-button" title="Copy command to clipboard">
+                        Copy command<br>to clipboard
                     </button>
                 </div>
                 <div class="modal-pad-bottom" style="display: none;">
