@@ -81,8 +81,13 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
 };
 
 //Facing
-const quickTaskFacingFeedRate = document.getElementById('quickTaskFacingFeedRate') as HTMLInputElement;
 const quickTaskFacingTravelFeedRate = document.getElementById('quickTaskFacingTravelFeedRate') as HTMLInputElement;
+
+const quickTaskFacingEndDiameter = document.getElementById('quickTaskFacingEndDiameter') as HTMLInputElement;
+const quickTaskFacingStepDown = document.getElementById('quickTaskFacingStepDown') as HTMLInputElement;     
+const quickTaskFacingFeedStart = document.getElementById('quickTaskFacingFeedStart') as HTMLInputElement;    
+const quickTaskFacingFeedEnd  = document.getElementById('quickTaskFacingFeedEnd') as HTMLInputElement;
+const quickTaskFacingCopyToClipboardButton = document.getElementById('quickTaskFacingCopyToClipboardButton') as HTMLButtonElement;
 
 //Profiling
 const quickTaskProfilingFinalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
@@ -328,6 +333,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   quickTaskProfilingCopyToClipboardButton.addEventListener('click', () => profilingTask(true));
 
+
+  //<---- Facing event listeners ---->
+
+  const checkFacingFields = () => {
+    // Enable button only if all required fields have values
+    if (quickTaskFacingEndDiameter.value && Number(quickTaskFacingStepDown.value) >= 0.1 && Number(quickTaskFacingFeedStart.value) > 0 &&  Number(quickTaskFacingFeedEnd.value) > 0) {
+      activeQuickTaskConfig.executeButton.disabled = false;
+      activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');
+      quickTaskFacingCopyToClipboardButton.disabled = false;
+      quickTaskFacingCopyToClipboardButton.classList.remove('disabled-button');
+      quickTaskFacingCopyToClipboardButton.classList.add('interaction-ready-button');
+    } else {
+      activeQuickTaskConfig.executeButton.disabled = true;
+      activeQuickTaskConfig.executeButton.classList.add('disabled-button');
+      activeQuickTaskConfig.executeButton.classList.remove('interaction-ready-button');
+      quickTaskFacingCopyToClipboardButton.disabled = true;
+      quickTaskFacingCopyToClipboardButton.classList.add('disabled-button');
+      quickTaskFacingCopyToClipboardButton.classList.remove('interaction-ready-button');
+    }
+  }
+
+  quickTaskFacingEndDiameter.addEventListener('input', checkFacingFields);
+  quickTaskFacingStepDown.addEventListener('input', checkFacingFields);
+  quickTaskFacingFeedStart.addEventListener('input', checkFacingFields);
+  quickTaskFacingFeedEnd.addEventListener('input', checkFacingFields);
+  quickTaskFacingTravelFeedRate.addEventListener('input', checkFacingFields);
+  quickTaskFacingCopyToClipboardButton.addEventListener('click', () => facingTask(true));
+
+
+
   //<---- Boring event listeners ---->
 
   const checkBoringFields = () => {
@@ -565,9 +601,24 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTaskProfilingFeedRate.value = profilingFeedRate;
   }
 
-  const facingFeedRate = localStorage.getItem('facingFeedRate');
-  if (facingFeedRate !== null) {
-    quickTaskFacingFeedRate.value = facingFeedRate;
+  const facingFeedStart = localStorage.getItem('facingFeedStart');
+  if (facingFeedStart !== null) {
+    quickTaskFacingFeedStart.value = facingFeedStart;
+  }
+
+  const facingFeedEnd = localStorage.getItem('facingFeedEnd');
+  if (facingFeedEnd !== null) {
+    quickTaskFacingFeedEnd.value = facingFeedEnd;
+  }
+
+  const facingStepSize = localStorage.getItem('facingStepDown');
+  if (facingStepSize !== null) {
+    quickTaskFacingStepDown.value = facingStepSize;
+  }
+
+  const facingEndDiameter = localStorage.getItem('facingEndDiameter');
+  if (facingEndDiameter !== null) {
+    quickTaskFacingEndDiameter.value = facingEndDiameter;
   }
 
   const facingTravelFeedRate = localStorage.getItem('facingTravelFeedRate');
@@ -849,27 +900,52 @@ async function updateProfilingDepthPerPassFromPasses() {
 }
 
 //other quick task functions
-function facingTask() {
-
-  //facing modal inputs
-  const facingFeedRate = quickTaskFacingFeedRate.value;
-  const travelFeedRate = quickTaskFacingTravelFeedRate.value;
-
-  localStorage.setItem('facingFeedRate', facingFeedRate);
-  localStorage.setItem('facingTravelFeedRate', travelFeedRate);
+function facingTask(copyToClipboard: boolean = false) {
 
   let commands: string[] = [];
 
   const startPosition = sender?.getStatus().x;
 
+  const startDiameter = Math.abs(startPosition!) * 2; // e.g. 16
+  const endDiameter = Number(parseFloat(quickTaskFacingEndDiameter.value).toFixed(3)); // e.g. 2
+  const stepSize = Number(parseFloat(quickTaskFacingStepDown.value).toFixed(3));     // e.g. 2 (step down in diameter)
+  const feedStart = Number(parseFloat(quickTaskFacingFeedStart.value).toFixed(3));    // mm/min, e.g. 70
+  const feedEnd = Number(parseFloat(quickTaskFacingFeedEnd.value).toFixed(3));     // mm/min, e.g. 110
+  const travelFeedRate = Number(parseFloat(quickTaskFacingTravelFeedRate.value).toFixed(3));   // mm/min, e.g. 200
+
+  localStorage.setItem('facingFeedStart', feedStart.toString());
+  localStorage.setItem('facingFeedEnd', feedEnd.toString());
+  localStorage.setItem('facingStepDown', stepSize.toString());
+  localStorage.setItem('facingEndDiameter', endDiameter.toString());
+  localStorage.setItem('facingTravelFeedRate', travelFeedRate.toString());
+
   commands.push('G90'); //set to absolute positioning
-  commands.push(`G0 X0 F${facingFeedRate}`); //slowly feed towards face
-  commands.push('G91'); //set to relative positioning    
-  commands.push(`G1 Z-0.2 F${travelFeedRate}`) //retract from face a bit
-  commands.push('G90'); //set to absolute positioning
-  commands.push(`G1 X${startPosition} F${travelFeedRate}`); //retract a bit
+
+const xStart = startDiameter / 2;
+const xEnd = endDiameter / 2;
+
+for (let xPos = xStart; xPos >= xEnd; xPos -= stepSize / 2) {
+  const ratio = (xStart - xPos) / (xStart - xEnd);
+  const feed = feedStart + (feedEnd - feedStart) * ratio;
+  const x = xPos.toFixed(3);
+  const f = feed.toFixed(1);
+  commands.push(`G0 X-${x} F${f}`);
+}
+
   commands.push('G91'); //set to relative positioning    
   commands.push(`G1 Z0.2 F${travelFeedRate}`) //untract from initial retraction
+  commands.push(`G1 X${startPosition} F${travelFeedRate}`); //go back to start position
+  commands.push(`G1 Z-0.2 F${travelFeedRate}`) //untract from initial retraction
+
+  if (copyToClipboard) {
+    // Copy to clipboard
+    navigator.clipboard.writeText(commands.join('\n')).then(() => {
+      alert('G-code copied to clipboard');
+    }).catch(() => {
+      alert('Failed to copy G-code to clipboard');
+    });
+    return;
+  }
 
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
