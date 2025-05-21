@@ -239,7 +239,7 @@
                                         <path d="M42 17 L50 5 L58 17 Z" fill="white" />
                                     </svg>
                                 </div>
-                                <p>Facing</p>
+                                <p>Facing / Parting</p>
                             </div>
                         </button>
                         <button id="quickTaskProfilingButton" class="quick-tasks-innercontainer">
@@ -587,13 +587,17 @@
         <!-- Quick Task Facing Modal-->
         <div id="quickTaskFacingModal" class="task-modal">
             <div class="task-modal-content center-modal">
-                <h2>Facing Modal</h2>
+                <h2>Facing / Parting</h2>
                 <div class="modal-pad-bottom">
-                    <span id="quickTaskFacingDescription" class="left-modal">The facing task will perform a facing operation based off of your current position to the centreline</span>
+                    <span id="quickTaskFacingDescription" class="left-modal">This task will perform a facing or parting operation based off of your current position to the centreline</span>
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskFacingFeedRate">Facing Feed Rate</label>
                     <input type="text" id="quickTaskFacingFeedRate" name="quickTaskFacingFeedRate" placeholder="50" value="50">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskFacingTravelFeedRate">Travel/Retract Feed Rate</label>
+                    <input type="text" id="quickTaskFacingTravelFeedRate" name="quickTaskFacingTravelFeedRate" placeholder="200" value="200">
                 </div>
                 <div class="modal-pad-bottom">
                     <button id="quickTaskFacingExecuteButton" class="execute interaction-ready-button" title="Execute facing command">
