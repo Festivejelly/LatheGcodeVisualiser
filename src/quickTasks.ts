@@ -84,10 +84,12 @@ const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTM
 const quickTaskFacingTravelFeedRate = document.getElementById('quickTaskFacingTravelFeedRate') as HTMLInputElement;
 
 const quickTaskFacingEndDiameter = document.getElementById('quickTaskFacingEndDiameter') as HTMLInputElement;
-const quickTaskFacingStepDown = document.getElementById('quickTaskFacingStepDown') as HTMLInputElement;
-const quickTaskFacingFeedStart = document.getElementById('quickTaskFacingFeedStart') as HTMLInputElement;
-const quickTaskFacingFeedEnd = document.getElementById('quickTaskFacingFeedEnd') as HTMLInputElement;
+const quickTaskFacingFeedrate = document.getElementById('quickTaskFacingFeedrate') as HTMLInputElement;
 const quickTaskFacingCopyToClipboardButton = document.getElementById('quickTaskFacingCopyToClipboardButton') as HTMLButtonElement;
+const quickTaskFacingUsePecking = document.getElementById('quickTaskFacingUsePecking') as HTMLInputElement;
+const quickTaskFacingPeckingDepth = document.getElementById('quickTaskFacingPeckingDepth') as HTMLInputElement;
+const quickTaskFacingPeckingDepthContainer = document.getElementById('quickTaskFacingPeckingDepthContainer') as HTMLDivElement;
+const quickTaskFacingPeckingRetractionRate = document.getElementById('quickTaskFacingPeckingRetractionRate') as HTMLInputElement;
 
 //Profiling
 const quickTaskProfilingFinalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
@@ -338,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const checkFacingFields = () => {
     // Enable button only if all required fields have values
-    if (quickTaskFacingEndDiameter.value && Number(quickTaskFacingStepDown.value) >= 0.1 && Number(quickTaskFacingFeedStart.value) > 0 && Number(quickTaskFacingFeedEnd.value) > 0) {
+    if (quickTaskFacingEndDiameter.value && Number(quickTaskFacingFeedrate.value) > 0) {
       activeQuickTaskConfig.executeButton.disabled = false;
       activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
       activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');
@@ -356,12 +358,51 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   quickTaskFacingEndDiameter.addEventListener('input', checkFacingFields);
-  quickTaskFacingStepDown.addEventListener('input', checkFacingFields);
-  quickTaskFacingFeedStart.addEventListener('input', checkFacingFields);
-  quickTaskFacingFeedEnd.addEventListener('input', checkFacingFields);
+  quickTaskFacingFeedrate.addEventListener('input', checkFacingFields);
   quickTaskFacingTravelFeedRate.addEventListener('input', checkFacingFields);
   quickTaskFacingCopyToClipboardButton.addEventListener('click', () => facingTask(true));
+  quickTaskFacingPeckingDepth.addEventListener('input', checkFacingFields);
+  quickTaskFacingPeckingRetractionRate.addEventListener('input', checkFacingFields);
 
+  quickTaskFacingUsePecking.addEventListener('change', () => {
+    if (quickTaskFacingUsePecking.checked) {
+      quickTaskFacingPeckingDepthContainer.style.display = 'block';
+    } else {
+      quickTaskFacingPeckingDepthContainer.style.display = 'none';
+    }
+  });
+
+  //populate the stored values for the facing task
+  const facingFeedrate = localStorage.getItem('facingFeedrate');
+  if (facingFeedrate  !== null) {
+    quickTaskFacingFeedrate.value = facingFeedrate;
+  }
+
+  const facingEndDiameter = localStorage.getItem('facingEndDiameter');
+  if (facingEndDiameter !== null) {
+    quickTaskFacingEndDiameter.value = facingEndDiameter;
+  }
+
+  const facingTravelFeedRate = localStorage.getItem('facingTravelFeedRate');
+  if (facingTravelFeedRate !== null) {
+    quickTaskFacingTravelFeedRate.value = facingTravelFeedRate;
+  }
+
+  const facingPeckingDepth = localStorage.getItem('facingPeckingDepth');
+  if (facingPeckingDepth !== null) {
+    quickTaskFacingPeckingDepth.value = facingPeckingDepth;
+  }
+
+  const facingPeckingRetractionRate = localStorage.getItem('facingPeckingRetractionRate');
+  if (facingPeckingRetractionRate !== null) {
+    quickTaskFacingPeckingRetractionRate.value = facingPeckingRetractionRate;
+  }
+
+  const facingUsePecking = localStorage.getItem('facingUsePecking');
+  if (facingUsePecking !== null) {
+    quickTaskFacingUsePecking.checked = facingUsePecking === 'true';
+    quickTaskFacingPeckingDepthContainer.style.display = quickTaskFacingUsePecking.checked ? 'block' : 'none';
+  }
 
 
   //<---- Boring event listeners ---->
@@ -601,30 +642,7 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTaskProfilingFeedRate.value = profilingFeedRate;
   }
 
-  const facingFeedStart = localStorage.getItem('facingFeedStart');
-  if (facingFeedStart !== null) {
-    quickTaskFacingFeedStart.value = facingFeedStart;
-  }
 
-  const facingFeedEnd = localStorage.getItem('facingFeedEnd');
-  if (facingFeedEnd !== null) {
-    quickTaskFacingFeedEnd.value = facingFeedEnd;
-  }
-
-  const facingStepSize = localStorage.getItem('facingStepDown');
-  if (facingStepSize !== null) {
-    quickTaskFacingStepDown.value = facingStepSize;
-  }
-
-  const facingEndDiameter = localStorage.getItem('facingEndDiameter');
-  if (facingEndDiameter !== null) {
-    quickTaskFacingEndDiameter.value = facingEndDiameter;
-  }
-
-  const facingTravelFeedRate = localStorage.getItem('facingTravelFeedRate');
-  if (facingTravelFeedRate !== null) {
-    quickTaskFacingTravelFeedRate.value = facingTravelFeedRate;
-  }
 
   function handleStatusChange() {
     if (!sender) return;
@@ -908,32 +926,64 @@ function facingTask(copyToClipboard: boolean = false) {
 
   const startDiameter = Math.abs(startPosition!) * 2; // e.g. 16
   const endDiameter = Number(parseFloat(quickTaskFacingEndDiameter.value).toFixed(3)); // e.g. 2
-  const stepSize = Number(parseFloat(quickTaskFacingStepDown.value).toFixed(3));     // e.g. 2 (step down in diameter)
-  const feedStart = Number(parseFloat(quickTaskFacingFeedStart.value).toFixed(3));    // mm/min, e.g. 70
-  const feedEnd = Number(parseFloat(quickTaskFacingFeedEnd.value).toFixed(3));     // mm/min, e.g. 110
+  const feedrate = Number(parseFloat(quickTaskFacingFeedrate.value).toFixed(3));    // mm/min, e.g. 70
   const travelFeedRate = Number(parseFloat(quickTaskFacingTravelFeedRate.value).toFixed(3));   // mm/min, e.g. 200
+  const usePecking = quickTaskFacingUsePecking.checked;
+  const peckingDepth = Number(parseFloat(quickTaskFacingPeckingDepth.value).toFixed(3)); // mm, e.g. 2
+  const peckingRetractionRate = Number(parseFloat(quickTaskFacingPeckingRetractionRate.value).toFixed(3));
 
-  localStorage.setItem('facingFeedStart', feedStart.toString());
-  localStorage.setItem('facingFeedEnd', feedEnd.toString());
-  localStorage.setItem('facingStepDown', stepSize.toString());
+  localStorage.setItem('facingFeedrate', feedrate.toString());
+  localStorage.setItem('facingPeckingDepth', peckingDepth.toString());
   localStorage.setItem('facingEndDiameter', endDiameter.toString());
   localStorage.setItem('facingTravelFeedRate', travelFeedRate.toString());
+  localStorage.setItem('facingPeckingRetractionRate', peckingRetractionRate.toString());
+  localStorage.setItem('facingUsePecking', usePecking.toString());
 
-  commands.push('G90'); //set to absolute positioning
+  commands.push('G91'); //set to relative positioning
 
   const xStart = startDiameter / 2;
   const xEnd = endDiameter / 2;
+  const plungeDepth = Math.abs(xStart - xEnd);
 
-  for (let xPos = xStart; xPos >= xEnd; xPos -= stepSize / 2) {
-    const ratio = (xStart - xPos) / (xStart - xEnd);
-    const feed = feedStart + (feedEnd - feedStart) * ratio;
-    const x = xPos.toFixed(3);
-    const f = feed.toFixed(1);
-    commands.push(`G0 X-${x} F${f}`);
+  //calculate tool path for parting or grooving to the end diameter taking into account the pecking depth
+  if (usePecking) {
+    //calculate the number of pecks required to reach the end diameter
+    const numberOfPecks = Math.ceil((plungeDepth) / peckingDepth);
+
+    //calculate the depth of each peck
+    const depthOfEachPeck = (plungeDepth) / numberOfPecks;
+
+    //keep track of current depth
+    let currentDepth = 0;
+
+    for (let i = 0; i < numberOfPecks; i++) {
+      commands.push(`G0 X${depthOfEachPeck} F${feedrate} ; cut`);
+
+      //update current depth
+      currentDepth += depthOfEachPeck;
+      currentDepth = Number(currentDepth.toFixed(3));
+
+      //if at end diameter retract to start position
+      if (currentDepth >= plungeDepth) {
+        commands.push(`G1 X-${currentDepth} F${travelFeedRate} ; retract to start position`);
+        break;
+      }
+
+      //every X pecks retract to start position
+      if ((i + 1) % peckingRetractionRate === 0) {
+        //work out distance to start position
+        commands.push(`G1 X-${currentDepth} F${travelFeedRate} ; retract to start position`);
+        commands.push(`G1 X${currentDepth} F${travelFeedRate} ; travel back to cut position`)
+      } else {
+        commands.push(`G1 X-${depthOfEachPeck} F${travelFeedRate} ; retract short distance`);
+        commands.push(`G1 X${depthOfEachPeck} F${feedrate} ; travel back to surface`);
+      }
+    }
+  } else {
+    //cut to the end diameter
+    commands.push(`G1 X${plungeDepth} F${feedrate} ; cut`);
+    commands.push(`G1 X-${plungeDepth} F${travelFeedRate} ; retract to start position`);
   }
-
-  commands.push('G91'); //set to relative positioning    
-  commands.push(`G1 X${startPosition} F${travelFeedRate} ; retract`); //go back to start position
 
   if (copyToClipboard) {
     // Copy to clipboard
