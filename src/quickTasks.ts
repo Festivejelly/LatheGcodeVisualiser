@@ -827,6 +827,8 @@ async function profilingTask(copyToClipboard = false) {
   }
 
   commands.push('G90'); // Set to absolute positioning
+  commands.push(`G0 X${currentPosX} F${retractFeedrate} ; move to final position`);
+  commands.push(`G91`); // Set back to relative positioning
 
   if (copyToClipboard) {
     // Copy to clipboard

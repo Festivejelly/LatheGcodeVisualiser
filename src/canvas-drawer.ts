@@ -33,6 +33,7 @@ export class CanvasDrawer {
     private canvasX: number = 0;
     private canvasZ: number = 0;
     private ctx: CanvasRenderingContext2D | null = null;
+    private stockDiameterInMM: number = 0; // Store the stock diameter for later use
 
     constructor() { }
 
@@ -42,12 +43,38 @@ export class CanvasDrawer {
         const drawableCommands: GCodeCommand[] = [];
         const absolutePosition: AbsolutePosition = { z: 0, x: 0 };
 
+        let stockDiameterInMM = 0;
+        let hasFoundAbsoluteX = false;
+
         const lines = data.split('\n');
         lines.forEach((line, index) => {
             const movementType: MovementType = this.determineMovementType(line);
 
             const command: GCodeCommand = { isRelative: isRelative, movementType };
             const parts = line.match(/([GXYZF])([0-9.-]+)/g);
+
+            // First, check for stock diameter in comments before processing the command
+            if (!hasFoundAbsoluteX && line.includes(';')) {
+                const commentPart = line.substring(line.indexOf(';'));
+
+                // Look for patterns like "STOCK D20", "STOCK 16mm", "STOCK DIAMETER 25", etc.
+                const diameterPatterns = [
+                    /stock\s+d(?:iameter)?\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i,
+                    /stock\s+(?:diameter|dia|diam)?\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i,
+                    /diameter\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i,
+                    /dia\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i
+                ];
+
+                for (const pattern of diameterPatterns) {
+                    const match = commentPart.match(pattern);
+                    if (match && match[1]) {
+                        stockDiameterInMM = parseFloat(match[1]);
+                        hasFoundAbsoluteX = true; // We found stock info in comments
+                        this.stockDiameterInMM = stockDiameterInMM; // Store the stock diameter for later use
+                        break;
+                    }
+                }
+            }
 
             parts?.forEach(part => {
                 const value = parseFloat(part.slice(1));
@@ -66,6 +93,11 @@ export class CanvasDrawer {
                         command.x = parseFloat(value.toFixed(3));
                         if (!isRelative) {
                             absolutePosition.x = parseFloat(value.toFixed(3));
+                            if (!hasFoundAbsoluteX) {
+                                stockDiameterInMM = Math.abs(absolutePosition.x) * 2;
+                                this.stockDiameterInMM = stockDiameterInMM; // Store the stock diameter for later use
+                                hasFoundAbsoluteX = true;
+                            }
                         } else {
                             absolutePosition.x = parseFloat((absolutePosition.x + value).toFixed(3));
                         }
@@ -197,7 +229,8 @@ export class CanvasDrawer {
         this.previousCanvasX = (canvas.height / 2);
         this.previousCanvasZ = canvas.width - offSetFromScreenEdgeZ;
 
-        var stockDiameterInMM = 16;
+        // Find the stock diameter from the first absolute X position
+        let stockDiameterInMM = this.stockDiameterInMM; // Use the stored stock diameter
 
         // Create an offscreen canvas for the stock material
         const stockCanvas = document.createElement('canvas');
@@ -305,21 +338,21 @@ export class CanvasDrawer {
     removeStockMaterial(stockCanvas: HTMLCanvasElement, scaleFactor: number) {
         const ctx = stockCanvas.getContext('2d');
         if (!ctx) return;
-        
+
         // This helper performs the EXACT same cutting logic you already have:
         const doActualCut = () => {
             const toolWidthMM = 2;
             const toolWidthPixels = toolWidthMM * scaleFactor;
-            
+
             // Calculate movement direction
             const dirZ = this.canvasZ - this.previousCanvasZ;
             const dirX = this.canvasX - this.previousCanvasX;
             const moveLength = Math.sqrt(dirZ * dirZ + dirX * dirX);
-            
+
             // Remove material
             ctx.globalCompositeOperation = "destination-out";
             ctx.fillStyle = 'black';
-            
+
             // --- Plunge cut or pure X-axis move:
             if (moveLength < 0.001 || Math.abs(dirZ) < 0.001) {
                 ctx.beginPath();
@@ -341,7 +374,7 @@ export class CanvasDrawer {
                 ctx.lineTo(this.previousCanvasZ + toolWidthPixels, this.previousCanvasX);
                 ctx.closePath();
                 ctx.fill();
-                
+
                 // 2) Fill area between tool path and bottom of stock
                 ctx.beginPath();
                 ctx.moveTo(this.previousCanvasZ, this.previousCanvasX);
@@ -350,7 +383,7 @@ export class CanvasDrawer {
                 ctx.lineTo(this.previousCanvasZ, stockCanvas.height);
                 ctx.closePath();
                 ctx.fill();
-                
+
                 // 3) Fill area on the right edge of the tool
                 ctx.beginPath();
                 ctx.moveTo(this.canvasZ + toolWidthPixels, this.canvasX);
@@ -360,31 +393,31 @@ export class CanvasDrawer {
                 ctx.closePath();
                 ctx.fill();
             }
-            
+
             // Reset composite
             ctx.globalCompositeOperation = "source-over";
         };
-        
+
         // --- 1) Normal “bottom” cut (unchanged)
         doActualCut();
-        
+
         // --- 2) Mirror the same cut “above” y=0
         // Save canvas state
         ctx.save();
-        
+
         // Flip vertically around the top edge (y=0).
         // That means if your shapes originally drew at y=100, 
         // they now appear at y=-100 (above the top).
         ctx.scale(1, -1);
-        
+
         // If you want the mirrored cut *visible* in the same canvas,
         // you usually need to shift it “down” by the canvas height 
         // so that negative coords map back into the visible region:
         ctx.translate(0, -stockCanvas.height);
-        
+
         // Now do the same cutting logic again:
         doActualCut();
-        
+
         // Restore transform
         ctx.restore();
     }
