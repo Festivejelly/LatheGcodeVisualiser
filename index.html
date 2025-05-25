@@ -592,6 +592,12 @@
                     <span id="quickTaskFacingDescription" class="left-modal">This task will perform a facing or parting operation based off of your current position to the centreline</span>
                 </div>
                 <div class="modal-pad-bottom">
+                    <!-- Current position -->
+                    <label for="quickTaskFacingCurrentPosition">Current Position</label>
+                    <input type="text" id="quickTaskFacingCurrentPosition" name="quickTaskFacingCurrentPosition" placeholder="0" readonly>
+                    <button id="quickTaskFacingRefreshPositionButton" title="Refresh current position">Refresh</button>
+                </div>
+                <div class="modal-pad-bottom">
                     <label for="quickTaskFacingFeedrate">Feed Rate (mm/m)</label>
                     <input type="text" id="quickTaskFacingFeedrate" name="quickTaskFacingFeedrate" placeholder="10" value="10">
                 </div>
