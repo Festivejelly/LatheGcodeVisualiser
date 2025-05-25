@@ -90,6 +90,8 @@ const quickTaskFacingUsePecking = document.getElementById('quickTaskFacingUsePec
 const quickTaskFacingPeckingDepth = document.getElementById('quickTaskFacingPeckingDepth') as HTMLInputElement;
 const quickTaskFacingPeckingDepthContainer = document.getElementById('quickTaskFacingPeckingDepthContainer') as HTMLDivElement;
 const quickTaskFacingPeckingRetractionRate = document.getElementById('quickTaskFacingPeckingRetractionRate') as HTMLInputElement;
+const quickTaskFacingCurrentPosition = document.getElementById('quickTaskFacingCurrentPosition') as HTMLInputElement;
+const quickTaskFacingRefreshPositionButton = document.getElementById('quickTaskFacingRefreshPositionButton') as HTMLButtonElement;
 
 //Profiling
 const quickTaskProfilingFinalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
@@ -216,6 +218,14 @@ document.addEventListener("DOMContentLoaded", () => {
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+        }
+
+        if (taskId === 'quickTaskFacing') {
+          //set current position to the current X and Z position
+          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const currentPosX = latestStatus?.x!;
+          const currentPosZ = latestStatus?.z!;
+          quickTaskFacingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
         }
 
         if (taskId === 'quickTaskBoring') {
@@ -356,6 +366,13 @@ document.addEventListener("DOMContentLoaded", () => {
       quickTaskFacingCopyToClipboardButton.classList.remove('interaction-ready-button');
     }
   }
+
+  quickTaskFacingRefreshPositionButton.addEventListener('click', async () => {
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    const currentPosZ = latestStatus?.z!;
+    quickTaskFacingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+  });
 
   quickTaskFacingEndDiameter.addEventListener('input', checkFacingFields);
   quickTaskFacingFeedrate.addEventListener('input', checkFacingFields);
@@ -918,11 +935,12 @@ async function updateProfilingDepthPerPassFromPasses() {
 }
 
 //other quick task functions
-function facingTask(copyToClipboard: boolean = false) {
+async function facingTask(copyToClipboard: boolean = false) {
 
   let commands: string[] = [];
 
-  const startPosition = sender?.getStatus().x;
+  const currentStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const startPosition = currentStatus?.x;
 
   const startDiameter = Math.abs(startPosition!) * 2; // e.g. 16
   const endDiameter = Number(parseFloat(quickTaskFacingEndDiameter.value).toFixed(3)); // e.g. 2
