@@ -92,6 +92,8 @@ const quickTaskFacingPeckingDepthContainer = document.getElementById('quickTaskF
 const quickTaskFacingPeckingRetractionRate = document.getElementById('quickTaskFacingPeckingRetractionRate') as HTMLInputElement;
 const quickTaskFacingCurrentPosition = document.getElementById('quickTaskFacingCurrentPosition') as HTMLInputElement;
 const quickTaskFacingRefreshPositionButton = document.getElementById('quickTaskFacingRefreshPositionButton') as HTMLButtonElement;
+const quickTaskFacingXStartPosition = document.getElementById('quickTaskFacingXStartPosition') as HTMLInputElement;
+const quickTaskFacingZStartPosition = document.getElementById('quickTaskFacingZStartPosition') as HTMLInputElement;
 
 //Profiling
 const quickTaskProfilingFinalDiameter = document.getElementById('quickTaskProfilingFinalDiameter') as HTMLInputElement;
@@ -107,6 +109,8 @@ const quickTaskProfilingDepthContainer = document.getElementById('quickTaskProfi
 const quickTaskProfilingCopyToClipboardButton = document.getElementById('quickTaskProfilingCopyToClipboardButton') as HTMLButtonElement;
 const quickTaskProfilingRefreshPositionButton = document.getElementById('quickTaskProfilingRefreshPositionButton') as HTMLButtonElement;
 const quickTaskProfilingCurrentPosition = document.getElementById('quickTaskProfilingCurrentPosition') as HTMLInputElement;
+const quickTaskProfilingXStartPosition = document.getElementById('quickTaskProfilingXStartPosition') as HTMLInputElement;
+const quickTaskProfilingZStartPosition = document.getElementById('quickTaskProfilingZStartPosition') as HTMLInputElement;
 
 //Drilling
 const quickTaskDrillingDepth = document.getElementById('quickTaskDrillingDepth') as HTMLInputElement;
@@ -116,6 +120,9 @@ const quickTaskDrillingPeckCheckbox = document.getElementById('quickTaskDrilling
 const quickTaskDrillingPeckingDepthContainer = document.getElementById('quickTaskDrillingPeckingDepthContainer') as HTMLDivElement;
 const quickTaskDrillingPeckingDepth = document.getElementById('quickTaskDrillingPeckingDepth') as HTMLInputElement;
 const quickTaskDrillingCopyToClipboardButton = document.getElementById('quickTaskDrillingCopyToClipboardButton') as HTMLButtonElement;
+const quickTaskDrillingCurrentPosition = document.getElementById('quickTaskDrillingCurrentPosition') as HTMLInputElement;
+const quickTaskDrillingRefreshPositionButton = document.getElementById('quickTaskDrillingRefreshPositionButton') as HTMLButtonElement;
+const quickTaskDrillingZStartPosition = document.getElementById('quickTaskDrillingZStartPosition') as HTMLInputElement;
 
 //Threading
 const quickTaskThreadingType = document.getElementById('quickTaskThreadingType') as HTMLSelectElement;
@@ -141,6 +148,8 @@ const quickTaskBoringPasses = document.getElementById('quickTaskBoringPasses') a
 const quickTaskBoringCopyToClipboardButton = document.getElementById('quickTaskBoringCopyToClipboardButton') as HTMLButtonElement;
 const quickTaskBoringRefreshPositionButton = document.getElementById('quickTaskBoringRefreshPositionButton') as HTMLButtonElement;
 const quickTaskBoringCurrentPosition = document.getElementById('quickTaskBoringCurrentPosition') as HTMLInputElement;
+const quickTaskBoringXStartPosition = document.getElementById('quickTaskBoringXStartPosition') as HTMLInputElement;
+const quickTaskBoringZStartPosition = document.getElementById('quickTaskBoringZStartPosition') as HTMLInputElement;
 
 //Tool offsets
 const quickTaskToolOffsetsProbeDiameter = document.getElementById('quickTaskToolOffsetsProbeDiameter') as HTMLInputElement;
@@ -218,6 +227,8 @@ document.addEventListener("DOMContentLoaded", () => {
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+          quickTaskProfilingXStartPosition.value = currentPosX.toFixed(3);
+          quickTaskProfilingZStartPosition.value = currentPosZ.toFixed(3);
         }
 
         if (taskId === 'quickTaskFacing') {
@@ -226,6 +237,8 @@ document.addEventListener("DOMContentLoaded", () => {
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskFacingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+          quickTaskFacingXStartPosition.value = currentPosX.toFixed(3);
+          quickTaskFacingZStartPosition.value = currentPosZ.toFixed(3);
         }
 
         if (taskId === 'quickTaskBoring') {
@@ -234,6 +247,17 @@ document.addEventListener("DOMContentLoaded", () => {
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+          quickTaskBoringXStartPosition.value = currentPosX.toFixed(3);
+          quickTaskBoringZStartPosition.value = currentPosZ.toFixed(3);
+        }
+
+        if (taskId === 'quickTaskDrilling') {
+          //set current position to the current X and Z position
+          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const currentPosX = latestStatus?.x!;
+          const currentPosZ = latestStatus?.z!;
+          quickTaskDrillingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+          quickTaskDrillingZStartPosition.value = currentPosZ.toFixed(3);
         }
 
         //if task is tool offsets, populate the tool number select with the available tools
@@ -303,6 +327,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
     quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+    quickTaskProfilingXStartPosition.value = currentPosX.toFixed(3);
+    quickTaskProfilingZStartPosition.value = currentPosZ.toFixed(3);
   });
 
   quickTaskProfilingType.addEventListener('change', () => {
@@ -461,6 +487,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  quickTaskBoringRefreshPositionButton.addEventListener('click', async () => {
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    const currentPosZ = latestStatus?.z!;
+    quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+    quickTaskBoringXStartPosition.value = currentPosX.toFixed(3);
+    quickTaskBoringZStartPosition.value = currentPosZ.toFixed(3);
+  });
+
   quickTaskBoringDepth.addEventListener('input', checkBoringFields);
   quickTaskBoringFeedRate.addEventListener('input', checkBoringFields);
   quickTaskBoringRetractFeedRate.addEventListener('input', checkBoringFields);
@@ -540,6 +575,14 @@ document.addEventListener("DOMContentLoaded", () => {
       quickTaskDrillingCopyToClipboardButton.classList.remove('interaction-ready-button');
     }
   }
+
+  quickTaskDrillingRefreshPositionButton.addEventListener('click', async () => {
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    const currentPosZ = latestStatus?.z!;
+    quickTaskDrillingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
+    quickTaskDrillingZStartPosition.value = currentPosZ.toFixed(3);
+  });
 
   quickTaskDrillingDepth.addEventListener('input', checkDrillingFields);
   quickTaskDrillingFeedRate.addEventListener('input', checkDrillingFields);
@@ -715,8 +758,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 //<---- Profiling functions ---->
 async function profilingTask(copyToClipboard = false) {
-  const currentStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-  const currentPosX = currentStatus?.x!;
+
+  const currentPosX = parseFloat(quickTaskProfilingXStartPosition.value);
+  const currentPosZ = parseFloat(quickTaskProfilingZStartPosition.value);
+  if (isNaN(currentPosX) || isNaN(currentPosZ)) {
+    alert('Please enter a valid starting position');
+    return;
+  }
 
   // Profiling modal inputs with precise handling
   const profilingLength = Number(parseFloat((document.getElementById('quickTaskProfilingLength') as HTMLInputElement).value).toFixed(3));
@@ -729,6 +777,10 @@ async function profilingTask(copyToClipboard = false) {
   localStorage.setItem('profilingFeedRate', feedRate.toString());
 
   const commands: string[] = [];
+
+  // Set initial position
+  commands.push(`G90`); // Set to absolute positioning
+  commands.push(`G0 X${currentPosX} Z${currentPosZ} F${retractFeedrate} ; move to start position`);
   commands.push('G91'); // Set to relative positioning
 
   // Calculate target position and total depth required with exact precision
@@ -827,6 +879,8 @@ async function profilingTask(copyToClipboard = false) {
   }
 
   commands.push('G90'); // Set to absolute positioning
+  commands.push(`G0 X${currentPosX} Z${currentPosZ} F${retractFeedrate} ; move to final position`);
+  commands.push(`G91`); // Set back to relative positioning
 
   if (copyToClipboard) {
     // Copy to clipboard
@@ -939,8 +993,7 @@ async function facingTask(copyToClipboard: boolean = false) {
 
   let commands: string[] = [];
 
-  const currentStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-  const startPosition = currentStatus?.x;
+  const startPosition = Number(parseFloat(quickTaskFacingXStartPosition.value).toFixed(3));
 
   const startDiameter = Math.abs(startPosition!) * 2; // e.g. 16
   const endDiameter = Number(parseFloat(quickTaskFacingEndDiameter.value).toFixed(3)); // e.g. 2
@@ -957,6 +1010,8 @@ async function facingTask(copyToClipboard: boolean = false) {
   localStorage.setItem('facingPeckingRetractionRate', peckingRetractionRate.toString());
   localStorage.setItem('facingUsePecking', usePecking.toString());
 
+  commands.push(`G90`); //set to absolute positioning
+  commands.push(`G0 X${startPosition} F${travelFeedRate} ; move to start position`);
   commands.push('G91'); //set to relative positioning
 
   const xStart = startDiameter / 2;
@@ -1031,6 +1086,12 @@ function drillingTask(copyToClipboard: boolean = false) {
   let clearChips = false;
   let numberOfPecksPerformed = 0;
 
+  const currentPosZ = parseFloat(quickTaskDrillingZStartPosition.value);
+  if (isNaN(currentPosZ)) {
+    alert('Please enter a valid starting Z position');
+    return;
+  }
+
   localStorage.setItem('drillingRetractFeedRate', retractFeedrate.toString());
   localStorage.setItem('drillingFeedRate', drillingFeedRate.toString());
 
@@ -1039,8 +1100,7 @@ function drillingTask(copyToClipboard: boolean = false) {
 
   //go to centre line of the part
   commands.push('G90'); //set to absolute positioning
-  commands.push('G0 X0');
-
+  commands.push(`G0 X0 Z${currentPosZ} F${retractFeedrate} ; move to start position`);
   commands.push('G91'); //set to relative positioning
 
   if (drillingPeckCheckbox) {
@@ -1096,7 +1156,10 @@ function drillingTask(copyToClipboard: boolean = false) {
     commands.push(`G1 Z-${drillingDepth} F${retractFeedrate}`);
   }
 
+  //unretract fast
   commands.push('G90'); //set to absolute positioning
+  commands.push(`G1 Z${currentPosZ} F${retractFeedrate} ; unretract fast`);
+
 
   //if copy to clipboard is true then copy the gcode to the clipboard
 
