@@ -34,6 +34,8 @@ export class CanvasDrawer {
     private canvasZ: number = 0;
     private ctx: CanvasRenderingContext2D | null = null;
     private stockDiameterInMM: number = 0; // Store the stock diameter for later use
+    private isBoringOperation: boolean = false; // Track if the operation is boring
+    private hasOperationType: boolean = false; // Track if the operation type has been found
 
     constructor() { }
 
@@ -46,9 +48,22 @@ export class CanvasDrawer {
         let stockDiameterInMM = 0;
         let hasFoundAbsoluteX = false;
 
+        this.isBoringOperation = false; // Reset boring operation status
+        this.hasOperationType = false; // Reset operation type status
+
         const lines = data.split('\n');
         lines.forEach((line, index) => {
             const movementType: MovementType = this.determineMovementType(line);
+
+            if (!this.hasOperationType) {
+                if (line.toLowerCase().includes('; op type boring') || line.toLowerCase().includes('; op type drilling')) {
+                    this.isBoringOperation = true;
+                    this.hasOperationType = true;
+                } else if (line.toLowerCase().includes('; op type turning') || line.toLowerCase().includes('; op type profiling') || line.toLowerCase().includes('; op type facing')) {
+                    this.isBoringOperation = false;
+                    this.hasOperationType = true;
+                }
+            }
 
             const command: GCodeCommand = { isRelative: isRelative, movementType };
             const parts = line.match(/([GXYZF])([0-9.-]+)/g);
@@ -335,90 +350,160 @@ export class CanvasDrawer {
         ctx.setLineDash([]);
     }
 
-    removeStockMaterial(stockCanvas: HTMLCanvasElement, scaleFactor: number) {
+        removeStockMaterial(stockCanvas: HTMLCanvasElement, scaleFactor: number) {
         const ctx = stockCanvas.getContext('2d');
         if (!ctx) return;
 
-        // This helper performs the EXACT same cutting logic you already have:
         const doActualCut = () => {
+
             const toolWidthMM = 2;
             const toolWidthPixels = toolWidthMM * scaleFactor;
 
-            // Calculate movement direction
-            const dirZ = this.canvasZ - this.previousCanvasZ;
-            const dirX = this.canvasX - this.previousCanvasX;
-            const moveLength = Math.sqrt(dirZ * dirZ + dirX * dirX);
+            if (this.isBoringOperation) {
+                // Logic for Boring Operation
+                const dirZ = this.canvasZ - this.previousCanvasZ;
+                // dirX is calculated based on canvasX/previousCanvasX which are CH/2 - (gcodeX * S)
+                // So, dirX = (prevGcodeX - currentGcodeX) * S, correctly reflecting change in radius
+                const dirX = this.canvasX - this.previousCanvasX;
+                const moveLength = Math.sqrt(dirZ * dirZ + dirX * dirX);
 
-            // Remove material
-            ctx.globalCompositeOperation = "destination-out";
-            ctx.fillStyle = 'black';
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.fillStyle = 'black';
 
-            // --- Plunge cut or pure X-axis move:
-            if (moveLength < 0.001 || Math.abs(dirZ) < 0.001) {
-                ctx.beginPath();
-                ctx.rect(
-                    this.canvasZ,                     // Left edge (Z-axis)
-                    this.canvasX,                     // Top edge (radius)
-                    toolWidthPixels,                  // Tool width (Z direction)
-                    stockCanvas.height - this.canvasX // Down to bottom
-                );
-                ctx.fill();
-            }
-            // --- Normal cutting move:
-            else {
-                // 1) Tool path polygon
-                ctx.beginPath();
-                ctx.moveTo(this.previousCanvasZ, this.previousCanvasX);
-                ctx.lineTo(this.canvasZ, this.canvasX);
-                ctx.lineTo(this.canvasZ + toolWidthPixels, this.canvasX);
-                ctx.lineTo(this.previousCanvasZ + toolWidthPixels, this.previousCanvasX);
-                ctx.closePath();
-                ctx.fill();
+                const centerY = stockCanvas.height / 2;
 
-                // 2) Fill area between tool path and bottom of stock
-                ctx.beginPath();
-                ctx.moveTo(this.previousCanvasZ, this.previousCanvasX);
-                ctx.lineTo(this.canvasZ, this.canvasX);
-                ctx.lineTo(this.canvasZ, stockCanvas.height);
-                ctx.lineTo(this.previousCanvasZ, stockCanvas.height);
-                ctx.closePath();
-                ctx.fill();
+                // this.currentX is the G-code X value (e.g., -2 for 2mm radius bore)
+                const currentRadiusGcode = Math.abs(this.currentX);
+                const currentRadiusPixels = currentRadiusGcode * scaleFactor;
+                // Y-coordinate of the bore's inner surface for the current half (e.g., upper half)
+                const currentToolEdgeY = centerY - currentRadiusPixels;
 
-                // 3) Fill area on the right edge of the tool
-                ctx.beginPath();
-                ctx.moveTo(this.canvasZ + toolWidthPixels, this.canvasX);
-                ctx.lineTo(this.previousCanvasZ + toolWidthPixels, this.previousCanvasX);
-                ctx.lineTo(this.previousCanvasZ + toolWidthPixels, stockCanvas.height);
-                ctx.lineTo(this.canvasZ + toolWidthPixels, stockCanvas.height);
-                ctx.closePath();
-                ctx.fill();
-            }
+                let previousRadiusPixels;
+                if (scaleFactor !== 0) {
+                    // this.previousCanvasX was (CH/2) - (previous_raw_gcode_X * scaleFactor)
+                    const previousRawXGcode = ((stockCanvas.height / 2) - this.previousCanvasX) / (-scaleFactor);
+                    const previousRadiusGcode = Math.abs(previousRawXGcode);
+                    previousRadiusPixels = previousRadiusGcode * scaleFactor;
+                } else {
+                    // Should not happen if scaleFactor is always positive
+                    previousRadiusPixels = currentRadiusPixels; 
+                }
+                // Y-coordinate of the previous bore's inner surface
+                const previousToolEdgeY = centerY - previousRadiusPixels;
 
-            // Reset composite
-            ctx.globalCompositeOperation = "source-over";
-        };
+                // --- Plunge cut or pure X-axis move (boring):
+                // A pure X-axis move in boring changes the radius at a constant Z.
+                // A plunge is a Z-move at a constant radius.
+                // The original moveLength condition should distinguish these.
+                if (moveLength < 0.001 || Math.abs(dirZ) < 0.001) { // handles X-only moves or very small moves
+                    ctx.beginPath();
+                    ctx.rect(
+                        this.canvasZ,       // Z-position of the tool face
+                        currentToolEdgeY,   // Top edge of cut (bore's inner surface)
+                        toolWidthPixels,    // Tool width (Z direction)
+                        currentRadiusPixels // Height of cut (from bore inner surface to centerline)
+                    );
+                    ctx.fill();
+                } else {
+                    // Angled or Z-axis dominant move (boring)
 
-        // --- 1) Normal “bottom” cut (unchanged)
+                    // 1) Tool path polygon (erases the tool's direct path)
+                    ctx.beginPath();
+                    ctx.moveTo(this.previousCanvasZ, previousToolEdgeY);
+                    ctx.lineTo(this.canvasZ, currentToolEdgeY);
+                    ctx.lineTo(this.canvasZ + toolWidthPixels, currentToolEdgeY);
+                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, previousToolEdgeY);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 2) Fill area between tool path and centerline - left part of tool
+                    ctx.beginPath();
+                    ctx.moveTo(this.previousCanvasZ, previousToolEdgeY);
+                    ctx.lineTo(this.canvasZ, currentToolEdgeY);
+                    ctx.lineTo(this.canvasZ, centerY); // Fill towards centerline
+                    ctx.lineTo(this.previousCanvasZ, centerY); // Fill towards centerline
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 3) Fill area on the right edge of the tool towards centerline
+                    ctx.beginPath();
+                    ctx.moveTo(this.canvasZ + toolWidthPixels, currentToolEdgeY);
+                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, previousToolEdgeY);
+                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, centerY); // Fill towards centerline
+                    ctx.lineTo(this.canvasZ + toolWidthPixels, centerY); // Fill towards centerline
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Reset composite operation
+                ctx.globalCompositeOperation = "source-over";
+
+            } else {
+                // Existing, working logic for Turning/Facing/Profiling operations
+
+                // Calculate movement direction
+                const dirZ = this.canvasZ - this.previousCanvasZ;
+                const dirX = this.canvasX - this.previousCanvasX;
+                const moveLength = Math.sqrt(dirZ * dirZ + dirX * dirX);
+
+                // Remove material
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.fillStyle = 'black';
+
+                // --- Plunge cut or pure X-axis move:
+                if (moveLength < 0.001 || Math.abs(dirZ) < 0.001) {
+                    ctx.beginPath();
+                    ctx.rect(
+                        this.canvasZ,                     // Left edge (Z-axis)
+                        this.canvasX,                     // Top edge (radius)
+                        toolWidthPixels,                  // Tool width (Z direction)
+                        stockCanvas.height - this.canvasX // Down to bottom
+                    );
+                    ctx.fill();
+                }
+
+                else {
+                    // 1) Tool path polygon
+                    ctx.beginPath();
+                    ctx.moveTo(this.previousCanvasZ, this.previousCanvasX);
+                    ctx.lineTo(this.canvasZ, this.canvasX);
+                    ctx.lineTo(this.canvasZ + toolWidthPixels, this.canvasX);
+                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, this.previousCanvasX);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 2) Fill area between tool path and bottom of stock
+                    ctx.beginPath();
+                    ctx.moveTo(this.previousCanvasZ, this.previousCanvasX);
+                    ctx.lineTo(this.canvasZ, this.canvasX);
+                    ctx.lineTo(this.canvasZ, stockCanvas.height);
+                    ctx.lineTo(this.previousCanvasZ, stockCanvas.height);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 3) Fill area on the right edge of the tool
+                    ctx.beginPath();
+                    ctx.moveTo(this.canvasZ + toolWidthPixels, this.canvasX);
+                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, this.previousCanvasX);
+                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, stockCanvas.height);
+                    ctx.lineTo(this.canvasZ + toolWidthPixels, stockCanvas.height);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Reset composite
+                ctx.globalCompositeOperation = "source-over";
+            };
+        }
+
         doActualCut();
 
-        // --- 2) Mirror the same cut “above” y=0
-        // Save canvas state
         ctx.save();
 
         // Flip vertically around the top edge (y=0).
-        // That means if your shapes originally drew at y=100, 
-        // they now appear at y=-100 (above the top).
         ctx.scale(1, -1);
-
-        // If you want the mirrored cut *visible* in the same canvas,
-        // you usually need to shift it “down” by the canvas height 
-        // so that negative coords map back into the visible region:
         ctx.translate(0, -stockCanvas.height);
-
-        // Now do the same cutting logic again:
         doActualCut();
-
-        // Restore transform
         ctx.restore();
     }
 
@@ -504,54 +589,4 @@ export class CanvasDrawer {
         this.previousCanvasX = this.canvasX;
         this.previousCanvasZ = this.canvasZ;
     }
-
-
-    //TODO: draw the stock material
-    drawStock(canvas: HTMLCanvasElement, stockDiameterInMM: number, scaleFactor: number) {
-        this.ctx = canvas.getContext('2d');
-        if (!this.ctx) return;
-
-        this.ctx.lineWidth = 2;
-
-        // Calculate stock dimensions in pixels
-        let stockRadiusInPixels = stockDiameterInMM * scaleFactor / 2;
-
-        // Calculate rectangle starting points and dimensions
-        // Start from the zero position (right side of canvas minus offset)
-        const rectStartPointZ = canvas.width - offSetFromScreenEdgeZ - canvas.width;
-        // Center vertically, then move up by radius to draw centered on the middle line
-        const rectStartPointX = (canvas.height / 2) - stockRadiusInPixels;
-        // Total diameter for height (full stock diameter)
-        const rectHeight = stockDiameterInMM * scaleFactor;
-        // Full width of canvas for width
-        const rectWidth = canvas.width;
-
-        // Draw the stock material with solid border
-        this.ctx.beginPath();
-        this.ctx.rect(rectStartPointZ, rectStartPointX, rectWidth, rectHeight);
-        this.ctx.fillStyle = 'lightgrey';
-        this.ctx.fill();
-        this.ctx.strokeStyle = '#666666';  // Slightly darker for border contrast
-        this.ctx.setLineDash([]);  // Ensure solid line for stock border
-        this.ctx.stroke();
-
-        // Draw center line for reference (dashed)
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, canvas.height / 2);
-        this.ctx.lineTo(canvas.width, canvas.height / 2);
-        this.ctx.strokeStyle = 'blue';
-        this.ctx.setLineDash([5, 5]);  // Dashed for center line
-        this.ctx.stroke();
-
-        // Draw the zero position line (where Z=0) (dashed)
-        this.ctx.beginPath();
-        this.ctx.moveTo(canvas.width - offSetFromScreenEdgeZ, 0);
-        this.ctx.lineTo(canvas.width - offSetFromScreenEdgeZ, canvas.height);
-        this.ctx.strokeStyle = '#888888';
-        this.ctx.setLineDash([5, 5]);  // Dashed for zero position line
-        this.ctx.stroke();
-
-        this.ctx.setLineDash([]); // Reset line dash setting
-    }
-
 }

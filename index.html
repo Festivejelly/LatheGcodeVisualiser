@@ -598,6 +598,17 @@
                     <button id="quickTaskFacingRefreshPositionButton" title="Refresh current position">Refresh</button>
                 </div>
                 <div class="modal-pad-bottom">
+                    <label for="quickTaskFacingXStartPosition">Start Position X (Radius mm)</label>
+                    <input type="text" id="quickTaskFacingXStartPosition" name="quickTaskFacingXStartPosition" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskProfilingZStartPosition">Start Position Z</label>
+                    <input type="text" id="quickTaskFacingZStartPosition" name="quickTaskFacingZStartPosition" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <hr>
+                </div>
+                <div class="modal-pad-bottom">
                     <label for="quickTaskFacingFeedrate">Feed Rate (mm/m)</label>
                     <input type="text" id="quickTaskFacingFeedrate" name="quickTaskFacingFeedrate" placeholder="10" value="10">
                 </div>
@@ -665,6 +676,17 @@
                     <label for="quickTaskProfilingCurrentPosition">Current Position</label>
                     <input type="text" id="quickTaskProfilingCurrentPosition" name="quickTaskProfilingCurrentPosition" placeholder="0" readonly>
                     <button id="quickTaskProfilingRefreshPositionButton" title="Refresh current position">Refresh</button>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskProfilingXStartPosition">Start Position X (Radius mm)</label>
+                    <input type="text" id="quickTaskProfilingXStartPosition" name="quickTaskProfilingXStartPosition" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskProfilingZStartPosition">Start Position Z</label>
+                    <input type="text" id="quickTaskProfilingZStartPosition" name="quickTaskProfilingZStartPosition" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <hr>
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskProfilingLength">Length to profile (mm)</label>
@@ -748,10 +770,25 @@
             <div class="task-modal-content center-modal">
                 <h2>Drilling Task</h2>
                 <div class="modal-pad-bottom">
+                    <span id="quickTaskDrillingDescription" class="left-modal">This task will perform a drilling operation from the centreline</span>
+                </div>
+                <div class="modal-pad-bottom">
+                    <!-- Current position -->
+                    <label for="quickTaskDrillingCurrentPosition">Current Position</label>
+                    <input type="text" id="quickTaskDrillingCurrentPosition" name="quickTaskDrillingCurrentPosition" placeholder="0" readonly>
+                    <button id="quickTaskDrillingRefreshPositionButton" title="Refresh current position">Refresh</button>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskDrillingZStartPosition">Start Position Z</label>
+                    <input type="text" id="quickTaskDrillingZStartPosition" name="quickTaskDrillingZStartPosition" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <hr>
+                </div>
+                <div class="modal-pad-bottom">
                     <label for="quickTaskDrillingDepth">Drilling Depth (mm)</label>
                     <input type="text" id="quickTaskDrillingDepth" name="quickTaskDrillingDepth" placeholder="10">
                 </div>
-
                 <div class="modal-pad-bottom">
                     <label for="quickTaskDrillingFeedRate">Drilling Feed Rate</label>
                     <input type="text" id="quickTaskDrillingFeedRate" name="quickTaskDrillingFeedRate" placeholder="50" value="50">
@@ -806,6 +843,17 @@
                     <label for="quickTaskBoringCurrentPosition">Current Position</label>
                     <input type="text" id="quickTaskBoringCurrentPosition" name="quickTasBoringCurrentPosition" placeholder="0" readonly>
                     <button id="quickTaskBoringRefreshPositionButton" title="Refresh current position">Refresh</button>
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskBoringXStartPosition">Start Position X (Radius mm)</label>
+                    <input type="text" id="quickTaskBoringXStartPosition" name="quickTaskBoringXStartPosition" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <label for="quickTaskBoringZStartPosition">Start Position Z</label>
+                    <input type="text" id="quickTaskBoringZStartPosition" name="quickTaskBoringZStartPosition" placeholder="10">
+                </div>
+                <div class="modal-pad-bottom">
+                    <hr>
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskBoringDepth">Boring Hole Depth (mm)</label>
