@@ -3,7 +3,7 @@ import 'dragula/dist/dragula.min.css';
 import { Sender, SenderClient } from './sender';
 import { KeyEmulation } from './keyEmulation';
 import { nanoid } from 'nanoid';
-import { initializeGoogleDriveAPI, signInToGoogle, setItemAndSyncToGoogleDrive } from './googleDriveIntegration';
+import { initializeGoogleDriveAPI, signInToGoogle, setItemAndSyncToGoogleDrive, syncCloudToLocalStorage } from './googleDriveIntegration';
 
 const availableTasks = document.getElementById('availableTasks') as HTMLDivElement;
 const tasksToExecute = document.getElementById('tasksToExecute') as HTMLDivElement;
@@ -1875,8 +1875,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const googleSignInButton = document.getElementById('googleSignInButton');
   if (googleSignInButton) {
     googleSignInButton.addEventListener('click', () => {
-      signInToGoogle().then(() => {
+      signInToGoogle().then(async () => {
         alert('Signed in to Google Drive');
+        try {
+          await syncCloudToLocalStorage();
+          alert('Cloud data synchronized to local storage.');
+        } catch (error) {
+          console.error('Error synchronizing cloud data to local storage:', error);
+          alert('Failed to synchronize cloud data. Please try again.');
+        }
       }).catch((error: Error) => {
         console.error('Error signing in to Google Drive:', error);
       });
