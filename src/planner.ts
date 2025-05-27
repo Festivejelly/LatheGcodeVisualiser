@@ -3,9 +3,7 @@ import 'dragula/dist/dragula.min.css';
 import { Sender, SenderClient } from './sender';
 import { KeyEmulation } from './keyEmulation';
 import { nanoid } from 'nanoid';
-import { initializeGoogleDriveAPI, signInToGoogle } from './googleDriveIntegration';
-
-//, saveFileToGoogleDrive, loadFileFromGoogleDrive
+import { initializeGoogleDriveAPI, signInToGoogle, setItemAndSyncToGoogleDrive } from './googleDriveIntegration';
 
 const availableTasks = document.getElementById('availableTasks') as HTMLDivElement;
 const tasksToExecute = document.getElementById('tasksToExecute') as HTMLDivElement;
@@ -224,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveCollectionModal.style.display = 'block';
   }
 
-  saveAvailableTaskCollectionButtonModal.onclick = function () {
+  saveAvailableTaskCollectionButtonModal.onclick = async function () {
 
     let taskCollectionName = "";
 
@@ -250,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If the new collection name is the same as the selected one, no need to change it
         if (taskCollectionName !== selectedTaskCollectionName) {
           taskCollection.name = taskCollectionName;
-          localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
+          await setItemAndSyncToGoogleDrive(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
         }
       }
     }
@@ -680,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Save the updated project
-        localStorage.setItem(`savedProject_${project}`, JSON.stringify(projectObj));
+        setItemAndSyncToGoogleDrive(`savedProject_${project}`, JSON.stringify(projectObj));
       }
     }
   }
@@ -1632,7 +1630,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Save the updated project
-                localStorage.setItem(`savedProject_${projectName}`, JSON.stringify(projectObj));
+                setItemAndSyncToGoogleDrive(`savedProject_${projectName}`, JSON.stringify(projectObj));
 
                 // Update current selections
                 localStorage.setItem('selectedProject', projectName);
@@ -1884,37 +1882,4 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
-
-  // Replace localStorage save with Google Drive save
-  // function saveJobToGoogleDrive(jobName: string, groupName: string, projectName: string): void {
-  //   const jobData = {
-  //     name: jobName,
-  //     groupName: groupName,
-  //     projectName: projectName,
-  //     tasks: Array.from(tasksToExecute.querySelectorAll('.task-to-execute')).map(task => ({
-  //       id: task.getAttribute('data-task-id') || '',
-  //       name: task.getAttribute('data-task-name') || '',
-  //     })),
-  //   };
-
-  //   saveFileToGoogleDrive(`${projectName}_${groupName}_${jobName}.json`, JSON.stringify(jobData))
-  //     .then(() => {
-  //       alert('Job saved to Google Drive');
-  //     })
-  //     .catch((error: Error) => {
-  //       console.error('Error saving job to Google Drive:', error);
-  //     });
-  // }
-
-  // // Replace localStorage load with Google Drive load
-  // function loadJobFromGoogleDrive(fileId: string): void {
-  //   loadFileFromGoogleDrive(fileId)
-  //     .then((jobData: any) => {
-  //       loadJob(jobData);
-  //       alert('Job loaded from Google Drive');
-  //     })
-  //     .catch((error: Error) => {
-  //       console.error('Error loading job from Google Drive:', error);
-  //     });
-  // }
 });
