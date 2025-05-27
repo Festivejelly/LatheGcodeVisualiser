@@ -4,12 +4,23 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
 const DEFAULT_CLIENT_ID = '349142714775-v6pkei8amce6jjq4fbpu07vrcvk4k1vl.apps.googleusercontent.com';
 
-export function initializeGoogleDriveAPI(clientId: string = DEFAULT_CLIENT_ID) {
-  gapi.load('client:auth2', () => {
-    gapi.client.init({
-      clientId: clientId,
-      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-      scope: SCOPES,
+export function initializeGoogleDriveAPI(clientId: string = DEFAULT_CLIENT_ID): Promise<void> {
+  return new Promise((resolve, reject) => {
+    gapi.load('client:auth2', () => {
+      gapi.client
+        .init({
+          clientId: clientId,
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+          scope: SCOPES,
+        })
+        .then(() => {
+          console.log('Google Drive API initialized successfully.');
+          resolve();
+        })
+        .catch((error: unknown) => {
+          console.error('Error initializing Google Drive API:', error);
+          reject(error);
+        });
     });
   });
 }
