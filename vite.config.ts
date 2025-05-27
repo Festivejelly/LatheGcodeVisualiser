@@ -10,5 +10,11 @@ export default defineConfig({
     build: {
         outDir: 'docs'
     },
+    server: {
+        headers: {
+            'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Resource-Policy': 'same-origin',
+        },
+    },
     // ... any other configurations ...
 });
