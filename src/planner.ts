@@ -3,6 +3,9 @@ import 'dragula/dist/dragula.min.css';
 import { Sender, SenderClient } from './sender';
 import { KeyEmulation } from './keyEmulation';
 import { nanoid } from 'nanoid';
+import { initializeGoogleDriveAPI, signInToGoogle } from './googleDriveIntegration';
+
+//, saveFileToGoogleDrive, loadFileFromGoogleDrive
 
 const availableTasks = document.getElementById('availableTasks') as HTMLDivElement;
 const tasksToExecute = document.getElementById('tasksToExecute') as HTMLDivElement;
@@ -673,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
           groupObj.jobs[existingJobIndex] = { name: name, projectName: project, groupName: group, tasks: jobData.tasks };
         } else {
           // Add new job
-          groupObj.jobs.push({ name: name,  projectName: project, groupName: group, tasks: jobData.tasks });
+          groupObj.jobs.push({ name: name, projectName: project, groupName: group, tasks: jobData.tasks });
         }
 
         // Save the updated project
@@ -1579,7 +1582,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let job: Job;
                 let projectName: string;
                 let groupName: string;
-                
+
                 // Check if the imported data has the new format with projectName
                 if (importedData.projectName) {
                   // New format
@@ -1593,28 +1596,28 @@ document.addEventListener('DOMContentLoaded', () => {
                   groupName = job.groupName || "Legacy";
                   job.projectName = projectName; // Add projectName to the job
                 }
-                
+
                 // Check if project exists, if not create it
                 let projectData = localStorage.getItem(`savedProject_${projectName}`);
                 let projectObj: Project;
-                
+
                 if (!projectData) {
                   projectObj = { name: projectName, groups: [] };
                 } else {
                   projectObj = JSON.parse(projectData) as Project;
                 }
-                
+
                 // Find or create the group
                 let groupObj = projectObj.groups.find(g => g.name === groupName);
-                
+
                 if (!groupObj) {
                   groupObj = { name: groupName, jobs: [] };
                   projectObj.groups.push(groupObj);
                 }
-                
+
                 // Check if job already exists in this group
                 const existingJobIndex = groupObj.jobs.findIndex(j => j.name === job.name);
-                
+
                 if (existingJobIndex !== -1) {
                   const confirmOverwrite = confirm(`A job with name "${job.name}" already exists in project "${projectName}", group "${groupName}". Do you want to overwrite it?`);
                   if (!confirmOverwrite) {
@@ -1627,10 +1630,10 @@ document.addEventListener('DOMContentLoaded', () => {
                   // Add new job
                   groupObj.jobs.push(job);
                 }
-                
+
                 // Save the updated project
                 localStorage.setItem(`savedProject_${projectName}`, JSON.stringify(projectObj));
-                
+
                 // Update current selections
                 localStorage.setItem('selectedProject', projectName);
                 localStorage.setItem('selectedGroup', groupName);
@@ -1639,7 +1642,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   groupName: groupName,
                   projectName: projectName
                 }));
-                
+
                 resolve({ job, projectName });
               } catch (error) {
                 reject(new Error('Invalid JSON format'));
@@ -1654,16 +1657,16 @@ document.addEventListener('DOMContentLoaded', () => {
         Promise.all(promises).then(results => {
           if (results.length > 0) {
             const [firstResult] = results;
-            
+
             rebuildavailableTasksElements();
-            
+
             updateProjectLoadSelect();
             if (projectLoadSelect && firstResult) {
               projectLoadSelect.value = firstResult.projectName;
             }
             updateGroupLoadSelect();
             updateJobLoadSelect();
-            
+
             if (firstResult && firstResult.job) {
               loadJob(firstResult.job);
               rebuildTaskElements();
@@ -1866,4 +1869,52 @@ document.addEventListener('DOMContentLoaded', () => {
       updateJobLoadSelect();
     });
   }
+
+  // Initialize Google Drive API
+  initializeGoogleDriveAPI();
+
+  // Example: Sign in to Google Drive
+  const googleSignInButton = document.getElementById('googleSignInButton');
+  if (googleSignInButton) {
+    googleSignInButton.addEventListener('click', () => {
+      signInToGoogle().then(() => {
+        alert('Signed in to Google Drive');
+      }).catch((error: Error) => {
+        console.error('Error signing in to Google Drive:', error);
+      });
+    });
+  }
+
+  // Replace localStorage save with Google Drive save
+  // function saveJobToGoogleDrive(jobName: string, groupName: string, projectName: string): void {
+  //   const jobData = {
+  //     name: jobName,
+  //     groupName: groupName,
+  //     projectName: projectName,
+  //     tasks: Array.from(tasksToExecute.querySelectorAll('.task-to-execute')).map(task => ({
+  //       id: task.getAttribute('data-task-id') || '',
+  //       name: task.getAttribute('data-task-name') || '',
+  //     })),
+  //   };
+
+  //   saveFileToGoogleDrive(`${projectName}_${groupName}_${jobName}.json`, JSON.stringify(jobData))
+  //     .then(() => {
+  //       alert('Job saved to Google Drive');
+  //     })
+  //     .catch((error: Error) => {
+  //       console.error('Error saving job to Google Drive:', error);
+  //     });
+  // }
+
+  // // Replace localStorage load with Google Drive load
+  // function loadJobFromGoogleDrive(fileId: string): void {
+  //   loadFileFromGoogleDrive(fileId)
+  //     .then((jobData: any) => {
+  //       loadJob(jobData);
+  //       alert('Job loaded from Google Drive');
+  //     })
+  //     .catch((error: Error) => {
+  //       console.error('Error loading job from Google Drive:', error);
+  //     });
+  // }
 });
