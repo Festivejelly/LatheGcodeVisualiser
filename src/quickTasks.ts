@@ -1156,11 +1156,6 @@ function drillingTask(copyToClipboard: boolean = false) {
     commands.push(`G1 Z-${drillingDepth} F${retractFeedrate}`);
   }
 
-  //unretract fast
-  commands.push('G90'); //set to absolute positioning
-  commands.push(`G1 Z${currentPosZ} F${retractFeedrate} ; unretract fast`);
-
-
   //if copy to clipboard is true then copy the gcode to the clipboard
 
   if (copyToClipboard) {
