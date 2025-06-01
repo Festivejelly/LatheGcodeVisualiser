@@ -10,7 +10,9 @@ const gcodeCommands = [
     { command: 'M17 Y', description: 'Enable Y axis' },
     { command: 'M18 Y', description: 'Disable Y axis' },
     { command: 'G90', description: 'Set to absolute positioning' },
-    { command: 'G91', description: 'Set to relative positioning' }
+    { command: 'G91', description: 'Set to relative positioning' },
+    { command: 'G92 X0 Z0', description: 'Sets X and Z axis to 0 at current position' },
+    { command: 'M905 X0.05 Z0.04', description: 'Sets backlash compensation values in mm' },
 ];
 
 export class GCode {
