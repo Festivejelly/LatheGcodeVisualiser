@@ -132,6 +132,7 @@ const quickTaskThreadingExternalOrInternal = document.getElementById('quickTaskT
 const quickTaskThreadingLength = document.getElementById('quickTaskThreadingLength') as HTMLInputElement;
 const quickTaskThreadingPasses = document.getElementById('quickTaskThreadingPasses') as HTMLInputElement;
 const quickTaskThreadingCopyToClipboardButton = document.getElementById('quickTaskThreadingCopyToClipboardButton') as HTMLButtonElement;
+const quickTaskThreadingMaxFirstPassDepth = document.getElementById('quickTaskThreadingMaxFirstPassDepth') as HTMLInputElement;
 
 //Boring
 const quickTaskBoringDepth = document.getElementById('quickTaskBoringDepth') as HTMLInputElement;
@@ -593,15 +594,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //<---- Threading event listeners ---->
   quickTaskThreadingSize.addEventListener('change', () => {
+    calculateThreadDepthPerPass();
+  });
+
+  quickTaskThreadingMaxFirstPassDepth.addEventListener('input', () => {
+    calculateThreadDepthPerPass();
+    checkThreadingFields();
+  });
+
+  const calculateThreadDepthPerPass = () => {
     const threadSpec = Threading.getThreadSpecByName(quickTaskThreadingSize.value) as ThreadSpec;
     const threadingExternalOrInternal = quickTaskThreadingExternalOrInternal.value as ThreadingType;
-    const depth = threadSpec.getThreadDepth(threadingExternalOrInternal);
+    var maxFirstPassDepth = quickTaskThreadingMaxFirstPassDepth.value ? parseFloat(quickTaskThreadingMaxFirstPassDepth.value) : 0.3; //default to 0.3mm if not set
+
+    //if no threadspec is selected, return
+    if (!threadSpec) {
+      quickTaskThreadingPasses.value = '';
+      return;
+    }
 
     //calculate number of passes assuming 0.1mm per pass
-    const defaultPasses = Math.ceil(depth / 0.1) + 1;
+    const defaultPasses = threadSpec.getNumberOfPasses(threadingExternalOrInternal, maxFirstPassDepth);
 
     quickTaskThreadingPasses.value = defaultPasses.toString();
-  });
+  }
 
   const updateThreadSizes = () => {
 
@@ -637,7 +653,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const checkThreadingFields = () => {
     // Enable button only if all required fields have values
-    if (quickTaskThreadingSize.value && quickTaskThreadingLength.value && quickTaskThreadingPasses.value) {
+    if (quickTaskThreadingSize.value && quickTaskThreadingLength.value && quickTaskThreadingPasses.value && quickTaskThreadingMaxFirstPassDepth.value) {
       activeQuickTaskConfig.executeButton.disabled = false;
       activeQuickTaskConfig.executeButton.classList.remove('disabled-button');
       activeQuickTaskConfig.executeButton.classList.add('interaction-ready-button');

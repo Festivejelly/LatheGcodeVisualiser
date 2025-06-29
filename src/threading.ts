@@ -4,26 +4,27 @@ export type ThreadingType = 'Internal' | 'External';
 export type ThreadingDirection = 'Left' | 'Right';
 
 export interface ThreadSpec {
-    name: string;           
+    name: string;
     nominalDiameter: number;
-    pitch: number;         
-    isCoarse: boolean;     
+    pitch: number;
+    isCoarse: boolean;
     getInternalMinorDiameter: () => number;
     getMajorDiameter: () => number;
     getThreadDepth: (type: ThreadingType) => number;
     getMinorDiameter: (type: ThreadingType) => number;
+    getNumberOfPasses: (type: ThreadingType, maxFirstPassDepth: number) => number;
 }
 
 export interface ThreadGroup {
-    name: string;          
+    name: string;
     threads: ThreadSpec[];
 }
 
 export class Threading {
     private static createThreadSpec(
-        name: string, 
-        nominalDiameter: number, 
-        pitch: number, 
+        name: string,
+        nominalDiameter: number,
+        pitch: number,
         isCoarse: boolean
     ): ThreadSpec {
         return {
@@ -45,9 +46,45 @@ export class Threading {
                 }
             },
             getMinorDiameter(type: ThreadingType): number {
-                return type === 'External' ? 
-                    this.nominalDiameter - (2 * this.getThreadDepth(type)) : 
+                return type === 'External' ?
+                    this.nominalDiameter - (2 * this.getThreadDepth(type)) :
                     this.getInternalMinorDiameter();
+            },
+            getNumberOfPasses(type: ThreadingType, maxFirstPassDepth: number): number {
+                var totalDepth: number = this.getThreadDepth(type);
+
+                console.log(`Total depth for ${this.name} (${type}): ${totalDepth.toFixed(3)}mm`);
+                console.log(`Max first pass depth: ${maxFirstPassDepth.toFixed(3)}mm`);
+
+                for (let passes = 3; passes <= 15; passes++) {
+                    // Calculate first pass depth with squared progression
+                    let firstPassFraction = (passes - 1) / passes;
+                    firstPassFraction = firstPassFraction * firstPassFraction;
+                    let firstPassDepth = totalDepth * (1 - firstPassFraction);
+
+                    // Calculate and display all pass depths
+                    let passDepths = [];
+                    let previousCumulativeDepth = 0;
+
+                    for (let pass = 1; pass <= passes; pass++) {
+                        let fraction = (passes - pass) / passes;
+                        fraction = fraction * fraction;
+                        let cumulativeDepth = totalDepth * (1 - fraction);
+                        let thisPassDepth = cumulativeDepth - previousCumulativeDepth;
+                        passDepths.push(thisPassDepth.toFixed(3));
+                        previousCumulativeDepth = cumulativeDepth;
+                    }
+
+                    console.log(`${passes} passes: [${passDepths.join(', ')}]mm, first pass = ${firstPassDepth.toFixed(3)}mm`);
+
+                    if (firstPassDepth <= maxFirstPassDepth) {
+                        console.log(`✓ Selected ${passes} passes`);
+                        return passes;
+                    }
+                }
+
+                console.log(`No solution found within 15 passes, using 6 as fallback`);
+                return 6;
             }
         };
     }
@@ -59,23 +96,23 @@ export class Threading {
                 // M3 threads
                 Threading.createThreadSpec("M3 x 0.35 (Fine)", 3, 0.35, false),
                 Threading.createThreadSpec("M3 x 0.5 (Coarse)", 3, 0.5, true),
-                
+
                 // M4 threads
                 Threading.createThreadSpec("M4 x 0.5 (Fine)", 4, 0.5, false),
                 Threading.createThreadSpec("M4 x 0.7 (Coarse)", 4, 0.7, true),
-                
+
                 // M5 threads
                 Threading.createThreadSpec("M5 x 0.5 (Fine)", 5, 0.5, false),
                 Threading.createThreadSpec("M5 x 0.8 (Coarse)", 5, 0.8, true),
-                
+
                 // M6 threads
                 Threading.createThreadSpec("M6 x 0.75 (Fine)", 6, 0.75, false),
                 Threading.createThreadSpec("M6 x 1.0 (Coarse)", 6, 1.0, true),
-                
+
                 // M8 threads
                 Threading.createThreadSpec("M8 x 1.0 (Fine)", 8, 1.0, false),
                 Threading.createThreadSpec("M8 x 1.25 (Coarse)", 8, 1.25, true),
-                
+
                 // M10 threads
                 Threading.createThreadSpec("M10 x 1.0 (Fine)", 10, 1.0, false),
                 Threading.createThreadSpec("M10 x 1.5 (Coarse)", 10, 1.5, true),
@@ -83,7 +120,7 @@ export class Threading {
                 //M11 threads
                 Threading.createThreadSpec("M11 x 1.0 (Fine)", 11, 1.0, false),
                 Threading.createThreadSpec("M11 x 1.5 (Coarse)", 11, 1.5, true),
-                
+
                 // M12 threads
                 Threading.createThreadSpec("M12 x 1.25 (Fine)", 12, 1.25, false),
                 Threading.createThreadSpec("M12 x 1.75 (Coarse)", 12, 1.75, true)
