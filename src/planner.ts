@@ -241,9 +241,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Get the selected task collection
-    const selectedTaskCollectionName = await storage.getItem('selectedTaskCollection');
+    const selectedTaskCollectionData = await storage.getItem('selectedTaskCollection');
     let taskCollection;
-    if (selectedTaskCollectionName) {
+    let selectedTaskCollectionName;
+    
+    if (selectedTaskCollectionData) {
+      try {
+        selectedTaskCollectionName = JSON.parse(selectedTaskCollectionData).name;
+      } catch {
+        selectedTaskCollectionName = selectedTaskCollectionData; // Fallback for old string format
+      }
+      
       const selectedTaskCollection = await storage.getItem(`taskCollection_${selectedTaskCollectionName}`);
       if (selectedTaskCollection) {
         taskCollection = JSON.parse(selectedTaskCollection);
@@ -273,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadTaskCollectionButton.onclick = async function () {
     const taskCollectionName = availableTaskCollections.value;
-    await storage.setItem('selectedTaskCollection', taskCollectionName);
+    await storage.setItem('selectedTaskCollection', JSON.stringify({ name: taskCollectionName }));
     rebuildavailableTasksElements();
   }
 
@@ -414,11 +422,20 @@ exportAvailableTasksButton.onclick = async function () {
     });
 
     // Set to last selected group if available
-    const selectedGroup = await storage.getItem('selectedGroup');
-    if (selectedGroup) {
-      const groupExists = project.groups.some(g => g.name === selectedGroup);
-      if (groupExists) {
-        groupLoadSelect.value = selectedGroup;
+    const selectedGroupData = await storage.getItem('selectedGroup');
+    if (selectedGroupData) {
+      try {
+        const selectedGroup = JSON.parse(selectedGroupData);
+        const groupExists = project.groups.some(g => g.name === selectedGroup.name);
+        if (groupExists) {
+          groupLoadSelect.value = selectedGroup.name;
+        }
+      } catch {
+        // Fallback for old string format
+        const groupExists = project.groups.some(g => g.name === selectedGroupData);
+        if (groupExists) {
+          groupLoadSelect.value = selectedGroupData;
+        }
       }
     }
   }
@@ -503,9 +520,15 @@ exportAvailableTasksButton.onclick = async function () {
     });
 
     //set the selected collection to the last selected collection
-    const selectedCollection = await storage.getItem('selectedTaskCollection');
+    const selectedCollectionData = await storage.getItem('selectedTaskCollection');
 
-    if (selectedCollection) {
+    if (selectedCollectionData) {
+      let selectedCollection;
+      try {
+        selectedCollection = JSON.parse(selectedCollectionData).name;
+      } catch {
+        selectedCollection = selectedCollectionData; // Fallback for old string format
+      }
       availableTaskCollections.value = selectedCollection;
     }
 
@@ -811,11 +834,18 @@ exportAvailableTasksButton.onclick = async function () {
   async function rebuildavailableTasksElements() {
     availableTasks.innerHTML = '';
 
-    let taskCollectionName = await storage.getItem('selectedTaskCollection')
+    let taskCollectionData = await storage.getItem('selectedTaskCollection')
+    let taskCollectionName;
 
-    if (taskCollectionName === null || taskCollectionName === '') {
+    if (taskCollectionData === null || taskCollectionData === '') {
       taskCollectionName = availableTaskCollections.value;
-      await storage.setItem('selectedTaskCollection', taskCollectionName);
+      await storage.setItem('selectedTaskCollection', JSON.stringify({ name: taskCollectionName }));
+    } else {
+      try {
+        taskCollectionName = JSON.parse(taskCollectionData).name;
+      } catch {
+        taskCollectionName = taskCollectionData; // Fallback for old string format
+      }
     }
 
     const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
@@ -1035,7 +1065,16 @@ exportAvailableTasksButton.onclick = async function () {
       const parentDiv = target.parentNode as HTMLDivElement;
       const taskId = parentDiv.getAttribute('data-task-id');
       let taskData: TaskData | null = null;
-      const currentCollectionName = await storage.getItem('selectedTaskCollection');
+      const currentCollectionData = await storage.getItem('selectedTaskCollection');
+      
+      let currentCollectionName;
+      if (currentCollectionData) {
+        try {
+          currentCollectionName = JSON.parse(currentCollectionData).name;
+        } catch {
+          currentCollectionName = currentCollectionData; // Fallback for old string format
+        }
+      }
 
       //get task from selected collection
       const taskCollection = await storage.getItem(`taskCollection_${currentCollectionName}`);
@@ -1440,8 +1479,8 @@ exportAvailableTasksButton.onclick = async function () {
     }));
 
     //update selected Project and Selected Group
-    await storage.setItem('selectedProject', projectName);
-    await storage.setItem('selectedGroup', groupName);
+    await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
+    await storage.setItem('selectedGroup', JSON.stringify({ name: groupName }));
 
     saveJobModal.style.display = 'none';
 
@@ -1479,7 +1518,7 @@ exportAvailableTasksButton.onclick = async function () {
 
   groupLoadSelect.addEventListener('change', async () => {
     const groupName = groupLoadSelect.value;
-    await storage.setItem('selectedGroup', groupName);
+    await storage.setItem('selectedGroup', JSON.stringify({ name: groupName }));
     updateJobLoadSelect();
   });
 
@@ -1511,8 +1550,8 @@ exportAvailableTasksButton.onclick = async function () {
     loadJob(job);
 
     // Save selected project/group/job
-    await storage.setItem('selectedProject', projectName);
-    await storage.setItem('selectedGroup', groupName);
+    await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
+    await storage.setItem('selectedGroup', JSON.stringify({ name: groupName }));
     await storage.setItem('loadedJob', JSON.stringify({
       name: jobName,
       groupName: groupName,
@@ -1638,8 +1677,8 @@ exportAvailableTasksButton.onclick = async function () {
                 await storage.setItem(`savedProject_${projectName}`, JSON.stringify(projectObj));
 
                 // Update current selections
-                await storage.setItem('selectedProject', projectName);
-                await storage.setItem('selectedGroup', groupName);
+                await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
+                await storage.setItem('selectedGroup', JSON.stringify({ name: groupName }));
                 await storage.setItem('loadedJob', JSON.stringify({
                   name: job.name,
                   groupName: groupName,
@@ -1709,9 +1748,28 @@ exportAvailableTasksButton.onclick = async function () {
     }
 
     //show the current project, group and job as the default selected values
-    const selectedProject = await storage.getItem('selectedProject');
-    const selectedGroup = await storage.getItem('selectedGroup');
+    const selectedProjectData = await storage.getItem('selectedProject');
+    const selectedGroupData = await storage.getItem('selectedGroup');
     const selectedJob = await storage.getItem('loadedJob');
+
+    let selectedProject = null;
+    let selectedGroup = null;
+
+    if (selectedProjectData) {
+      try {
+        selectedProject = JSON.parse(selectedProjectData).name;
+      } catch {
+        selectedProject = selectedProjectData; // Fallback for old string format
+      }
+    }
+
+    if (selectedGroupData) {
+      try {
+        selectedGroup = JSON.parse(selectedGroupData).name;
+      } catch {
+        selectedGroup = selectedGroupData; // Fallback for old string format
+      }
+    }
 
     if (selectedProject) {
       exportJobProjectNameSelect.value = selectedProject;
@@ -1751,7 +1809,7 @@ exportAvailableTasksButton.onclick = async function () {
 
   exportJobProjectNameSelect.addEventListener('change', async () => {
     const projectName = exportJobProjectNameSelect.value;
-    await storage.setItem('selectedProject', projectName);
+    await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
     exportJobGroupNameSelect.innerHTML = '';
     exportJobNameSelect.innerHTML = '';
     populateExportGroupNames();
@@ -1857,9 +1915,18 @@ exportAvailableTasksButton.onclick = async function () {
     });
 
     // Set to last selected project if available
-    const selectedProject = await storage.getItem('selectedProject');
-    if (selectedProject && projects.includes(`savedProject_${selectedProject}`)) {
-      projectLoadSelect.value = selectedProject;
+    const selectedProjectData = await storage.getItem('selectedProject');
+    if (selectedProjectData) {
+      let selectedProject;
+      try {
+        selectedProject = JSON.parse(selectedProjectData).name;
+      } catch {
+        selectedProject = selectedProjectData; // Fallback for old string format
+      }
+      
+      if (projects.includes(`savedProject_${selectedProject}`)) {
+        projectLoadSelect.value = selectedProject;
+      }
     }
   }
 
@@ -1867,7 +1934,7 @@ exportAvailableTasksButton.onclick = async function () {
   if (projectLoadSelect) {
     projectLoadSelect.addEventListener('change', async () => {
       const projectName = projectLoadSelect.value;
-      await storage.setItem('selectedProject', projectName);
+      await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
       updateGroupLoadSelect();
       updateJobLoadSelect();
     });
