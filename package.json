@@ -5,18 +5,21 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
+        "build": "vite build",
         "preview": "vite preview",
-        "launch": "yarn build && yarn dev"
+        "launch": "yarn build && yarn dev",
+        "dev:full": "concurrently \"cd server && npm run dev\" \"npm run dev\"",
+        "setup:server": "cd server && npm install"
     },
     "devDependencies": {
         "@types/ace": "^0.0.52",
         "@types/dragula": "^3.7.4",
         "@types/nanoid": "^3.0.0",
+        "concurrently": "^9.2.0",
         "typescript": "^5.2.2",
-        "vite": "^5.0.8",
+        "vite": "^5.4.10",
         "vite-plugin-singlefile": "^0.13.5",
-        "vitest": "^0.31.4"
+        "vitest": "^3.2.4"
     },
     "dependencies": {
         "dragula": "^3.7.3"
