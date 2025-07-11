@@ -77,7 +77,7 @@ async getKeys(prefix?: string): Promise<string[]> {
 
 export function createStorageService(): StorageService {
   // Check if we're running locally and can access the API
-  const isLocalhost = false; //window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
   if (isLocalhost) {
     // Try to use database service when running locally
