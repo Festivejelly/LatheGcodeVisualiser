@@ -486,6 +486,20 @@ exportAvailableTasksButton.onclick = async function () {
       option.textContent = job.name;
       jobLoadSelect.appendChild(option);
     });
+
+    // Set to last loaded job if available
+    const loadedJobData = await storage.getItem('loadedJob');
+    if (loadedJobData) {
+      try {
+        const loadedJob = JSON.parse(loadedJobData);
+        const jobExists = group.jobs.some(j => j.name === loadedJob.name);
+        if (jobExists) {
+          jobLoadSelect.value = loadedJob.name;
+        }
+      } catch {
+        // If parsing fails, ignore
+      }
+    }
   }
 
   async function updateAvailableTaskCollectionsSelect() {
@@ -1494,9 +1508,14 @@ exportAvailableTasksButton.onclick = async function () {
     saveJobNameInput.value = '';
 
     //update the project, group and job select elements
-    updateProjectLoadSelect();
-    updateGroupLoadSelect();
-    updateJobLoadSelect();
+    await updateProjectLoadSelect();
+    await updateGroupLoadSelect();
+    await updateJobLoadSelect();
+    
+    // Set the correct selections after updating dropdowns
+    if (projectLoadSelect) projectLoadSelect.value = projectName;
+    if (groupLoadSelect) groupLoadSelect.value = groupName;
+    if (jobLoadSelect) jobLoadSelect.value = jobName;
 
     //show modal saying job saved
     alert(`${jobName} saved`);
