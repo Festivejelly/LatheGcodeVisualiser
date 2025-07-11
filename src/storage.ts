@@ -76,12 +76,18 @@ async getKeys(prefix?: string): Promise<string[]> {
 }
 
 export function createStorageService(): StorageService {
-  // Check if we're running locally and can access the API
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Check if we're running on the local network and can access the API
+  const hostname = window.location.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isLocalNetwork = hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
   
   if (isLocalhost) {
-    // Try to use database service when running locally
+    // Running directly on the garage computer
     return new DatabaseService('http://localhost:3001/api');
+  } else if (isLocalNetwork) {
+    // Running from office computer, connecting to garage computer
+    // Use the same hostname/IP but port 3001 for the API
+    return new DatabaseService(`http://${hostname}:3001/api`);
   } else {
     // Use localStorage when deployed (GitHub Pages, etc.)
     return new LocalStorageService();

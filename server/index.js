@@ -92,6 +92,8 @@ app.delete('/api/storage/:key', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Local access: http://localhost:${PORT}`);
+    console.log(`Network access: http://[your-ip]:${PORT}`);
 });
