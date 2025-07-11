@@ -1,7 +1,9 @@
 const { exec } = require('child_process');
+const { truncate } = require('fs/promises');
 
 const vite = exec('npm run dev', {
-  cwd: process.cwd()
+  cwd: process.cwd(),
+  windowsHide: truncate
 });
 
 vite.stdout.on('data', (data) => {
