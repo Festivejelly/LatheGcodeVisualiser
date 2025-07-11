@@ -1926,6 +1926,9 @@ exportAvailableTasksButton.onclick = async function () {
       
       if (projects.includes(`savedProject_${selectedProject}`)) {
         projectLoadSelect.value = selectedProject;
+        // Manually trigger group and job updates since setting .value doesn't fire change event
+        updateGroupLoadSelect();
+        updateJobLoadSelect();
       }
     }
   }
