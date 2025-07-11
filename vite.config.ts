@@ -4,7 +4,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 
 export default defineConfig({
     define: {
-        global: "window",
+        global: "window"
     },
     plugins: [viteSingleFile()],
     build: {

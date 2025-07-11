@@ -3,6 +3,7 @@ import 'dragula/dist/dragula.min.css';
 import { Sender, SenderClient } from './sender';
 import { KeyEmulation } from './keyEmulation';
 import { nanoid } from 'nanoid';
+import { storage } from './storage';
 
 const availableTasks = document.getElementById('availableTasks') as HTMLDivElement;
 const tasksToExecute = document.getElementById('tasksToExecute') as HTMLDivElement;
@@ -154,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
   sender.addStatusChangeListener(() => handleStatusChange(), SenderClient.PLANNER);
   sender.addCurrentCommandListener(handleCurrentCommand);
 
-  plannerContainer.addEventListener('containerVisible', () => {
+  plannerContainer.addEventListener('containerVisible', async () => {
 
     tasksToExecute.innerHTML = '';
 
@@ -167,8 +168,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateGroupLoadSelect();
     updateJobLoadSelect();
 
-    const currentJob = getSelectedJobFromSelectedGroup()!;
-    loadJob(currentJob);
+    const currentJob = await getSelectedJobFromSelectedGroup();
+    if (currentJob) {
+      loadJob(currentJob);
+    }
     updateTaskNumbers();
   });
 
@@ -238,16 +241,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Get the selected task collection
-    const selectedTaskCollectionName = localStorage.getItem('selectedTaskCollection');
+    const selectedTaskCollectionName = await storage.getItem('selectedTaskCollection');
     let taskCollection;
     if (selectedTaskCollectionName) {
-      const selectedTaskCollection = localStorage.getItem(`taskCollection_${selectedTaskCollectionName}`);
+      const selectedTaskCollection = await storage.getItem(`taskCollection_${selectedTaskCollectionName}`);
       if (selectedTaskCollection) {
         taskCollection = JSON.parse(selectedTaskCollection);
         // If the new collection name is the same as the selected one, no need to change it
         if (taskCollectionName !== selectedTaskCollectionName) {
           taskCollection.name = taskCollectionName;
-          localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
+          await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
         }
       }
     }
@@ -268,13 +271,13 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAvailableTaskCollectionsSelect();
   }
 
-  loadTaskCollectionButton.onclick = function () {
+  loadTaskCollectionButton.onclick = async function () {
     const taskCollectionName = availableTaskCollections.value;
-    localStorage.setItem('selectedTaskCollection', taskCollectionName);
+    await storage.setItem('selectedTaskCollection', taskCollectionName);
     rebuildavailableTasksElements();
   }
 
-  deleteTaskCollectionButton.onclick = function () {
+  deleteTaskCollectionButton.onclick = async function () {
     const taskCollectionName = availableTaskCollections.value;
 
     //dont allow user to delete the default collection
@@ -285,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const confirmDelete = confirm(`Are you sure you want to delete the collection ${taskCollectionName}?`);
     if (confirmDelete) {
-      localStorage.removeItem(`taskCollection_${taskCollectionName}`);
+      await storage.removeItem(`taskCollection_${taskCollectionName}`);
       updateAvailableTaskCollectionsSelect();
       rebuildavailableTasksElements();
     }
@@ -308,17 +311,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const contents = e.target?.result;
             if (contents) {
               const collections = JSON.parse(contents as string) as TaskCollection[];
-              collections.forEach(collection => {
+              collections.forEach(async collection => {
                 const taskCollectionName = collection.name;
-                const taskCollection = localStorage.getItem(`taskCollection_${taskCollectionName}`);
+                const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
                 //if task collection already exists then prompt
                 if (taskCollection) {
                   const shouldOverride = window.confirm(`Task collection ${taskCollectionName} already exists. Do you want to override it?`);
                   if (shouldOverride) {
-                    localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
+                    await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
                   }
                 } else {
-                  localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
+                  await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
                 }
               });
               updateAvailableTaskCollectionsSelect();
@@ -331,15 +334,16 @@ document.addEventListener('DOMContentLoaded', () => {
     input.click();
   }
 
-  exportAvailableTasksButton.onclick = function () {
-    const taskCollections = Object.keys(localStorage).filter(key => key.includes('taskCollection_'));
+exportAvailableTasksButton.onclick = async function () {
+    const taskCollections = await storage.getKeys('taskCollection_');
     const collections: TaskCollection[] = [];
-    taskCollections.forEach(collection => {
-      const taskCollection = localStorage.getItem(collection);
+    
+    for (const collection of taskCollections) {
+      const taskCollection = await storage.getItem(collection);
       if (taskCollection) {
         collections.push(JSON.parse(taskCollection));
       }
-    });
+    }
 
     const blob = new Blob([JSON.stringify(collections, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -390,14 +394,14 @@ document.addEventListener('DOMContentLoaded', () => {
     emulationNewTasksList?.appendChild(clonedButton);
   }
 
-  function updateGroupLoadSelect() {
+  async function updateGroupLoadSelect() {
     groupLoadSelect.innerHTML = '';
 
     if (!projectLoadSelect || !projectLoadSelect.value) {
       return;
     }
 
-    const projectData = localStorage.getItem(`savedProject_${projectLoadSelect.value}`);
+    const projectData = await storage.getItem(`savedProject_${projectLoadSelect.value}`);
     if (!projectData) return;
 
     const project = JSON.parse(projectData) as Project;
@@ -410,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Set to last selected group if available
-    const selectedGroup = localStorage.getItem('selectedGroup');
+    const selectedGroup = await storage.getItem('selectedGroup');
     if (selectedGroup) {
       const groupExists = project.groups.some(g => g.name === selectedGroup);
       if (groupExists) {
@@ -419,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function getSelectedJobFromSelectedGroup() {
+  async function getSelectedJobFromSelectedGroup() {
 
     const selectedProject = projectLoadSelect.value;
     const selectedGroup = groupLoadSelect.value;
@@ -427,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!selectedProject || !selectedGroup || !selectedJob) return null;
 
-    const projectData = localStorage.getItem(`savedProject_${selectedProject}`);
+    const projectData = await storage.getItem(`savedProject_${selectedProject}`);
     if (!projectData) return null;
 
     const project = JSON.parse(projectData) as Project;
@@ -445,12 +449,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return job;
   }
 
-  function updateJobLoadSelect() {
+  async function updateJobLoadSelect() {
     jobLoadSelect.innerHTML = '';
 
     if (!projectLoadSelect || !projectLoadSelect.value) return;
 
-    const projectData = localStorage.getItem(`savedProject_${projectLoadSelect.value}`);
+    const projectData = await storage.getItem(`savedProject_${projectLoadSelect.value}`);
     if (!projectData) return;
 
     const project = JSON.parse(projectData) as Project;
@@ -467,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function updateAvailableTaskCollectionsSelect() {
+  async function updateAvailableTaskCollectionsSelect() {
 
     availableTaskCollections.innerHTML = '';
     collectionToSaveTo.innerHTML = '';
@@ -481,7 +485,8 @@ document.addEventListener('DOMContentLoaded', () => {
     collectionToSaveTo.appendChild(defaultOption.cloneNode(true));
     saveCollectionModalToSaveTo.appendChild(defaultOption.cloneNode(true));
 
-    const taskCollections = Object.keys(localStorage).filter(key => key.includes('taskCollection_')).sort();
+    const taskCollections = await storage.getKeys('taskCollection_');
+    taskCollections.sort();
     taskCollections.forEach(collection => {
 
       if (collection === 'taskCollection_default') {
@@ -498,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     //set the selected collection to the last selected collection
-    const selectedCollection = localStorage.getItem('selectedTaskCollection');
+    const selectedCollection = await storage.getItem('selectedTaskCollection');
 
     if (selectedCollection) {
       availableTaskCollections.value = selectedCollection;
@@ -630,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveJob('currentJob');
   });
 
-  function saveJob(name: string, group: string = '', project: string = '') {
+  async function saveJob(name: string, group: string = '', project: string = '') {
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
     const jobData: Job = { name: '', projectName: '', groupName: '', tasks: [] };
     tasks.forEach(task => {
@@ -643,12 +648,12 @@ document.addEventListener('DOMContentLoaded', () => {
     jobData.groupName = group;
 
     if (name === 'currentJob') {
-      localStorage.setItem(name, JSON.stringify(jobData));
+      await storage.setItem(name, JSON.stringify(jobData));
     }
     else {
       if (project && group) {
         // Check if project exists, if not create it
-        let projectData = localStorage.getItem(`savedProject_${project}`);
+        let projectData = await storage.getItem(`savedProject_${project}`);
         let projectObj: Project;
 
         if (!projectData) {
@@ -677,18 +682,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Save the updated project
-        localStorage.setItem(`savedProject_${project}`, JSON.stringify(projectObj));
+        await storage.setItem(`savedProject_${project}`, JSON.stringify(projectObj));
       }
     }
   }
 
-  function loadJob(job: Job) {
+  async function loadJob(job: Job) {
 
     let tasks = job.tasks;
 
     const removedTasks: { collectionName: string; id: any; }[] = [];
-    tasks = tasks.filter((task: { collectionName: string; id: any; }) => {
-      const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
+    tasks = tasks.filter(async (task: { collectionName: string; id: any; }) => {
+      const collectionData = await storage.getItem(`taskCollection_${task.collectionName}`);
       if (!collectionData) {
         removedTasks.push(task);
         return false;
@@ -696,12 +701,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     });
 
-    localStorage.setItem('currentJob', JSON.stringify(tasks));
+    await storage.setItem('currentJob', JSON.stringify(tasks));
 
     tasksToExecute.innerHTML = '';
 
-    tasks.forEach((task: { collectionName: string; id: any; }) => {
-      const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
+    tasks.forEach(async (task: { collectionName: string; id: any; }) => {
+      const collectionData = await storage.getItem(`taskCollection_${task.collectionName}`);
       if (collectionData) {
         const collection = JSON.parse(collectionData);
         const taskData = collection.tasks.find((t: any) => t.id === task.id);
@@ -721,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert(`The following tasks were removed because their collection does not exist: ${removedTasks.map(task => task.id).join(', ')}`);
     }
 
-    localStorage.setItem('loadedJob', JSON.stringify({
+    await storage.setItem('loadedJob', JSON.stringify({
       name: job.name,
       groupName: job.groupName
     }));
@@ -729,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   //remove available-task class and add task-to-execute class
-  drake.on('drop', (el, target, source) => {
+  drake.on('drop', async (el, target, source) => {
     //get data task id from target
     const taskId = el.getAttribute('data-task-id');
     const taskOrder = el.getAttribute('data-task-order');
@@ -749,11 +754,11 @@ document.addEventListener('DOMContentLoaded', () => {
         //as the task as an available task, remove it from the collection
         if (taskToDelete) {
           const taskCollectionName = taskToDelete.getAttribute('data-collection-name');
-          const taskCollection = localStorage.getItem(`taskCollection_${taskCollectionName}`);
+          const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
           if (taskCollection) {
             const collection = JSON.parse(taskCollection) as TaskCollection;
             collection.tasks = collection.tasks.filter((task: TaskData) => task.id !== taskId);
-            localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
+            await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
           }
         }
       }
@@ -803,17 +808,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function rebuildavailableTasksElements() {
+  async function rebuildavailableTasksElements() {
     availableTasks.innerHTML = '';
 
-    let taskCollectionName = localStorage.getItem('selectedTaskCollection')
+    let taskCollectionName = await storage.getItem('selectedTaskCollection')
 
     if (taskCollectionName === null || taskCollectionName === '') {
       taskCollectionName = availableTaskCollections.value;
-      localStorage.setItem('selectedTaskCollection', taskCollectionName);
+      await storage.setItem('selectedTaskCollection', taskCollectionName);
     }
 
-    const taskCollection = localStorage.getItem(`taskCollection_${taskCollectionName}`);
+    const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
 
     if (taskCollection) {
       const collection = JSON.parse(taskCollection) as TaskCollection;
@@ -901,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Save new task
-  saveNewTaskButton.addEventListener('click', () => {
+  saveNewTaskButton.addEventListener('click', async () => {
 
     if (collectionToSaveTo.value === '') {
       alert('Please select a collection.');
@@ -990,7 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tasks: [] as TaskData[]
       };
       taskCollection.tasks.push(taskData);
-      localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
+      await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
       //update the select list
       const option = document.createElement('option');
       option.value = taskCollectionName;
@@ -1000,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateAvailableTaskCollectionsSelect();
     } else {
       const taskCollectionName = collectionToSaveTo.value;
-      const taskCollection = localStorage.getItem(`taskCollection_${taskCollectionName}`);
+      const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
       if (taskCollection) {
         const collection = JSON.parse(taskCollection) as TaskCollection;
 
@@ -1010,30 +1015,30 @@ document.addEventListener('DOMContentLoaded', () => {
           collection.tasks = collection.tasks.filter(task => task.id !== taskId);
         }
         collection.tasks.push(taskData);
-        localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
+        await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
       } else {
         const taskCollection = {
           name: taskCollectionName,
           tasks: [] as TaskData[]
         };
         taskCollection.tasks.push(taskData);
-        localStorage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
+        await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
       }
     }
 
     rebuildavailableTasksElements();
   });
 
-  availableTasks.addEventListener('click', event => {
+  availableTasks.addEventListener('click', async event => {
     const target = event.target as HTMLElement;
     if (target.matches('.show-info')) {
       const parentDiv = target.parentNode as HTMLDivElement;
       const taskId = parentDiv.getAttribute('data-task-id');
       let taskData: TaskData | null = null;
-      const currentCollectionName = localStorage.getItem('selectedTaskCollection');
+      const currentCollectionName = await storage.getItem('selectedTaskCollection');
 
       //get task from selected collection
-      const taskCollection = localStorage.getItem(`taskCollection_${currentCollectionName}`);
+      const taskCollection = await storage.getItem(`taskCollection_${currentCollectionName}`);
 
       if (taskCollection) {
         const collection = JSON.parse(taskCollection) as TaskCollection;
@@ -1194,13 +1199,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
 
-    tasks.forEach(task => {
+    tasks.forEach(async task => {
 
       const taskId = task.getAttribute('data-task-id');
       const taskOrder = task.getAttribute('data-task-order');
       const collectionName = task.getAttribute('data-collection-name');
 
-      const taskCollection = localStorage.getItem(`taskCollection_${collectionName}`);
+      const taskCollection = await storage.getItem(`taskCollection_${collectionName}`);
       let taskData: TaskData | null = null;
       if (taskCollection) {
         const collection = JSON.parse(taskCollection) as TaskCollection;
@@ -1218,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     executeNextTask();
   }
 
-  saveJobButton.onclick = function () {
+  saveJobButton.onclick = async function () {
     saveJobModal.style.display = 'block';
 
     //clear html of the select elements
@@ -1232,7 +1237,8 @@ document.addEventListener('DOMContentLoaded', () => {
     saveJobNameInput.value = '';
 
     //get all the projects
-    const projects = Object.keys(localStorage).filter(key => key.startsWith('savedProject_')).sort();
+    const projects = await storage.getKeys('savedProject_');
+    projects.sort();
     //if there are projects then fill the project name select with the projects
     if (projects.length > 0) {
       projects.forEach(project => {
@@ -1273,11 +1279,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Add function to update groups dropdown when project changes
-  function updateGroupSelectForProject(projectName: string) {
+  async function updateGroupSelectForProject(projectName: string) {
     saveJobGroupNameSelect.innerHTML = '';
     saveJobNameSelect.innerHTML = '';
 
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
     if (projectData) {
       const project = JSON.parse(projectData) as Project;
 
@@ -1364,10 +1370,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Add function to update jobs dropdown when group changes
-  function updateJobSelectForGroup(projectName: string, groupName: string) {
+  async function updateJobSelectForGroup(projectName: string, groupName: string) {
     saveJobNameSelect.innerHTML = '';
 
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
     if (projectData) {
       const project = JSON.parse(projectData) as Project;
       const group = project.groups.find(g => g.name === groupName);
@@ -1384,7 +1390,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Update save job button handler
-  saveJobSaveButton.onclick = function () {
+  saveJobSaveButton.onclick = async function () {
     let projectName = saveProjectNameSelect.value === 'new' ? saveProjectNameInput.value : saveProjectNameSelect.value;
     let groupName = saveJobGroupNameSelect.value === 'new' ? saveJobGroupNameInput.value : saveJobGroupNameSelect.value;
     let jobName = saveJobNameSelect.value === 'new' ? saveJobNameInput.value : saveJobNameSelect.value;
@@ -1406,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Check if job exists
     let jobExists = false;
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
 
     if (projectData) {
       const project = JSON.parse(projectData) as Project;
@@ -1427,15 +1433,15 @@ document.addEventListener('DOMContentLoaded', () => {
     saveJob(jobName, groupName, projectName);
 
     //update loadedJob to the saved job
-    localStorage.setItem('loadedJob', JSON.stringify({
+    await storage.setItem('loadedJob', JSON.stringify({
       name: jobName,
       groupName: groupName,
       projectName: projectName
     }));
 
     //update selected Project and Selected Group
-    localStorage.setItem('selectedProject', projectName);
-    localStorage.setItem('selectedGroup', groupName);
+    await storage.setItem('selectedProject', projectName);
+    await storage.setItem('selectedGroup', groupName);
 
     saveJobModal.style.display = 'none';
 
@@ -1457,9 +1463,9 @@ document.addEventListener('DOMContentLoaded', () => {
     alert(`${jobName} saved`);
   };
 
-  newJobButton.onclick = function () {
-    localStorage.setItem('loadedJob', '');
-    localStorage.setItem('currentJob', '');
+  newJobButton.onclick = async function () {
+    await storage.setItem('loadedJob', '');
+    await storage.setItem('currentJob', '');
     tasksToExecute.innerHTML = '';
   }
 
@@ -1471,13 +1477,13 @@ document.addEventListener('DOMContentLoaded', () => {
     exportJobModal.style.display = 'none';
   }
 
-  groupLoadSelect.addEventListener('change', () => {
+  groupLoadSelect.addEventListener('change', async () => {
     const groupName = groupLoadSelect.value;
-    localStorage.setItem('selectedGroup', groupName);
+    await storage.setItem('selectedGroup', groupName);
     updateJobLoadSelect();
   });
 
-  loadJobButton.onclick = function () {
+  loadJobButton.onclick = async function () {
     //first clear any existing tasks
     tasksToExecute.innerHTML = '';
 
@@ -1490,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
     if (!projectData) return;
 
     const project = JSON.parse(projectData) as Project;
@@ -1505,9 +1511,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadJob(job);
 
     // Save selected project/group/job
-    localStorage.setItem('selectedProject', projectName);
-    localStorage.setItem('selectedGroup', groupName);
-    localStorage.setItem('loadedJob', JSON.stringify({
+    await storage.setItem('selectedProject', projectName);
+    await storage.setItem('selectedGroup', groupName);
+    await storage.setItem('loadedJob', JSON.stringify({
       name: jobName,
       groupName: groupName,
       projectName: projectName
@@ -1518,7 +1524,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   //delete selected job from local storage
-  deleteJobButton.onclick = function () {
+  deleteJobButton.onclick = async function () {
 
     const projectName = projectLoadSelect.value;
     const groupName = groupLoadSelect.value;
@@ -1529,7 +1535,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
     if (!projectData) return;
 
     const project = JSON.parse(projectData) as Project;
@@ -1547,10 +1553,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // If project is now empty, remove it
     if (project.groups.length === 0) {
-      localStorage.removeItem(`savedProject_${projectName}`);
+      await storage.removeItem(`savedProject_${projectName}`);
       updateProjectLoadSelect();
     } else {
-      localStorage.setItem(`savedProject_${projectName}`, JSON.stringify(project));
+      await storage.setItem(`savedProject_${projectName}`, JSON.stringify(project));
     }
 
     updateGroupLoadSelect();
@@ -1571,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const promises = Array.from(files).map(file => new Promise<{ job: Job; projectName: string; }>((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = function (e) {
+          reader.onload = async function (e) {
             const contents = e.target?.result;
             if (contents) {
               try {
@@ -1595,7 +1601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Check if project exists, if not create it
-                let projectData = localStorage.getItem(`savedProject_${projectName}`);
+                let projectData = await storage.getItem(`savedProject_${projectName}`);
                 let projectObj: Project;
 
                 if (!projectData) {
@@ -1629,12 +1635,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Save the updated project
-                localStorage.setItem(`savedProject_${projectName}`, JSON.stringify(projectObj));
+                await storage.setItem(`savedProject_${projectName}`, JSON.stringify(projectObj));
 
                 // Update current selections
-                localStorage.setItem('selectedProject', projectName);
-                localStorage.setItem('selectedGroup', groupName);
-                localStorage.setItem('loadedJob', JSON.stringify({
+                await storage.setItem('selectedProject', projectName);
+                await storage.setItem('selectedGroup', groupName);
+                await storage.setItem('loadedJob', JSON.stringify({
                   name: job.name,
                   groupName: groupName,
                   projectName: projectName
@@ -1679,13 +1685,14 @@ document.addEventListener('DOMContentLoaded', () => {
     input.click();
   }
 
-  exportJobButton.onclick = function () {
+  exportJobButton.onclick = async function () {
     exportJobGroupNameSelect.innerHTML = '';
     exportJobNameSelect.innerHTML = '';
     exportJobProjectNameSelect.innerHTML = '';
 
     //get all the projects
-    const projects = Object.keys(localStorage).filter(key => key.startsWith('savedProject_')).sort();
+    const projects = await storage.getKeys('savedProject_');
+    projects.sort();
 
     //if there are projects then fill the project name select with the projects
     if (projects.length > 0) {
@@ -1702,9 +1709,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     //show the current project, group and job as the default selected values
-    const selectedProject = localStorage.getItem('selectedProject');
-    const selectedGroup = localStorage.getItem('selectedGroup');
-    const selectedJob = localStorage.getItem('loadedJob');
+    const selectedProject = await storage.getItem('selectedProject');
+    const selectedGroup = await storage.getItem('selectedGroup');
+    const selectedJob = await storage.getItem('loadedJob');
 
     if (selectedProject) {
       exportJobProjectNameSelect.value = selectedProject;
@@ -1712,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (selectedGroup) {
       //create all the group name options for the selected project
-      const projectData = localStorage.getItem(`savedProject_${selectedProject}`);
+      const projectData = await storage.getItem(`savedProject_${selectedProject}`);
       if (projectData) {
         const project = JSON.parse(projectData) as Project;
         project.groups.forEach((group: { name: string; }) => {
@@ -1742,9 +1749,9 @@ document.addEventListener('DOMContentLoaded', () => {
     exportJobModal.style.display = 'block';
   }
 
-  exportJobProjectNameSelect.addEventListener('change', () => {
+  exportJobProjectNameSelect.addEventListener('change', async () => {
     const projectName = exportJobProjectNameSelect.value;
-    localStorage.setItem('selectedProject', projectName);
+    await storage.setItem('selectedProject', projectName);
     exportJobGroupNameSelect.innerHTML = '';
     exportJobNameSelect.innerHTML = '';
     populateExportGroupNames();
@@ -1754,9 +1761,9 @@ document.addEventListener('DOMContentLoaded', () => {
     populateExportJobNames();
   });
 
-  function populateExportGroupNames() {
+  async function populateExportGroupNames() {
     const projectName = exportJobProjectNameSelect.value;
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
     if (projectData) {
       const project = JSON.parse(projectData) as Project;
       exportJobGroupNameSelect.innerHTML = '';
@@ -1769,10 +1776,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function populateExportJobNames() {
+  async function populateExportJobNames() {
     const groupName = exportJobGroupNameSelect.value;
     const projectName = exportJobProjectNameSelect.value;
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
     const groupData = projectData ? JSON.parse(projectData).groups.find((g: { name: string; }) => g.name === groupName) : null;
     if (groupData) {
       exportJobNameSelect.innerHTML = '';
@@ -1785,7 +1792,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  exportJobSaveButton.onclick = function () {
+  exportJobSaveButton.onclick = async function () {
     //get the name of the selected job
 
     const projectName = exportJobProjectNameSelect.value;
@@ -1793,7 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const jobName = exportJobNameSelect.value;
 
     //load project from local storage
-    const projectData = localStorage.getItem(`savedProject_${projectName}`);
+    const projectData = await storage.getItem(`savedProject_${projectName}`);
 
     if (!projectData) return;
     const project = JSON.parse(projectData) as Project;
@@ -1809,8 +1816,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const job: Job = { name: jobData.name, projectName: projectName, groupName: groupName, tasks: [] };
 
-      tasks.forEach((task: { collectionName: any; id: any; }) => {
-        const collectionData = localStorage.getItem(`taskCollection_${task.collectionName}`);
+      tasks.forEach(async (task: { collectionName: any; id: any; }) => {
+        const collectionData = await storage.getItem(`taskCollection_${task.collectionName}`);
         if (collectionData) {
           const collection = JSON.parse(collectionData);
           const taskData = collection.tasks.find((t: any) => t.id === task.id);
@@ -1833,14 +1840,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Add function to update project selection dropdown
-  function updateProjectLoadSelect() {
+  async function updateProjectLoadSelect() {
     if (!projectLoadSelect) return;
 
     projectLoadSelect.innerHTML = '';
 
-    const projects = Object.keys(localStorage)
-      .filter(key => key.startsWith('savedProject_'))
-      .sort();
+  const projects = await storage.getKeys('savedProject_');
+  projects.sort();
 
     projects.forEach(projectKey => {
       const projectName = projectKey.replace('savedProject_', '');
@@ -1851,7 +1857,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Set to last selected project if available
-    const selectedProject = localStorage.getItem('selectedProject');
+    const selectedProject = await storage.getItem('selectedProject');
     if (selectedProject && projects.includes(`savedProject_${selectedProject}`)) {
       projectLoadSelect.value = selectedProject;
     }
@@ -1859,9 +1865,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Add project change event listener
   if (projectLoadSelect) {
-    projectLoadSelect.addEventListener('change', () => {
+    projectLoadSelect.addEventListener('change', async () => {
       const projectName = projectLoadSelect.value;
-      localStorage.setItem('selectedProject', projectName);
+      await storage.setItem('selectedProject', projectName);
       updateGroupLoadSelect();
       updateJobLoadSelect();
     });
