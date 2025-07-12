@@ -663,7 +663,7 @@ exportAvailableTasksButton.onclick = async function () {
   drake.on('dragend', () => {
     updateTaskNumbers();
     rebuildTaskElements();
-    saveJob('currentJob');
+    saveJob('currentTasks');
   });
 
   async function saveJob(name: string, group: string = '', project: string = '') {
@@ -678,7 +678,7 @@ exportAvailableTasksButton.onclick = async function () {
     jobData.name = name;
     jobData.groupName = group;
 
-    if (name === 'currentJob') {
+    if (name === 'currentTasks') {
       await storage.setItem(name, JSON.stringify(jobData));
     }
     else {
@@ -732,7 +732,7 @@ exportAvailableTasksButton.onclick = async function () {
       return true;
     });
 
-    await storage.setItem('currentJob', JSON.stringify(tasks));
+    await storage.setItem('currentTasks', JSON.stringify(tasks));
 
     tasksToExecute.innerHTML = '';
 
@@ -1025,9 +1025,11 @@ exportAvailableTasksButton.onclick = async function () {
       taskData.buttonKeys = emulatedButtonsList;
     }
 
+    let taskCollectionName: string;
+    
     //if the collectionToSaveTo is set to new then save the task to a new collection
     if (collectionToSaveTo.value === 'new') {
-      const taskCollectionName = newCollectionName.value;
+      taskCollectionName = newCollectionName.value;
       const taskCollection = {
         name: taskCollectionName,
         tasks: [] as TaskData[]
@@ -1042,7 +1044,7 @@ exportAvailableTasksButton.onclick = async function () {
       availableTaskCollections.appendChild(option);
       updateAvailableTaskCollectionsSelect();
     } else {
-      const taskCollectionName = collectionToSaveTo.value;
+      taskCollectionName = collectionToSaveTo.value;
       const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
       if (taskCollection) {
         const collection = JSON.parse(taskCollection) as TaskCollection;
@@ -1064,6 +1066,9 @@ exportAvailableTasksButton.onclick = async function () {
       }
     }
 
+    // Set the collection as selected and load it
+    await storage.setItem('selectedTaskCollection', JSON.stringify({ name: taskCollectionName }));
+    availableTaskCollections.value = taskCollectionName;
     rebuildavailableTasksElements();
   });
 
@@ -1517,7 +1522,7 @@ exportAvailableTasksButton.onclick = async function () {
 
   newJobButton.onclick = async function () {
     await storage.setItem('loadedJob', '');
-    await storage.setItem('currentJob', '');
+    await storage.setItem('currentTasks', '');
     tasksToExecute.innerHTML = '';
   }
 
