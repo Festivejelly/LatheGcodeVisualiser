@@ -668,20 +668,21 @@ exportAvailableTasksButton.onclick = async function () {
 
   async function saveJob(name: string, group: string = '', project: string = '') {
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
-    const jobData: Job = { name: '', projectName: '', groupName: '', tasks: [] };
+    const tasksList: { id: string; collectionName: string; }[] = [];
     tasks.forEach(task => {
       const taskId = task.getAttribute('data-task-id');
       const collectionName = task.getAttribute('data-collection-name');
-      jobData.tasks.push({ id: taskId!, collectionName: collectionName! });
+      tasksList.push({ id: taskId!, collectionName: collectionName! });
     });
 
-    jobData.name = name;
-    jobData.groupName = group;
-
     if (name === 'currentTasks') {
-      await storage.setItem(name, JSON.stringify(jobData));
+      // For currentTasks, only store the tasks array, not a full job object
+      await storage.setItem(name, JSON.stringify(tasksList));
     }
     else {
+      // For saved jobs, create the full job object
+      const jobData: Job = { name: name, projectName: project, groupName: group, tasks: tasksList };
+      
       if (project && group) {
         // Check if project exists, if not create it
         let projectData = await storage.getItem(`savedProject_${project}`);
