@@ -1017,9 +1017,11 @@ exportAvailableTasksButton.onclick = async function () {
       taskData.buttonKeys = emulatedButtonsList;
     }
 
+    var taskCollectionName  = '';
+
     //if the collectionToSaveTo is set to new then save the task to a new collection
     if (collectionToSaveTo.value === 'new') {
-      const taskCollectionName = newCollectionName.value;
+      taskCollectionName = newCollectionName.value;
       const taskCollection = {
         name: taskCollectionName,
         tasks: [] as TaskData[]
@@ -1034,7 +1036,7 @@ exportAvailableTasksButton.onclick = async function () {
       availableTaskCollections.appendChild(option);
       updateAvailableTaskCollectionsSelect();
     } else {
-      const taskCollectionName = collectionToSaveTo.value;
+      taskCollectionName = collectionToSaveTo.value;
       const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
       if (taskCollection) {
         const collection = JSON.parse(taskCollection) as TaskCollection;
@@ -1046,6 +1048,7 @@ exportAvailableTasksButton.onclick = async function () {
         }
         collection.tasks.push(taskData);
         await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
+        availableTaskCollections.value = taskCollectionName;
       } else {
         const taskCollection = {
           name: taskCollectionName,
@@ -1055,7 +1058,8 @@ exportAvailableTasksButton.onclick = async function () {
         await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(taskCollection));
       }
     }
-
+    //set the selected task collection to the one we just saved
+    await storage.setItem('selectedTaskCollection', JSON.stringify({ name: taskCollectionName }));
     rebuildavailableTasksElements();
   });
 
