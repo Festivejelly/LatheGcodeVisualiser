@@ -331,8 +331,8 @@ input.quick-task-summary {
     /* Adjust the space between elements */
 }
 
-.saveGCodeNameInput,
-.loadGCodeSelect {
+#saveGCodeNameInput,
+#loadGCodeSelect {
     flex-grow: 1;
     /* Allow input fields to grow and fill available space */
 }

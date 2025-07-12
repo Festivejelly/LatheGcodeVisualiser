@@ -30,11 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const sliderContainer = document.getElementById('sliderContainer') as HTMLDivElement;
   const displayOptionsContainer = document.getElementById('displayOptionsContainer') as HTMLDivElement;
   const clearButton = document.getElementById('clearButton') as HTMLButtonElement;
-  const saveGCodeNameInput = document.querySelector<HTMLInputElement>('.saveGCodeNameInput')!;
-  const loadSelect = document.querySelector<HTMLSelectElement>('.loadGCodeSelect')!;
-  const loadButton = document.querySelector<HTMLButtonElement>('.loadGCodeButton')!;
-  const saveButton = document.querySelector<HTMLButtonElement>('.saveGCodeButton')!;
-  const deleteButton = document.querySelector<HTMLButtonElement>('.deleteGCodeButton')!;
+  const saveGCodeNameInput = document.getElementById(('saveGCodeName')) as HTMLInputElement;
+  const loadSelect = document.getElementById('loadGCodeSelect') as HTMLSelectElement;
+  const loadButton = document.getElementById('loadGCodeButton') as HTMLButtonElement;
+  const saveButton = document.getElementById('saveGCodeButton') as HTMLButtonElement;
+  const deleteButton = document.getElementById('deleteGCodeButton') as HTMLButtonElement;
   const gcodeSenderContainer = document.getElementById('gcodeSenderContainer') as HTMLDivElement;
   const exampleElement = document.getElementById('exampleCode') as HTMLAnchorElement;
 
@@ -191,10 +191,26 @@ document.addEventListener("DOMContentLoaded", () => {
   editor.setTheme("ace/theme/github_dark");
   editor.session.setMode("ace/mode/plain_text");
   editor.setShowPrintMargin(false);
+  
+  // Add accessibility attributes to the main gcode editor
+  const gcodeEditorTextarea = document.querySelector('#gcodeEditor textarea');
+  if (gcodeEditorTextarea) {
+    gcodeEditorTextarea.setAttribute('id', 'gcodeEditor-textarea');
+    gcodeEditorTextarea.setAttribute('aria-label', 'G-Code Editor - Enter your G-code here');
+    gcodeEditorTextarea.setAttribute('role', 'textbox');
+  }
 
   gcodeSenderEditor.setTheme("ace/theme/github_dark");
   gcodeSenderEditor.session.setMode("ace/mode/plain_text");
   gcodeSenderEditor.setShowPrintMargin(false);
+  
+  // Add accessibility attributes to the sender editor
+  const gcodeSenderTextarea = document.querySelector('#gcodeSenderEditor textarea');
+  if (gcodeSenderTextarea) {
+    gcodeSenderTextarea.setAttribute('id', 'gcodeSenderEditor-textarea');
+    gcodeSenderTextarea.setAttribute('aria-label', 'G-Code Sender - Enter G-code to send to CNC machine');
+    gcodeSenderTextarea.setAttribute('role', 'textbox');
+  }
 
   exampleElement.addEventListener('click', () => loadExample());
 
@@ -202,6 +218,15 @@ document.addEventListener("DOMContentLoaded", () => {
   gcodeResponseEditor.session.setMode("ace/mode/text"); // Set mode to plain text or appropriate mode
   gcodeResponseEditor.setReadOnly(true);
   gcodeResponseEditor.setShowPrintMargin(false);
+  
+  // Add accessibility attributes to the response editor
+  const gcodeResponseTextarea = document.querySelector('#gcodeResponseEditor textarea');
+  if (gcodeResponseTextarea) {
+    gcodeResponseTextarea.setAttribute('id', 'gcodeResponseEditor-textarea');
+    gcodeResponseTextarea.setAttribute('aria-label', 'G-Code Response Display - Shows responses from CNC machine');
+    gcodeResponseTextarea.setAttribute('role', 'log');
+    gcodeResponseTextarea.setAttribute('aria-live', 'polite');
+  }
 
   gcodeResponseEditor.getSession().on('change', () => {
     // Wait for the change to render
