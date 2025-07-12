@@ -159,19 +159,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tasksToExecute.innerHTML = '';
 
-    updateAvailableTaskCollectionsSelect();
-    rebuildavailableTasksElements();
-
-
-    rebuildTaskElements();
-    updateProjectLoadSelect();
-    updateGroupLoadSelect();
-    updateJobLoadSelect();
+    await updateAvailableTaskCollectionsSelect();
+    await rebuildavailableTasksElements();
+    await updateProjectLoadSelect();
+    await updateGroupLoadSelect();
+    await updateJobLoadSelect();
 
     const currentJob = await getSelectedJobFromSelectedGroup();
     if (currentJob) {
-      loadJob(currentJob);
+      await loadJob(currentJob);
     }
+    
+    rebuildTaskElements();
     updateTaskNumbers();
   });
 
@@ -315,11 +314,12 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const reader = new FileReader();
-          reader.onload = function (e) {
+          reader.onload = async function (e) {
             const contents = e.target?.result;
             if (contents) {
               const collections = JSON.parse(contents as string) as TaskCollection[];
-              collections.forEach(async collection => {
+              // Process collections sequentially to avoid async issues
+              for (const collection of collections) {
                 const taskCollectionName = collection.name;
                 const taskCollection = await storage.getItem(`taskCollection_${taskCollectionName}`);
                 //if task collection already exists then prompt
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                   await storage.setItem(`taskCollection_${taskCollectionName}`, JSON.stringify(collection));
                 }
-              });
+              }
               updateAvailableTaskCollectionsSelect();
             }
           }
@@ -715,20 +715,25 @@ exportAvailableTasksButton.onclick = async function () {
     let tasks = job.tasks;
 
     const removedTasks: { collectionName: string; id: any; }[] = [];
-    tasks = tasks.filter(async (task: { collectionName: string; id: any; }) => {
+    
+    // Properly filter tasks async
+    const validTasks = [];
+    for (const task of tasks) {
       const collectionData = await storage.getItem(`taskCollection_${task.collectionName}`);
       if (!collectionData) {
         removedTasks.push(task);
-        return false;
+      } else {
+        validTasks.push(task);
       }
-      return true;
-    });
+    }
+    tasks = validTasks;
 
     await storage.setItem('currentJob', JSON.stringify(tasks));
 
     tasksToExecute.innerHTML = '';
 
-    tasks.forEach(async (task: { collectionName: string; id: any; }) => {
+    // Properly await all task creation
+    for (const task of tasks) {
       const collectionData = await storage.getItem(`taskCollection_${task.collectionName}`);
       if (collectionData) {
         const collection = JSON.parse(collectionData);
@@ -744,7 +749,8 @@ exportAvailableTasksButton.onclick = async function () {
           tasksToExecute.appendChild(newTask);
         }
       }
-    });
+    }
+    
     if (removedTasks.length > 0) {
       alert(`The following tasks were removed because their collection does not exist: ${removedTasks.map(task => task.id).join(', ')}`);
     }
@@ -1235,15 +1241,15 @@ exportAvailableTasksButton.onclick = async function () {
     jobCancelledModal.style.display = 'none';
   }
 
-  executeJobButton.onclick = function () {
+  executeJobButton.onclick = async function () {
     if (!sender?.isConnected()) {
       notConnectedModal.style.display = 'block';
       return;
     }
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
 
-    tasks.forEach(async task => {
-
+    // Process tasks sequentially to avoid async issues
+    for (const task of tasks) {
       const taskId = task.getAttribute('data-task-id');
       const taskOrder = task.getAttribute('data-task-order');
       const collectionName = task.getAttribute('data-collection-name');
@@ -1261,7 +1267,7 @@ exportAvailableTasksButton.onclick = async function () {
         taskData.order = parseInt(taskOrder || '0');
         jobQueue.push(taskData);
       }
-    });
+    }
 
     executeNextTask();
   }
@@ -1551,7 +1557,7 @@ exportAvailableTasksButton.onclick = async function () {
 
     if (!job) return;
 
-    loadJob(job);
+    await loadJob(job);
 
     // Save selected project/group/job
     await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
@@ -1878,7 +1884,8 @@ exportAvailableTasksButton.onclick = async function () {
 
       const job: Job = { name: jobData.name, projectName: projectName, groupName: groupName, tasks: [] };
 
-      tasks.forEach(async (task: { collectionName: any; id: any; }) => {
+      // Process tasks sequentially to avoid async issues
+      for (const task of tasks) {
         const collectionData = await storage.getItem(`taskCollection_${task.collectionName}`);
         if (collectionData) {
           const collection = JSON.parse(collectionData);
@@ -1887,7 +1894,7 @@ exportAvailableTasksButton.onclick = async function () {
             job.tasks.push({ id: taskData.id, collectionName: task.collectionName });
           }
         }
-      });
+      }
 
       const blob = new Blob([JSON.stringify(job, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
