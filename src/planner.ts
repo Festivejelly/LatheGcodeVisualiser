@@ -161,12 +161,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateAvailableTaskCollectionsSelect();
     rebuildavailableTasksElements();
-
-
     rebuildTaskElements();
-    updateProjectLoadSelect();
-    updateGroupLoadSelect();
-    updateJobLoadSelect();
+    
+    // 1. Get projects and populate dropdown
+    await updateProjectLoadSelect();
+    
+    // 2. Get selected project from API and set dropdown
+    const selectedProjectData = await storage.getItem('selectedProject');
+    if (selectedProjectData && projectLoadSelect) {
+      try {
+        const selectedProject = JSON.parse(selectedProjectData).name;
+        projectLoadSelect.value = selectedProject;
+      } catch {
+        projectLoadSelect.value = selectedProjectData; // Fallback for old string format
+      }
+    }
+    
+    // 3. Populate groups dropdown based on currently selected project
+    await updateGroupLoadSelect();
+    
+    // 4. Get selected group from API and set dropdown
+    const selectedGroupData = await storage.getItem('selectedGroup');
+    if (selectedGroupData && groupLoadSelect) {
+      try {
+        const selectedGroup = JSON.parse(selectedGroupData).name;
+        groupLoadSelect.value = selectedGroup;
+      } catch {
+        groupLoadSelect.value = selectedGroupData; // Fallback for old string format
+      }
+    }
+    
+    // 5. Populate jobs dropdown based on currently selected group
+    await updateJobLoadSelect();
 
     const currentJob = await getSelectedJobFromSelectedGroup();
     if (currentJob) {
@@ -420,24 +446,6 @@ exportAvailableTasksButton.onclick = async function () {
       option.textContent = group.name;
       groupLoadSelect.appendChild(option);
     });
-
-    // Set to last selected group if available
-    const selectedGroupData = await storage.getItem('selectedGroup');
-    if (selectedGroupData) {
-      try {
-        const selectedGroup = JSON.parse(selectedGroupData);
-        const groupExists = project.groups.some(g => g.name === selectedGroup.name);
-        if (groupExists) {
-          groupLoadSelect.value = selectedGroup.name;
-        }
-      } catch {
-        // Fallback for old string format
-        const groupExists = project.groups.some(g => g.name === selectedGroupData);
-        if (groupExists) {
-          groupLoadSelect.value = selectedGroupData;
-        }
-      }
-    }
   }
 
   async function getSelectedJobFromSelectedGroup() {
@@ -486,26 +494,6 @@ exportAvailableTasksButton.onclick = async function () {
       option.textContent = job.name;
       jobLoadSelect.appendChild(option);
     });
-
-    // Only auto-select from loadedJob if we're not in the middle of a save operation
-    // (this prevents conflicts when setting explicit selections)
-    if (!saveJobModal || saveJobModal.style.display === 'none') {
-      const loadedJobData = await storage.getItem('loadedJob');
-      if (loadedJobData) {
-        try {
-          const loadedJob = JSON.parse(loadedJobData);
-          // Only select if the job belongs to the currently selected group
-          if (loadedJob.groupName === selectedGroup) {
-            const jobExists = group.jobs.some(j => j.name === loadedJob.name);
-            if (jobExists) {
-              jobLoadSelect.value = loadedJob.name;
-            }
-          }
-        } catch {
-          // If parsing fails, ignore
-        }
-      }
-    }
   }
 
   async function updateAvailableTaskCollectionsSelect() {
@@ -1515,20 +1503,12 @@ exportAvailableTasksButton.onclick = async function () {
 
     //update the project, group and job select elements
     await updateProjectLoadSelect();
-    
-    // Set project selection first
     if (projectLoadSelect) projectLoadSelect.value = projectName;
     
-    // Then update group dropdown based on selected project
     await updateGroupLoadSelect();
-    
-    // Set group selection
     if (groupLoadSelect) groupLoadSelect.value = groupName;
     
-    // Finally update job dropdown based on selected group
     await updateJobLoadSelect();
-    
-    // Set job selection
     if (jobLoadSelect) jobLoadSelect.value = jobName;
 
     //show modal saying job saved
@@ -1936,8 +1916,8 @@ exportAvailableTasksButton.onclick = async function () {
 
     projectLoadSelect.innerHTML = '';
 
-  const projects = await storage.getKeys('savedProject_');
-  projects.sort();
+    const projects = await storage.getKeys('savedProject_');
+    projects.sort();
 
     projects.forEach(projectKey => {
       const projectName = projectKey.replace('savedProject_', '');
@@ -1946,24 +1926,6 @@ exportAvailableTasksButton.onclick = async function () {
       option.textContent = projectName;
       projectLoadSelect.appendChild(option);
     });
-
-    // Set to last selected project if available
-    const selectedProjectData = await storage.getItem('selectedProject');
-    if (selectedProjectData) {
-      let selectedProject;
-      try {
-        selectedProject = JSON.parse(selectedProjectData).name;
-      } catch {
-        selectedProject = selectedProjectData; // Fallback for old string format
-      }
-      
-      if (projects.includes(`savedProject_${selectedProject}`)) {
-        projectLoadSelect.value = selectedProject;
-        // Manually trigger group and job updates since setting .value doesn't fire change event
-        updateGroupLoadSelect();
-        updateJobLoadSelect();
-      }
-    }
   }
 
   // Add project change event listener
