@@ -487,17 +487,23 @@ exportAvailableTasksButton.onclick = async function () {
       jobLoadSelect.appendChild(option);
     });
 
-    // Set to last loaded job if available
-    const loadedJobData = await storage.getItem('loadedJob');
-    if (loadedJobData) {
-      try {
-        const loadedJob = JSON.parse(loadedJobData);
-        const jobExists = group.jobs.some(j => j.name === loadedJob.name);
-        if (jobExists) {
-          jobLoadSelect.value = loadedJob.name;
+    // Only auto-select from loadedJob if we're not in the middle of a save operation
+    // (this prevents conflicts when setting explicit selections)
+    if (!saveJobModal || saveJobModal.style.display === 'none') {
+      const loadedJobData = await storage.getItem('loadedJob');
+      if (loadedJobData) {
+        try {
+          const loadedJob = JSON.parse(loadedJobData);
+          // Only select if the job belongs to the currently selected group
+          if (loadedJob.groupName === selectedGroup) {
+            const jobExists = group.jobs.some(j => j.name === loadedJob.name);
+            if (jobExists) {
+              jobLoadSelect.value = loadedJob.name;
+            }
+          }
+        } catch {
+          // If parsing fails, ignore
         }
-      } catch {
-        // If parsing fails, ignore
       }
     }
   }
@@ -1509,12 +1515,20 @@ exportAvailableTasksButton.onclick = async function () {
 
     //update the project, group and job select elements
     await updateProjectLoadSelect();
+    
+    // Set project selection first
+    if (projectLoadSelect) projectLoadSelect.value = projectName;
+    
+    // Then update group dropdown based on selected project
     await updateGroupLoadSelect();
+    
+    // Set group selection
+    if (groupLoadSelect) groupLoadSelect.value = groupName;
+    
+    // Finally update job dropdown based on selected group
     await updateJobLoadSelect();
     
-    // Set the correct selections after updating dropdowns
-    if (projectLoadSelect) projectLoadSelect.value = projectName;
-    if (groupLoadSelect) groupLoadSelect.value = groupName;
+    // Set job selection
     if (jobLoadSelect) jobLoadSelect.value = jobName;
 
     //show modal saying job saved
