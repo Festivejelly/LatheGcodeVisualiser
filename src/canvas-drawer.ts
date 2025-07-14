@@ -210,8 +210,10 @@ export class CanvasDrawer {
             }
         });
 
+        const stockRadius = this.stockDiameterInMM / 2;
+
         // Object size in mm
-        const objectSizeX = Math.abs(minX);
+        const objectSizeX = Math.max(Math.abs(minX), stockRadius);
         const objectSizeZ = Math.abs(maxZ);
 
         // Calculate available screen size, taking into account the margin
@@ -274,7 +276,7 @@ export class CanvasDrawer {
             this.canvasZ = canvas.width - (this.currentZ * scalingFactor) - offSetFromScreenEdgeZ;
 
             // Remove stock for this cut, but only if it's an actual cutting operation
-            if (drawableCommands[i].movementType === MovementType.Cut && showCuts) {
+            if (showCuts) {
                 this.removeStockMaterial(stockCanvas, scalingFactor);
             }
 
