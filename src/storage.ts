@@ -152,7 +152,7 @@ export function createStorageService(): StorageService {
   // Check if we're running on the local network and can access the API
   const hostname = window.location.hostname;
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-  const isDebug = true;
+  const isDebug = false;
   const isLocalNetwork = hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
 
   if (isDebug) {
