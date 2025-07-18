@@ -1,7 +1,6 @@
 import dragula from 'dragula';
 import 'dragula/dist/dragula.min.css';
 import { Sender, SenderClient } from './sender';
-import { KeyEmulation } from './keyEmulation';
 import { nanoid } from 'nanoid';
 import { storage } from './storage';
 
@@ -14,7 +13,6 @@ const closeTaskModal = document.getElementById('closeNewTaskModal') as HTMLSpanE
 const newTaskType = document.getElementById('newTaskType') as HTMLSelectElement;
 const gcodeTaskContainer = document.getElementById('gcodeTaskContainer') as HTMLDivElement;
 const newTaskGcode = document.getElementById('newTaskGcode') as HTMLTextAreaElement;
-const emulationOuterContainer = document.getElementById('emulationOuterContainer') as HTMLDivElement;
 const saveNewTaskButton = document.getElementById('saveNewTaskButton') as HTMLButtonElement;
 const newTaskGcodeRepeatable = document.getElementById('newTaskGcodeRepeatable') as HTMLInputElement;
 const newTaskName = document.getElementById('newTaskName') as HTMLInputElement;
@@ -93,6 +91,22 @@ const cncTaskName = document.getElementById('cncTaskName') as HTMLSpanElement;
 const cncTaskSenderProgressLabel = document.getElementById('cncTaskSenderProgressLabel') as HTMLSpanElement;
 const cncTaskSenderProgress = document.getElementById('cncTaskSenderProgress') as HTMLProgressElement;
 
+//tool change elements
+
+//task creation elements
+const newTaskToolChangeNewTool = document.getElementById('newTaskToolChangeNewTool') as HTMLInputElement;
+
+//exection elements
+const toolChangeTaskContainer = document.getElementById('toolChangeTaskContainer') as HTMLDivElement;
+const toolChangeTaskModal = document.getElementById('toolChangeTaskModal') as HTMLDivElement;
+const toolChangeTaskName = document.getElementById('toolChangeTaskName') as HTMLSpanElement;
+const toolChangeTaskInstructions = document.getElementById('toolChangeTaskInstructions') as HTMLSpanElement;
+
+const toolChangeNewTool = document.getElementById('toolChangeNewTool') as HTMLInputElement;
+const cancelToolChangeButton = document.getElementById('cancelToolChange') as HTMLButtonElement;
+const executeToolChangeButton = document.getElementById('executeToolChange') as HTMLButtonElement;
+const completeToolChangeTaskButton = document.getElementById('completeToolChangeTask') as HTMLButtonElement;
+
 const jobCancelledModal = document.getElementById('jobCancelledModal') as HTMLDivElement;
 const jobCancelledCloseButton = document.getElementById('jobCancelledCloseButton') as HTMLButtonElement;
 const completeTaskModal = document.getElementById('completeTaskModal') as HTMLDivElement;
@@ -108,13 +122,6 @@ const currentFeedrateContainer = document.getElementById('currentFeedrateContain
 const currentFeedrate = document.getElementById('currentFeedrate') as HTMLSpanElement;
 
 
-//emulation
-const emulationInnerContainer = document.getElementById('emulationInnerContainer') as HTMLDivElement;
-const emulationNewTasksList = document.getElementById('emulationNewTasks') as HTMLDivElement;
-const emulatedButtonListDelete = document.getElementById('emulatedButtonListDelete') as HTMLDivElement;
-
-const emulationTaskModal = document.getElementById('emulationTaskModal') as HTMLDivElement;
-
 //create type to represent job which is an array of tasks: {"name": "","tasks": [{"id": "","collectionName": ""}]}
 type Job = {
   name: string;
@@ -123,14 +130,20 @@ type Job = {
   tasks: { id: string, collectionName: string }[];
 };
 
+enum TaskType {
+  GCODE = 'GCODE',
+  MANUAL = 'MANUAL',
+  TOOL_CHANGE = 'TOOL_CHANGE'
+}
+
 type TaskData = {
   id: string;
   name: string;
-  type: string;
+  type: TaskType;
   description: string;
   gcode?: string;
+  toolName?: string; // For TOOL_CHANGE tasks
   isRepeatable?: boolean;
-  buttonKeys?: string;
   order?: number;
 };
 
@@ -165,13 +178,21 @@ document.addEventListener('DOMContentLoaded', () => {
     await updateGroupLoadSelect();
     await updateJobLoadSelect();
 
-    const currentJob = await getSelectedJobFromSelectedGroup();
-    if (currentJob) {
-      await loadJob(currentJob);
+
+    const defaultJob = await getDefaultJob();
+    if (defaultJob) {
+      await loadJob(defaultJob);
     }
-    
-    rebuildTaskElements();
+    else {
+      const currentJob = await getSelectedJobFromSelectedGroup();
+      if (currentJob) {
+        await loadJob(currentJob);
+      }
+    }
+
     updateTaskNumbers();
+    rebuildTaskElements();
+
   });
 
   saveCollectionModalToSaveTo.addEventListener('change', () => {
@@ -243,14 +264,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedTaskCollectionData = await storage.getItem('selectedTaskCollection');
     let taskCollection;
     let selectedTaskCollectionName;
-    
+
     if (selectedTaskCollectionData) {
       try {
         selectedTaskCollectionName = JSON.parse(selectedTaskCollectionData).name;
       } catch {
         selectedTaskCollectionName = selectedTaskCollectionData; // Fallback for old string format
       }
-      
+
       const selectedTaskCollection = await storage.getItem(`taskCollection_${selectedTaskCollectionName}`);
       if (selectedTaskCollection) {
         taskCollection = JSON.parse(selectedTaskCollection);
@@ -342,10 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
     input.click();
   }
 
-exportAvailableTasksButton.onclick = async function () {
+  exportAvailableTasksButton.onclick = async function () {
     const taskCollections = await storage.getKeys('taskCollection_');
     const collections: TaskCollection[] = [];
-    
+
     for (const collection of taskCollections) {
       const taskCollection = await storage.getItem(collection);
       if (taskCollection) {
@@ -366,48 +387,13 @@ exportAvailableTasksButton.onclick = async function () {
     URL.revokeObjectURL(url);
   }
 
-
-  emulationInnerContainer.addEventListener('click', function (event) {
-
-    const targetElement = event.target as HTMLElement;
-    // Check if a button was clicked
-    if (targetElement.tagName === 'BUTTON') {
-      // Get the id of the button
-      const buttonId = targetElement.id;
-
-      // Handle the button click
-      handleButtonClick(buttonId);
-    }
-  });
-
-  function handleButtonClick(buttonId: string) {
-
-    const button = document.getElementById(buttonId);
-
-    const clonedButton = button?.cloneNode(true) as HTMLButtonElement;
-
-    // Add the emulated-button-list class to the cloned button
-    clonedButton.classList.add('emulated-button-list');
-
-    // Remove the ID from the cloned button
-    clonedButton.removeAttribute('id');
-
-    const uniqueId = 'emulated-' + Date.now();
-
-    //create a data-emulateded-id attribute and set it to the emulatedButtonCount
-    clonedButton.setAttribute('data-emulated-id', uniqueId);
-
-    // const listItem = document.createElement('li');
-    //  listItem.appendChild(clonedButton);
-    emulationNewTasksList?.appendChild(clonedButton);
-  }
-
   async function updateGroupLoadSelect() {
-    groupLoadSelect.innerHTML = '';
 
     if (!projectLoadSelect || !projectLoadSelect.value) {
       return;
     }
+
+    groupLoadSelect.innerHTML = '';
 
     const projectData = await storage.getItem(`savedProject_${projectLoadSelect.value}`);
     if (!projectData) return;
@@ -466,10 +452,46 @@ exportAvailableTasksButton.onclick = async function () {
     return job;
   }
 
+  async function getDefaultJob() {
+    const jobData = await storage.getItem(`currentJob`);
+
+    if (!jobData) {
+      return null;
+    }
+
+    const parsedData = JSON.parse(jobData);
+
+    // Check if it's already a proper Job object
+    if (parsedData.name !== undefined) {
+      return parsedData as Job;
+    }
+
+    // If it's the old format (array of tasks), create a proper Job object
+    if (Array.isArray(parsedData)) {
+      const job: Job = {
+        name: 'Current Job',
+        projectName: '',
+        groupName: '',
+        tasks: parsedData.map(task => ({
+          id: task.id,
+          collectionName: task.collectionName
+        }))
+      };
+
+      // Update storage with the new format
+      await storage.setItem('currentJob', JSON.stringify(job));
+
+      return job;
+    }
+
+    return null;
+  }
+
   async function updateJobLoadSelect() {
-    jobLoadSelect.innerHTML = '';
 
     if (!projectLoadSelect || !projectLoadSelect.value) return;
+
+    jobLoadSelect.innerHTML = '';
 
     const projectData = await storage.getItem(`savedProject_${projectLoadSelect.value}`);
     if (!projectData) return;
@@ -486,6 +508,23 @@ exportAvailableTasksButton.onclick = async function () {
       option.textContent = job.name;
       jobLoadSelect.appendChild(option);
     });
+
+    // Set to last selected job if available
+    const selectedJobData = await storage.getItem('selectedJob');
+    if (selectedJobData) {
+      let selectedJob;
+      try {
+        selectedJob = JSON.parse(selectedJobData).name;
+      } catch {
+        selectedJob = selectedJobData; // Fallback for old string format
+      }
+      jobLoadSelect.value = selectedJob;
+    } else {
+      // If no job is selected, set to the first job if available
+      if (jobLoadSelect.options.length > 0) {
+        jobLoadSelect.value = jobLoadSelect.options[0].value;
+      }
+    }
   }
 
   async function updateAvailableTaskCollectionsSelect() {
@@ -592,6 +631,10 @@ exportAvailableTasksButton.onclick = async function () {
       completeCncTaskButton.classList.add('interaction-ready-button');
       cncTaskSenderProgressLabel.innerText = "Task completed";
 
+      completeToolChangeTaskButton.style.display = 'block';
+      completeToolChangeTaskButton.disabled = false;
+      completeToolChangeTaskButton.classList.add('interaction-ready-button');
+
       //if gcode task is repeatable then enable the execute button. We can read the execute button attribute to see if the task is repeatable
       if (executeGcodeButton.attributes.getNamedItem('data-repeatable')?.value === 'true') {
         executeGcodeButton.disabled = false;
@@ -607,9 +650,14 @@ exportAvailableTasksButton.onclick = async function () {
       executeGcodeButton.disabled = true;
       executeGcodeButton.classList.add('disabled-button');
       executeGcodeButton.classList.remove('interaction-ready-button');
-      completeCncTaskButton.classList.remove('interaction-ready-button');
+      executeToolChangeButton.disabled = true;
+      executeToolChangeButton.classList.add('disabled-button');
+      executeToolChangeButton.classList.remove('interaction-ready-button');
       cncTaskSenderProgressLabel.innerText = "Task in progress";
+      completeCncTaskButton.classList.remove('interaction-ready-button');
       completeCncTaskButton.style.display = 'none';
+      completeToolChangeTaskButton.style.display = 'none';
+      completeToolChangeTaskButton.classList.remove('interaction-ready-button');
     }
 
     cncTaskSenderProgress.value = status.progress;
@@ -618,27 +666,6 @@ exportAvailableTasksButton.onclick = async function () {
     cncTaskSenderProgressLabel.style.display = 'block';
 
   }
-
-  const emulatedTaskDrake = dragula([emulationNewTasksList, emulatedButtonListDelete], {
-    copy: false,
-    accepts: (_el, target) => {
-      return target === emulatedButtonListDelete || target === emulationNewTasksList;
-    },
-    revertOnSpill: true,
-    removeOnSpill: false,
-  });
-
-  emulatedTaskDrake.on('drop', (el, target) => {
-    if (target === emulatedButtonListDelete) {
-      el.remove();
-      //get the original button and delete it
-      const emulatedId = el.getAttribute('data-emulated-id');
-      const originalButton = emulationNewTasksList.querySelector(`[data-emulated-id="${emulatedId}"]`);
-      if (originalButton) {
-        originalButton.remove();
-      }
-    }
-  });
 
   const drake = dragula([availableTasks, tasksToExecute, deleteTasks], {
     copy: (_el, source) => {
@@ -715,7 +742,7 @@ exportAvailableTasksButton.onclick = async function () {
     let tasks = job.tasks;
 
     const removedTasks: { collectionName: string; id: any; }[] = [];
-    
+
     // Properly filter tasks async
     const validTasks = [];
     for (const task of tasks) {
@@ -740,7 +767,16 @@ exportAvailableTasksButton.onclick = async function () {
         const taskData = collection.tasks.find((t: any) => t.id === task.id);
         if (taskData) {
           const newTask = document.createElement('div');
-          newTask.classList.add(`task-${taskData.type}`);
+
+          var taskType = "";
+          if (taskData.type === TaskType.GCODE) {
+            taskType = 'gcode';
+          } else if (taskData.type === TaskType.MANUAL) {
+            taskType = 'manual';
+          } else if (taskData.type === TaskType.TOOL_CHANGE) {
+            taskType = 'tool-change';
+          }
+          newTask.classList.add(`task-${taskType}`);
           newTask.classList.add('task-to-execute');
           newTask.setAttribute('data-task-id', taskData.id);
           newTask.setAttribute('data-task-name', taskData.name);
@@ -750,16 +786,10 @@ exportAvailableTasksButton.onclick = async function () {
         }
       }
     }
-    
+
     if (removedTasks.length > 0) {
       alert(`The following tasks were removed because their collection does not exist: ${removedTasks.map(task => task.id).join(', ')}`);
     }
-
-    await storage.setItem('loadedJob', JSON.stringify({
-      name: job.name,
-      groupName: job.groupName
-    }));
-
   }
 
   //remove available-task class and add task-to-execute class
@@ -810,9 +840,9 @@ exportAvailableTasksButton.onclick = async function () {
         } else if (task.classList.contains('task-gcode')) {
           icon.className = 'fas fa-code icon-tooltip';
           icon.setAttribute('data-tooltip', 'Gcode Task');
-        } else if (task.classList.contains('task-emulation')) {
-          icon.className = 'far fa-keyboard icon-tooltip';
-          icon.setAttribute('data-tooltip', 'Emulation Task');
+        } else if (task.classList.contains('task-tool-change')) {
+          icon.className = 'fas fa-wrench icon-tooltip';
+          icon.setAttribute('data-tooltip', 'Tool Change Task');
         }
         task.appendChild(icon);
       } else {
@@ -827,9 +857,9 @@ exportAvailableTasksButton.onclick = async function () {
           } else if (task.classList.contains('task-gcode')) {
             icon.className = 'fas fa-code icon-tooltip';
             icon.setAttribute('data-tooltip', 'Gcode Task');
-          } else if (task.classList.contains('task-emulation')) {
-            icon.className = 'far fa-keyboard icon-tooltip';
-            icon.setAttribute('data-tooltip', 'Emulation Task');
+          } else if (task.classList.contains('task-tool-change')) {
+            icon.className = 'fas fa-wrench icon-tooltip';
+            icon.setAttribute('data-tooltip', 'Tool Change Task');
           }
           task.appendChild(icon);
         }
@@ -866,18 +896,24 @@ exportAvailableTasksButton.onclick = async function () {
           description: task.description
         };
 
-        if (task.gcode) {
+        if (task.type === TaskType.GCODE || task.type === TaskType.TOOL_CHANGE) {
           taskData.gcode = task.gcode;
+          taskData.toolName = task.toolName;
         }
 
-        if (task.buttonKeys) {
-          taskData.buttonKeys = task.buttonKeys;
+        var taskType = "";
+        if (task.type === TaskType.GCODE) {
+          taskType = 'gcode';
+        } else if (task.type === TaskType.MANUAL) {
+          taskType = 'manual';
+        } else if (task.type === TaskType.TOOL_CHANGE) {
+          taskType = 'tool-change';
         }
 
         const newTask = document.createElement('div');
-        newTask.classList.add(`task-${task.type}`);
+        newTask.classList.add(`task-${taskType}`);
         newTask.classList.add('available-task');
-        newTask.setAttribute('data-task-type', task.type);
+        newTask.setAttribute('data-task-type', taskType);
         newTask.setAttribute('data-task-id', task.id.toString());
         newTask.setAttribute('data-task-name', task.name);
         newTask.setAttribute('data-collection-name', taskCollectionName || '');
@@ -907,20 +943,14 @@ exportAvailableTasksButton.onclick = async function () {
 
   //if task type set to manual then disable gcode input
   newTaskType.addEventListener('change', () => {
-    if (newTaskType.value === 'manual') {
-      newTaskGcode.disabled = true;
-      newTaskGcode.placeholder = 'Disabled for manual tasks';
-      newTaskGcode.value = '';
+    if (newTaskType.value === TaskType.MANUAL) {
       gcodeTaskContainer.style.display = 'none';
-      emulationOuterContainer.style.display = 'none';
-    } else if (newTaskType.value === 'emulation') {
-      newTaskGcode.disabled = true;
-      newTaskGcode.placeholder = 'Disabled for emulation tasks';
-      newTaskGcode.value = '';
+      toolChangeTaskContainer.style.display = 'none';
+    } else if (newTaskType.value === TaskType.TOOL_CHANGE) {
       gcodeTaskContainer.style.display = 'none';
-      emulationOuterContainer.style.display = 'block';
+      toolChangeTaskContainer.style.display = 'block';
     } else {
-      emulationOuterContainer.style.display = 'none';
+      toolChangeTaskContainer.style.display = 'none';
       gcodeTaskContainer.style.display = 'block';
       newTaskGcode.placeholder = 'Enter gcode here...';
       newTaskGcode.disabled = false;
@@ -992,42 +1022,31 @@ exportAvailableTasksButton.onclick = async function () {
     availableTasks.appendChild(newTask);
     newTaskModal.style.display = 'none';
 
-    let emulatedButtonsList = "";
-    //if the mode is emulation then add the button keys to the task
-    if (newTaskType.value === 'emulation') {
-      const emulatedButtons = emulationNewTasksList.querySelectorAll('.emulated-button-list');
-      emulatedButtons.forEach(button => {
-        const buttonId = button.getAttribute('data-button-key');
-        emulatedButtonsList += buttonId + ',';
-      });
-
-      if (emulatedButtonsList.length > 0) {
-        emulatedButtonsList = emulatedButtonsList.slice(0, -1);
-      }
-    }
-
     //create json object and save to local storage
     const taskData: TaskData = {
       id: taskId,
       name: taskName,
-      type: newTaskType.value,
+      type: newTaskType.value as TaskType,
       description: newTaskDescription.value
     };
 
-    if (newTaskType.value === 'gcode') {
+    if (newTaskType.value === TaskType.GCODE) {
       taskData.gcode = newTaskGcode.value;
       taskData.isRepeatable = newTaskGcodeRepeatable.checked;
+    } else if (newTaskType.value === TaskType.TOOL_CHANGE) {
+      taskData.gcode = newTaskToolChangeNewTool.value;
+      taskData.toolName = newTaskToolChangeNewTool.value;
     }
 
-    if (newTaskType.value === 'emulation') {
-      taskData.buttonKeys = emulatedButtonsList;
-    }
 
-    var taskCollectionName  = '';
+    var taskCollectionName = '';
 
     //if the collectionToSaveTo is set to new then save the task to a new collection
     if (collectionToSaveTo.value === 'new') {
       taskCollectionName = newCollectionName.value;
+      newCollectionName.value = ''; // Clear the input after saving
+      //hide the new collection name input
+      newCollectionNameContainer.style.display = 'none';
       const taskCollection = {
         name: taskCollectionName,
         tasks: [] as TaskData[]
@@ -1076,7 +1095,7 @@ exportAvailableTasksButton.onclick = async function () {
       const taskId = parentDiv.getAttribute('data-task-id');
       let taskData: TaskData | null = null;
       const currentCollectionData = await storage.getItem('selectedTaskCollection');
-      
+
       let currentCollectionName;
       if (currentCollectionData) {
         try {
@@ -1100,38 +1119,24 @@ exportAvailableTasksButton.onclick = async function () {
       if (taskData) {
         newTaskModal.style.display = 'block';
         newTaskName.value = taskData.name;
-        newTaskType.value = taskData.type;
+        newTaskType.value = taskData.type.toString();
         newTaskDescription.value = taskData.description;
-        newTaskGcode.value = taskData.gcode || '';
-        newTaskGcodeRepeatable.checked = taskData.isRepeatable || false;
         collectionToSaveTo.value = currentCollectionName || 'default';
         taskTextTitle.textContent = 'Edit Task';
 
-        if (taskData.type === 'emulation') {
-          emulationOuterContainer.style.display = 'block';
+        if (taskData.type === TaskType.TOOL_CHANGE) {
+          toolChangeTaskContainer.style.display = 'block';
           gcodeTaskContainer.style.display = 'none';
-          emulationNewTasksList.innerHTML = '';
-          const buttonKeys = (taskData.buttonKeys ?? '').split(',');
-          buttonKeys.forEach((key: string) => {
-            const button = document.createElement('button');
-            button.classList.add('emulated-button-list');
-            button.classList.add('material-symbols-outlined');
-            button.setAttribute('data-button-key', key);
-            button.textContent = KeyEmulation.getButtonName(key);
-            if (button.textContent.length === 1) {
-              button.classList.add('standard-font');
-            }
-            emulationNewTasksList.appendChild(button);
-          });
-        } else if (taskData.type === 'gcode') {
-          emulationOuterContainer.style.display = 'none';
+          toolChangeTaskName.textContent = taskData.name;
+          toolChangeTaskInstructions.textContent = taskData.description || '';
+
+          toolChangeNewTool.textContent = taskData.toolName || '';
+        } else if (taskData.type === TaskType.GCODE) {
+          toolChangeTaskContainer.style.display = 'none';
           gcodeTaskContainer.style.display = 'block';
           newTaskGcode.disabled = false;
-          newTaskGcode.placeholder = 'Enter gcode here...';
-
-        } else {
-          emulationOuterContainer.style.display = 'none';
-          gcodeTaskContainer.style.display = 'none';
+          newTaskGcode.value = taskData.gcode || '';
+          newTaskGcodeRepeatable.checked = taskData.isRepeatable || false;
         }
 
         if (taskId) {
@@ -1157,7 +1162,7 @@ exportAvailableTasksButton.onclick = async function () {
 
     const task = jobQueue.shift(); // Get the next task
 
-    if (task && task.type === 'manual') {
+    if (task && task.type === TaskType.MANUAL) {
       manualTaskName.textContent = `Task ${task.order}: ${task.name}`;
       manualTaskInstructions.value = task.description;
       manualTaskModal.style.display = 'block';
@@ -1168,7 +1173,7 @@ exportAvailableTasksButton.onclick = async function () {
         completeManualTaskButton.innerText = 'Next Task -->';
       }
 
-    } else if (task && task.type === 'gcode') {
+    } else if (task && task.type === TaskType.GCODE) {
       executeGcodeButton.disabled = false;
       executeGcodeButton.classList.remove('disabled-button');
       executeGcodeButton.classList.add('interaction-ready-button');
@@ -1199,10 +1204,24 @@ exportAvailableTasksButton.onclick = async function () {
       completeCncTaskButton.style.display = 'none';
       cncTaskSenderProgress.style.display = 'none';
       cncTaskSenderProgressLabel.style.display = 'none';
-    } else if (task && task.type === 'emulation') {
-      //todo: add key emulation
-      emulationTaskModal.style.display = 'block';
+    } else if (task && task.type === TaskType.TOOL_CHANGE) {
+      //todo: add tool change task handling
+      executeToolChangeButton.disabled = false;
+      executeToolChangeButton.classList.remove('disabled-button');
+      executeToolChangeButton.classList.add('interaction-ready-button');
+      executeToolChangeButton.textContent = 'Execute Tool Change';
+      completeToolChangeTaskButton.style.display = 'none';
+      toolChangeTaskModal.style.display = 'block';
+      toolChangeTaskName.textContent = `Task ${task.order}: ${task.name}`;
+      toolChangeNewTool.value = task.toolName || '';
+      toolChangeTaskInstructions.textContent = `Please change the tool to ${task.toolName}`;
+      toolChangeTaskModal.style.display = 'block';
 
+      if (jobQueue.length === 0) {
+        completeToolChangeTaskButton.innerText = 'Complete Job';
+      } else {
+        completeToolChangeTaskButton.innerText = 'Next Task -->';
+      }
     }
   }
 
@@ -1214,6 +1233,13 @@ exportAvailableTasksButton.onclick = async function () {
 
   cancelCncTaskButton.onclick = function () {
     cncTaskModal.style.display = 'none';
+    jobQueue.length = 0;
+    jobCancelledModal.style.display = 'block';
+    sender?.stop();
+  }
+
+  cancelToolChangeButton.onclick = function () {
+    toolChangeTaskModal.style.display = 'none';
     jobQueue.length = 0;
     jobCancelledModal.style.display = 'block';
     sender?.stop();
@@ -1231,9 +1257,21 @@ exportAvailableTasksButton.onclick = async function () {
     executeNextTask();
   }
 
+  completeToolChangeTaskButton.onclick = function () {
+    completeToolChangeTaskButton.innerText = 'Next Task -->';
+    toolChangeTaskModal.style.display = 'none';
+    executeNextTask();
+  }
+
   executeGcodeButton.onclick = function () {
     if (sender) {
       sender.start(cncTaskGcode.value, SenderClient.PLANNER);
+    }
+  }
+
+  executeToolChangeButton.onclick = function () {
+    if (sender) {
+      sender.start(toolChangeNewTool.value, SenderClient.PLANNER);
     }
   }
 
@@ -1479,18 +1517,12 @@ exportAvailableTasksButton.onclick = async function () {
       }
     }
 
-    saveJob(jobName, groupName, projectName);
-
-    //update loadedJob to the saved job
-    await storage.setItem('loadedJob', JSON.stringify({
-      name: jobName,
-      groupName: groupName,
-      projectName: projectName
-    }));
+    await saveJob(jobName, groupName, projectName);
 
     //update selected Project and Selected Group
     await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
     await storage.setItem('selectedGroup', JSON.stringify({ name: groupName }));
+    await storage.setItem('selectedJob', JSON.stringify({ name: jobName }));
 
     saveJobModal.style.display = 'none';
 
@@ -1504,16 +1536,16 @@ exportAvailableTasksButton.onclick = async function () {
     saveJobNameInput.value = '';
 
     //update the project, group and job select elements
-    updateProjectLoadSelect();
-    updateGroupLoadSelect();
-    updateJobLoadSelect();
+    await updateProjectLoadSelect();
+    await updateGroupLoadSelect();
+    await updateJobLoadSelect();
 
     //show modal saying job saved
     alert(`${jobName} saved`);
   };
 
   newJobButton.onclick = async function () {
-    await storage.setItem('loadedJob', '');
+    await storage.setItem('selectedJob', '');
     await storage.setItem('currentJob', '');
     tasksToExecute.innerHTML = '';
   }
@@ -1562,11 +1594,7 @@ exportAvailableTasksButton.onclick = async function () {
     // Save selected project/group/job
     await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
     await storage.setItem('selectedGroup', JSON.stringify({ name: groupName }));
-    await storage.setItem('loadedJob', JSON.stringify({
-      name: jobName,
-      groupName: groupName,
-      projectName: projectName
-    }));
+    await storage.setItem('selectedJob', JSON.stringify({ name: jobName }));
 
     updateTaskNumbers();
     rebuildTaskElements();
@@ -1603,13 +1631,13 @@ exportAvailableTasksButton.onclick = async function () {
     // If project is now empty, remove it
     if (project.groups.length === 0) {
       await storage.removeItem(`savedProject_${projectName}`);
-      updateProjectLoadSelect();
+      await updateProjectLoadSelect();
     } else {
       await storage.setItem(`savedProject_${projectName}`, JSON.stringify(project));
     }
 
-    updateGroupLoadSelect();
-    updateJobLoadSelect();
+    await updateGroupLoadSelect();
+    await updateJobLoadSelect();
     tasksToExecute.innerHTML = '';
   }
 
@@ -1689,11 +1717,7 @@ exportAvailableTasksButton.onclick = async function () {
                 // Update current selections
                 await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
                 await storage.setItem('selectedGroup', JSON.stringify({ name: groupName }));
-                await storage.setItem('loadedJob', JSON.stringify({
-                  name: job.name,
-                  groupName: groupName,
-                  projectName: projectName
-                }));
+                await storage.setItem('selectedJob', JSON.stringify({ name: job.name }));
 
                 resolve({ job, projectName });
               } catch (error) {
@@ -1706,18 +1730,18 @@ exportAvailableTasksButton.onclick = async function () {
           reader.readAsText(file);
         }));
 
-        Promise.all(promises).then(results => {
+        Promise.all(promises).then(async results => {
           if (results.length > 0) {
             const [firstResult] = results;
 
             rebuildavailableTasksElements();
 
-            updateProjectLoadSelect();
+            await updateProjectLoadSelect();
             if (projectLoadSelect && firstResult) {
               projectLoadSelect.value = firstResult.projectName;
             }
-            updateGroupLoadSelect();
-            updateJobLoadSelect();
+            await updateGroupLoadSelect();
+            await updateJobLoadSelect();
 
             if (firstResult && firstResult.job) {
               loadJob(firstResult.job);
@@ -1760,7 +1784,7 @@ exportAvailableTasksButton.onclick = async function () {
     //show the current project, group and job as the default selected values
     const selectedProjectData = await storage.getItem('selectedProject');
     const selectedGroupData = await storage.getItem('selectedGroup');
-    const selectedJob = await storage.getItem('loadedJob');
+    const selectedJob = await storage.getItem('selectedJob');
 
     let selectedProject = null;
     let selectedGroup = null;
@@ -1914,8 +1938,8 @@ exportAvailableTasksButton.onclick = async function () {
 
     projectLoadSelect.innerHTML = '';
 
-  const projects = await storage.getKeys('savedProject_');
-  projects.sort();
+    const projects = await storage.getKeys('savedProject_');
+    projects.sort();
 
     projects.forEach(projectKey => {
       const projectName = projectKey.replace('savedProject_', '');
@@ -1934,7 +1958,7 @@ exportAvailableTasksButton.onclick = async function () {
       } catch {
         selectedProject = selectedProjectData; // Fallback for old string format
       }
-      
+
       if (projects.includes(`savedProject_${selectedProject}`)) {
         projectLoadSelect.value = selectedProject;
       }
@@ -1946,8 +1970,8 @@ exportAvailableTasksButton.onclick = async function () {
     projectLoadSelect.addEventListener('change', async () => {
       const projectName = projectLoadSelect.value;
       await storage.setItem('selectedProject', JSON.stringify({ name: projectName }));
-      updateGroupLoadSelect();
-      updateJobLoadSelect();
+      await updateGroupLoadSelect();
+      await updateJobLoadSelect();
     });
   }
 });
