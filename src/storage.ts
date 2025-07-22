@@ -152,11 +152,11 @@ export function createStorageService(): StorageService {
   // Check if we're running on the local network and can access the API
   const hostname = window.location.hostname;
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-  const isDebug = false;
+  const isDebug = true;
   const isLocalNetwork = hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
 
   if (isDebug) {
-    return new DatabaseService('http://192.168.0.127:3001/api'); // Change this to your debug API URL
+    return new DatabaseService('http://192.168.0.121:3001/api'); // Change this to your debug API URL
   }
   else if (isLocalhost) {
     // Running directly on the garage computer

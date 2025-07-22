@@ -1379,6 +1379,18 @@ input[type="file"]::file-selector-button:hover {
     flex-direction: column;
 }
 
+.task-modal-manual {
+    border: 5px solid #4c956c;
+}
+
+.task-modal-gcode {
+    border: 5px solid #386e97;
+}
+
+.task-modal-tool-change {
+    border: 5px solid #e74c3c;
+}
+
 .full-width-textarea {
     width: 100%;
     box-sizing: border-box;

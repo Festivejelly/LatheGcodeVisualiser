@@ -1177,14 +1177,17 @@
         </div>
         <!-- Manual Task Modal -->
         <div id="manualTaskModal" class="task-modal">
-            <div class="task-modal-content">
-                <h2>Manual Task Instructions</h2>
+            <div class="task-modal-content task-modal-manual">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-users-cog icon-tooltip" data-tooltip="Manual Task" style="font-size: inherit;"></i>
+                    <h2 style="margin: 0;">Manual Task</h2>
+                </div>
                 <hr>
                 <div>
                     <span id="manualTaskName"></span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="manualTaskInstructions" name="manualTaskInstructions" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                    <textarea id="manualTaskDescription" name="manualTaskDescription" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelManualTask">Cancel</button>
@@ -1194,14 +1197,27 @@
         </div>
         <!-- Gcode Task Modal -->
         <div id="cncTaskModal" class="task-modal">
-            <div class="task-modal-content">
-                <h2>CNC Task Gcode</h2>
+            <div class="task-modal-content task-modal-gcode">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-code icon-tooltip" data-tooltip="Gcode Task" style="font-size: inherit;"></i>
+                    <h2 style="margin: 0;">Gcode Task</h2>
+                </div>
                 <hr>
                 <div>
                     <span id="cncTaskName"></span>
                 </div>
+                <hr>
+                <div>
+                    <span>Description:</span>
+                </div>
                 <div class="modal-pad">
-                    <textarea id="cncTaskGcode" name="cncTaskGcode" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                    <textarea id="cncTaskDescription" name="cncTaskDescription" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                </div>
+                <div>
+                    <span>Gcode:</span>
+                </div>
+                <div class="modal-pad">
+                    <textarea id="cncTaskGcode" name="cncTaskGcode" class="full-width-textarea" rows="12" cols="50" disabled></textarea>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelCncTask">Cancel</button>
@@ -1226,12 +1242,24 @@
         </div>
         <!-- Tool Change Task Modal -->
         <div id="toolChangeTaskModal" class="task-modal">
-            <div class="task-modal-content">
-                <h2>Tool Change Task</h2>
+            <div class="task-modal-content task-modal-tool-change">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-wrench icon-tooltip" data-tooltip="Tool Change Task" style="font-size: inherit;"></i>
+                    <h2 style="margin: 0;">Tool Change Task</h2>
+                </div>
                 <hr>
-                <!--2 read only text boxes, one for current tool, the other for new tool -->
                 <div>
                     <span id="toolChangeTaskName"></span>
+                </div>
+                <hr>
+                <div>
+                    <span>Description:</span>
+                </div>
+                <div class="modal-pad">
+                    <textarea id="toolChangeTaskDescription" name="toolChangeTaskDescription" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                </div>
+                <div>
+                    <span>Tool change info:</span>
                 </div>
                 <div class="modal-pad">
                     <span>New Tool:</span>

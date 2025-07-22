@@ -81,7 +81,9 @@ const manualTaskModal = document.getElementById('manualTaskModal') as HTMLDivEle
 const cncTaskModal = document.getElementById('cncTaskModal') as HTMLDivElement;
 const cancelManualTaskButton = document.getElementById('cancelManualTask') as HTMLButtonElement;
 const completeManualTaskButton = document.getElementById('completeManualTask') as HTMLButtonElement;
-const manualTaskInstructions = document.getElementById('manualTaskInstructions') as HTMLTextAreaElement;
+const manualTaskDescription = document.getElementById('manualTaskDescription') as HTMLTextAreaElement;
+const cncTaskDescription = document.getElementById('cncTaskDescription') as HTMLTextAreaElement;
+const toolChangeTaskDescription = document.getElementById('toolChangeTaskDescription') as HTMLTextAreaElement;
 const cncTaskGcode = document.getElementById('cncTaskGcode') as HTMLTextAreaElement;
 const cancelCncTaskButton = document.getElementById('cancelCncTask') as HTMLButtonElement;
 const executeGcodeButton = document.getElementById('executeGcode') as HTMLButtonElement;
@@ -1164,7 +1166,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (task && task.type === TaskType.MANUAL) {
       manualTaskName.textContent = `Task ${task.order}: ${task.name}`;
-      manualTaskInstructions.value = task.description;
+      manualTaskDescription.value = task.description || '';
       manualTaskModal.style.display = 'block';
 
       if (jobQueue.length === 0) {
@@ -1175,6 +1177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } else if (task && task.type === TaskType.GCODE) {
       executeGcodeButton.disabled = false;
+      cncTaskDescription.value = task.description || '';
       executeGcodeButton.classList.remove('disabled-button');
       executeGcodeButton.classList.add('interaction-ready-button');
       executeGcodeButton.textContent = 'Execute Gcode';
@@ -1214,6 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
       toolChangeTaskModal.style.display = 'block';
       toolChangeTaskName.textContent = `Task ${task.order}: ${task.name}`;
       toolChangeNewTool.value = task.toolName || '';
+      toolChangeTaskDescription.value = task.description || '';
       toolChangeTaskInstructions.textContent = `Please change the tool to ${task.toolName}`;
       toolChangeTaskModal.style.display = 'block';
 
