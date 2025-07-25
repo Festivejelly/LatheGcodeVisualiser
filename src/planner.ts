@@ -1130,9 +1130,8 @@ document.addEventListener('DOMContentLoaded', () => {
           toolChangeTaskContainer.style.display = 'block';
           gcodeTaskContainer.style.display = 'none';
           toolChangeTaskName.textContent = taskData.name;
+          newTaskToolChangeNewTool.value = taskData.toolName || '';
           toolChangeTaskInstructions.textContent = taskData.description || '';
-
-          toolChangeNewTool.textContent = taskData.toolName || '';
         } else if (taskData.type === TaskType.GCODE) {
           toolChangeTaskContainer.style.display = 'none';
           gcodeTaskContainer.style.display = 'block';
