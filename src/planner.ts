@@ -890,7 +890,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (taskCollection) {
       const collection = JSON.parse(taskCollection) as TaskCollection;
-      collection.tasks.forEach((task: TaskData) => {
+
+      // Sort tasks by name before displaying
+      const sortedTasks = collection.tasks.sort((a, b) => a.name.localeCompare(b.name));
+      
+
+      sortedTasks.forEach((task: TaskData) => {
+        // ...existing code...
         const taskData: TaskData = {
           id: task.id,
           name: task.name,
