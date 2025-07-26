@@ -174,24 +174,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tasksToExecute.innerHTML = '';
 
-    await updateAvailableTaskCollectionsSelect();
-    await rebuildavailableTasksElements();
     await updateProjectLoadSelect();
     await updateGroupLoadSelect();
     await updateJobLoadSelect();
 
-
-    const defaultJob = await getDefaultJob();
-    if (defaultJob) {
-      await loadJob(defaultJob);
-    }
-    else {
-      const currentJob = await getSelectedJobFromSelectedGroup();
-      if (currentJob) {
-        await loadJob(currentJob);
-      }
+    const selectedJobData = await storage.getItem('selectedJob');
+    if (selectedJobData) {
+      const selectedJob = JSON.parse(selectedJobData);
+      jobLoadSelect.value = selectedJob.name;
     }
 
+    await updateAvailableTaskCollectionsSelect();
+    await rebuildavailableTasksElements();
+
+    const currentJob = await getSelectedJobFromSelectedGroup();
+    if (currentJob) {
+      await loadJob(currentJob);
+    }
+    
     updateTaskNumbers();
     rebuildTaskElements();
 
@@ -226,14 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
       newJobGroupNameContainer.style.display = 'block';
     } else {
       newJobGroupNameContainer.style.display = 'none';
-    }
-  });
-
-  saveProjectNameSelect.addEventListener('change', () => {
-    if (saveProjectNameSelect.value === 'new') {
-      saveProjectNameInput.style.display = 'block';
-    } else {
-      saveProjectNameInput.style.display = 'none';
     }
   });
 
@@ -454,41 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return job;
   }
 
-  async function getDefaultJob() {
-    const jobData = await storage.getItem(`currentJob`);
-
-    if (!jobData) {
-      return null;
-    }
-
-    const parsedData = JSON.parse(jobData);
-
-    // Check if it's already a proper Job object
-    if (parsedData.name !== undefined) {
-      return parsedData as Job;
-    }
-
-    // If it's the old format (array of tasks), create a proper Job object
-    if (Array.isArray(parsedData)) {
-      const job: Job = {
-        name: 'Current Job',
-        projectName: '',
-        groupName: '',
-        tasks: parsedData.map(task => ({
-          id: task.id,
-          collectionName: task.collectionName
-        }))
-      };
-
-      // Update storage with the new format
-      await storage.setItem('currentJob', JSON.stringify(job));
-
-      return job;
-    }
-
-    return null;
-  }
-
   async function updateJobLoadSelect() {
 
     if (!projectLoadSelect || !projectLoadSelect.value) return;
@@ -511,21 +468,9 @@ document.addEventListener('DOMContentLoaded', () => {
       jobLoadSelect.appendChild(option);
     });
 
-    // Set to last selected job if available
-    const selectedJobData = await storage.getItem('selectedJob');
-    if (selectedJobData) {
-      let selectedJob;
-      try {
-        selectedJob = JSON.parse(selectedJobData).name;
-      } catch {
-        selectedJob = selectedJobData; // Fallback for old string format
-      }
-      jobLoadSelect.value = selectedJob;
-    } else {
-      // If no job is selected, set to the first job if available
-      if (jobLoadSelect.options.length > 0) {
-        jobLoadSelect.value = jobLoadSelect.options[0].value;
-      }
+    //set to first job if there is one
+    if (group.jobs.length > 0) {
+      jobLoadSelect.value = jobLoadSelect.options[0].value;
     }
   }
 
@@ -1344,34 +1289,38 @@ document.addEventListener('DOMContentLoaded', () => {
         option.textContent = projectName;
         saveProjectNameSelect.appendChild(option);
       });
-
-      // Set up handlers for existing projects
-      if (saveProjectNameSelect.selectedIndex >= 0) {
-        const selectedProject = saveProjectNameSelect.value;
-        updateGroupSelectForProject(selectedProject);
-      }
-    } else {
-      //if there are no projects then show the new project name input
-      newProjectNameContainer.style.display = 'block';
-      newJobGroupNameContainer.style.display = 'block';
-      newJobNameContainer.style.display = 'block';
     }
 
-    //add new options to the end
+    //add new options to the start of the selects
     const newProjectOption = document.createElement('option');
     newProjectOption.value = 'new';
     newProjectOption.textContent = '--new project--';
-    saveProjectNameSelect.appendChild(newProjectOption);
+    saveProjectNameSelect.insertBefore(newProjectOption, saveProjectNameSelect.firstChild);
+    //select the new project option as default
+    saveProjectNameSelect.value = 'new';
 
     const newGroupNameOption = document.createElement('option');
     newGroupNameOption.value = 'new';
     newGroupNameOption.textContent = '--new group--';
-    saveJobGroupNameSelect.appendChild(newGroupNameOption);
+    saveJobGroupNameSelect.insertBefore(newGroupNameOption, saveJobGroupNameSelect.firstChild);
+    //select the new group option as default
+    saveJobGroupNameSelect.value = 'new';
 
     const newJobNameOption = document.createElement('option');
     newJobNameOption.value = 'new';
     newJobNameOption.textContent = '--new job--';
-    saveJobNameSelect.appendChild(newJobNameOption);
+    saveJobNameSelect.insertBefore(newJobNameOption, saveJobNameSelect.firstChild);
+    //select the new job option as default
+    saveJobNameSelect.value = 'new';
+
+    //show all input containers
+    newProjectNameContainer.style.display = 'block';
+    newJobGroupNameContainer.style.display = 'block';
+    newJobNameContainer.style.display = 'block';
+
+    saveProjectNameInput.value = '';
+    saveJobGroupNameInput.value = '';
+    saveJobNameInput.value = '';
   };
 
   // Add function to update groups dropdown when project changes
@@ -1401,10 +1350,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     }
+
+    // add new group option as first option
+    const newGroupOption = document.createElement('option');
+    newGroupOption.value = 'new';
+    newGroupOption.textContent = '--new group--';
+    saveJobGroupNameSelect.insertBefore(newGroupOption, saveJobGroupNameSelect.firstChild);
   }
 
   // Add project selection change handler
-  saveProjectNameSelect.addEventListener('change', () => {
+  saveProjectNameSelect.addEventListener('change', async () => {
+
     if (saveProjectNameSelect.value === 'new') {
       newProjectNameContainer.style.display = 'block';
       newJobGroupNameContainer.style.display = 'block';
@@ -1422,23 +1378,11 @@ document.addEventListener('DOMContentLoaded', () => {
       newJobNameContainer.style.display = 'none';
 
       // update groups for selected project
-      updateGroupSelectForProject(saveProjectNameSelect.value);
+      await updateGroupSelectForProject(saveProjectNameSelect.value);
 
       // update the jobs for the first group
-      updateJobSelectForGroup(saveProjectNameSelect.value, saveJobGroupNameSelect.value);
-
+      await updateJobSelectForGroup(saveProjectNameSelect.value, saveJobGroupNameSelect.value);
     }
-
-    // Add new group and job options
-    const newGroupOption = document.createElement('option');
-    newGroupOption.value = 'new';
-    newGroupOption.textContent = '--new group--';
-    saveJobGroupNameSelect.appendChild(newGroupOption);
-
-    const newJobOption = document.createElement('option');
-    newJobOption.value = 'new';
-    newJobOption.textContent = '--new job--';
-    saveJobNameSelect.appendChild(newJobOption);
   });
 
   // Add handler for group selection change
@@ -1480,8 +1424,15 @@ document.addEventListener('DOMContentLoaded', () => {
           option.value = job.name;
           option.textContent = job.name;
           saveJobNameSelect.appendChild(option);
+          saveJobNameSelect.value = job.name; // Set the first job as default
         });
       }
+
+      // Add new job option as first option
+      const newJobOption = document.createElement('option');
+      newJobOption.value = 'new';
+      newJobOption.textContent = '--new job--';
+      saveJobNameSelect.insertBefore(newJobOption, saveJobNameSelect.firstChild);
     }
   }
 
@@ -1548,6 +1499,13 @@ document.addEventListener('DOMContentLoaded', () => {
     await updateProjectLoadSelect();
     await updateGroupLoadSelect();
     await updateJobLoadSelect();
+
+    //set the project select to the newly saved project
+    projectLoadSelect.value = projectName;
+    //set the group select to the newly saved group
+    groupLoadSelect.value = groupName;
+    //set the job select to the newly saved job
+    jobLoadSelect.value = jobName;
 
     //show modal saying job saved
     alert(`${jobName} saved`);
