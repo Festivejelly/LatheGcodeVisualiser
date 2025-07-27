@@ -22,6 +22,9 @@ export class SenderStatus {
         readonly z: number,
         readonly x: number,
         readonly y: number,
+        readonly mZ: number,
+        readonly mX: number,
+        readonly mY: number,
         readonly feed: number,
         readonly rpm: number,
         readonly version: string,
@@ -54,6 +57,9 @@ export class Sender {
     private z = 0;
     private x = 0;
     private y = 0;
+    private mZ = 0;
+    private mX = 0;
+    private mY = 0;
     private feed = 0;
     private rpm = 0;
     private isDisconnecting = false;
@@ -91,6 +97,9 @@ export class Sender {
             this.z,
             this.x,
             this.y,
+            this.mZ,
+            this.mX,
+            this.mY,
             this.feed,
             this.rpm,
             this.version,
@@ -153,13 +162,20 @@ export class Sender {
                 this.z = Number(coords[2]);
 
             }
-            if (parts[2].startsWith('FS:')) {
-                const coords = parts[2].substring('FS:'.length).split(',');
+            if (parts[2].startsWith('MPos:')) {
+                const coords = parts[2].substring('MPos:'.length).split(',');
+                this.mX = Number(coords[0]);
+                this.mY = Number(coords[1]);
+                this.mZ = Number(coords[2]);
+
+            }
+            if (parts[3].startsWith('FS:')) {
+                const coords = parts[3].substring('FS:'.length).split(',');
                 this.feed = Number(coords[0]);
                 this.rpm = Number(coords[1]);
             }
-            if (parts[3].startsWith('Id:')) {
-                this.version = String(parts[3].substring('Id:'.length));
+            if (parts[4].startsWith('Id:')) {
+                this.version = String(parts[4].substring('Id:'.length));
             }
         }
         this.notifyStatusChange();
