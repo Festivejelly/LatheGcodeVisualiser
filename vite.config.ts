@@ -10,5 +10,16 @@ export default defineConfig({
     build: {
         outDir: 'docs'
     },
+    server: {
+        https: {
+            key: './key.pem',
+            cert: './cert.pem'
+        },
+        host: true, // Allows access from other devices on the network
+        allowedHosts: true,
+        proxy: {
+            '/api': 'http://localhost:3001'  // Proxy API calls to your HTTP backend
+        }
+    }
     // ... any other configurations ...
 });
