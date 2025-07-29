@@ -156,7 +156,7 @@ export function createStorageService(): StorageService {
   const isLocalNetwork = hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
 
   if (isDebug) {
-    return new DatabaseService('https://192.168.0.121:5173/api'); // Use the Vite dev server port
+    return new DatabaseService('https://192.168.0.121:3001/api'); // Use the Vite dev server port
   }
   else if (isLocalhost) {
     // Running directly on the garage computer

@@ -15,11 +15,7 @@ export default defineConfig({
             key: './key.pem',
             cert: './cert.pem'
         },
-        host: true, // Allows access from other devices on the network
-        allowedHosts: true,
-        proxy: {
-            '/api': 'http://localhost:3001'  // Proxy API calls to your HTTP backend
-        }
+        host: '0.0.0.0', // Allow access from other devices on network
     }
     // ... any other configurations ...
 });

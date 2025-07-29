@@ -22,6 +22,7 @@
         "vitest": "^3.2.4"
     },
     "dependencies": {
+        "cors": "^2.8.5",
         "dragula": "^3.7.3"
     }
 }
