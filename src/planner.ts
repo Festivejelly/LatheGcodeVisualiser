@@ -922,6 +922,11 @@ document.addEventListener('DOMContentLoaded', () => {
     newTaskModal.removeAttribute('data-task-id')
 
     collectionToSaveTo.value = '';
+
+    //default to manual task type
+    newTaskType.value = TaskType.MANUAL;
+    gcodeTaskContainer.style.display = 'none';
+    toolChangeTaskContainer.style.display = 'none';
   });
 
   // Save new task
@@ -1089,6 +1094,9 @@ document.addEventListener('DOMContentLoaded', () => {
           newTaskGcode.disabled = false;
           newTaskGcode.value = taskData.gcode || '';
           newTaskGcodeRepeatable.checked = taskData.isRepeatable || false;
+        } else if (taskData.type === TaskType.MANUAL) {
+          toolChangeTaskContainer.style.display = 'none';
+          gcodeTaskContainer.style.display = 'none';
         }
 
         if (taskId) {
