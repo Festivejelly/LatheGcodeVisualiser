@@ -559,7 +559,7 @@ input[type="file"]::file-selector-button:hover {
 #latheControls #jogControls {
     display: grid;
     grid-template-columns: repeat(12, 60px);
-    grid-template-rows: repeat(6, 60px);
+    grid-template-rows: repeat(7, 60px);
     justify-content: center;
     align-items: center;
     place-items: center;
@@ -599,6 +599,43 @@ input[type="file"]::file-selector-button:hover {
 
 #latheControls .tool-btn:hover {
     background-color: #6c5ce7;
+}
+
+#latheControls .zero-btn {
+    /* existing styles */
+    width: 50px;
+    height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    line-height: 20px;
+    font-size: 12px;
+    padding: 0px;
+}
+
+#latheControls .zero-btn:hover {
+    background-color: #6c5ce7;
+}
+
+#latheControls .wpos-btn {
+    background-color: #268591;
+}
+
+#latheControls .mpos-btn {
+    background-color: #915b26;
+}
+
+.zero-btn {
+    grid-column: var(--col);
+    grid-row: var(--row);
+}
+
+.zero-labels {
+    grid-column: var(--col);
+    grid-row: var(--row);
 }
 
 #latheControls .tool {
@@ -761,6 +798,19 @@ input[type="file"]::file-selector-button:hover {
     flex: 0 0 60px;
     padding: 4px;
     border-bottom: 1px solid #444;
+}
+
+.position-displays {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.positionLocation {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
 }
 
 

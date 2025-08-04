@@ -39,7 +39,6 @@ export class GCode {
     private toolButtons: NodeListOf<HTMLButtonElement>;
     private sender: Sender | null;
     private singleCommandSender: HTMLInputElement;
-    private minimumVersion: string;
     private editTools: HTMLButtonElement;
     private editToolsModal: HTMLDivElement;
     private editToolsClose: HTMLButtonElement;
@@ -47,6 +46,10 @@ export class GCode {
     private fastFeedrateInput: HTMLInputElement;
     private slowFeedrateInput: HTMLInputElement;
     private moveDistanceInput: HTMLInputElement;
+    private mposCurrentPositionValue: HTMLInputElement;
+    private wposCurrentPositionValue: HTMLInputElement;
+    private getPositionButton: HTMLButtonElement;
+
 
     constructor() {
 
@@ -94,8 +97,6 @@ export class GCode {
             }
         });
 
-        this.minimumVersion = 'H4V12FJ';
-
         this.senderError = document.querySelector<HTMLDivElement>('.senderError')!;
         this.runProgress = document.getElementById('senderProgress') as HTMLProgressElement
         this.runProgressLabel = document.getElementById('senderProgressLabel') as HTMLSpanElement;
@@ -111,9 +112,20 @@ export class GCode {
         this.sendButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
         this.sendSingleCommandButton = document.getElementById('gcodeSendSingleCommandButton') as HTMLButtonElement;
         this.singleCommandSender = document.getElementById('singleCommandSender') as HTMLInputElement;
+        this.getPositionButton = document.getElementById('getPositionButton') as HTMLButtonElement;
+        this.mposCurrentPositionValue = document.getElementById('mposCurrentPositionValue') as HTMLInputElement;
+        this.wposCurrentPositionValue = document.getElementById('wposCurrentPositionValue') as HTMLInputElement;
 
         this.sender = Sender.getInstance();
         this.sender.addStatusChangeListener(() => this.handleStatusChange(), SenderClient.GCODE);
+
+        this.getPositionButton.addEventListener('click', async () => {
+            const status = await this.sender!.getPosition(SenderClient.GCODE);
+            if (status) {
+                this.mposCurrentPositionValue.value = `X${status.mX.toFixed(3)} Y${status.mY.toFixed(3)} Z${status.mZ.toFixed(3)}`;
+                this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
+            }
+        });
 
         //get feedrate from local storage
         let fastFeedrate = localStorage.getItem('fastFeedrate');
@@ -246,11 +258,6 @@ export class GCode {
                 return;
             }
 
-            if (this.sender.getStatus().version != this.minimumVersion) {
-                alert(`This feature is only available on firmware version ${this.minimumVersion} or later. Please see help tab for more information.`);
-                return;
-            }
-
             let commandArray = new Array(1);
             commandArray[0] = toolSelector.value;
 
@@ -258,6 +265,70 @@ export class GCode {
                 this.sender.sendCommands(commandArray, SenderClient.GCODE);
             }
 
+        });
+
+        // Zeroing buttons
+        const mposZeroZ = document.getElementById('MposZeroZ') as HTMLButtonElement;
+        const mposZeroX = document.getElementById('MposZeroX') as HTMLButtonElement;
+        const mposZeroY = document.getElementById('MposZeroY') as HTMLButtonElement;
+
+        const wposZeroZ = document.getElementById('WposZeroZ') as HTMLButtonElement;
+        const wposZeroX = document.getElementById('WposZeroX') as HTMLButtonElement;
+        const wposZeroY = document.getElementById('WposZeroY') as HTMLButtonElement;
+
+        //event handlers for zeroing buttons
+        mposZeroZ.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G28.1 Z', SenderClient.GCODE);
+        });
+
+        mposZeroX.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G28.1 X', SenderClient.GCODE);
+        });
+
+        mposZeroY.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G28.1 Y', SenderClient.GCODE);
+        });
+
+        wposZeroZ.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G92 Z0', SenderClient.GCODE);
+        });
+
+        wposZeroX.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G92 X0', SenderClient.GCODE);
+        });
+
+        wposZeroY.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G92 Y0', SenderClient.GCODE);
         });
 
         this.editTools = document.getElementById('editToolsButton') as HTMLButtonElement;
@@ -298,7 +369,7 @@ export class GCode {
                 alert("Please connect to the controller first.");
                 return;
             }
-            
+
             const tbody = document.getElementById('toolOffsetTableBody');
             if (!tbody) return;
 
@@ -329,25 +400,25 @@ export class GCode {
             w: number;  // Z-axis compensation
             u: number;  // X-axis compensation
         }
-        
+
         const parseToolOffsets = (response: string): ToolOffset[] => {
             // Remove 'Tool offsets:' prefix and 'ok' suffix
             const offsetsString = response.replace('toolOffsets:', '').replace('ok', '');
-            
+
             // Split into individual tool strings by the pipe character
             const toolStrings = offsetsString.split('|');
-            
+
             return toolStrings.map(toolString => {
                 // Extract tool number
                 const toolMatch = toolString.match(/T(\d+)/);
                 const tool = toolMatch ? parseInt(toolMatch[1]) : 0;
-                
+
                 // Extract values using regular expressions
                 const zMatch = toolString.match(/Z=(-?\d+\.?\d*)/);
                 const xMatch = toolString.match(/X=(-?\d+\.?\d*)/);
                 const wMatch = toolString.match(/W=(-?\d+\.?\d*)/);
                 const uMatch = toolString.match(/U=(-?\d+\.?\d*)/);
-                
+
                 return {
                     tool,
                     z: zMatch ? parseFloat(zMatch[1]) : 0,
@@ -362,9 +433,17 @@ export class GCode {
             this.editToolsModal.style.display = 'none';
         });
 
-        this.connectButton.addEventListener('click', () => {
+        this.connectButton.addEventListener('click', async () => {
             this.gcodeResponseContainer.style.display = 'block';
-            if (!this.sender?.isConnected() && this.sender) this.sender.connect();
+            if (!this.sender?.isConnected() && this.sender) {
+                await this.sender.connect();
+            }
+
+            const status = await this.sender!.getPosition(SenderClient.GCODE);
+            if (status) {
+                this.mposCurrentPositionValue.value = `X${status.mX.toFixed(3)} Y${status.mY.toFixed(3)} Z${status.mZ.toFixed(3)}`;
+                this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
+            }
         });
 
         this.sendButton.addEventListener('click', () => {
@@ -426,9 +505,9 @@ export class GCode {
     addToolRow(toolNumber: number, zOffset: number, xOffset: number, wOffset: number, uOffset: number) {
         const tbody = document.getElementById('toolOffsetTableBody');
         if (!tbody) return;
-    
+
         const row = document.createElement('tr');
-        
+
         // Tool number cell
         const toolCell = document.createElement('td');
         toolCell.className = 'tool-cell';
@@ -438,7 +517,7 @@ export class GCode {
         toolInput.readOnly = true;
         toolInput.className = 'tool-input'
         toolCell.appendChild(toolInput);
-    
+
         // Z Offset cell
         const zCell = document.createElement('td');
         zCell.className = 'data-cell';
@@ -448,7 +527,7 @@ export class GCode {
         zInput.step = "0.001";  // Added step for precision
         zInput.className = 'input-cell';
         zCell.appendChild(zInput);
-    
+
         // W Offset cell
         const wCell = document.createElement('td');
         wCell.className = 'data-cell';
@@ -458,7 +537,7 @@ export class GCode {
         wInput.step = "0.001";
         wInput.className = 'input-cell';
         wCell.appendChild(wInput);
-    
+
         // X Offset cell
         const xCell = document.createElement('td');
         xCell.className = 'data-cell';
@@ -468,7 +547,7 @@ export class GCode {
         xInput.step = "0.001";
         xInput.className = 'input-cell';
         xCell.appendChild(xInput);
-    
+
         // U Offset cell
         const uCell = document.createElement('td');
         uCell.className = 'data-cell';
@@ -478,7 +557,7 @@ export class GCode {
         uInput.step = "0.001";
         uInput.className = 'input-cell';
         uCell.appendChild(uInput);
-    
+
         // Save button cellS
         const actionCell = document.createElement('td');
         actionCell.className = 'action-cell';
@@ -492,7 +571,7 @@ export class GCode {
                 <circle cx="25" cy="30" r="8" fill="none" stroke="white" stroke-width="2" />
             </svg>
         `;
-        
+
         saveButton.addEventListener('click', () => {
             const x = xInput.value;
             const z = zInput.value;
@@ -505,8 +584,8 @@ export class GCode {
         });
 
         actionCell.appendChild(saveButton);
-    
-        row.append(toolCell, zCell, wCell , xCell, uCell, actionCell);
+
+        row.append(toolCell, zCell, wCell, xCell, uCell, actionCell);
         tbody.appendChild(row);
     }
 
@@ -514,6 +593,7 @@ export class GCode {
 
         if (!this.sender) return;
         const status = this.sender.getStatus();
+
         if (status.isConnected === false) {
             this.connectButton.innerText = 'Connect';
             this.connectButton.disabled = false;

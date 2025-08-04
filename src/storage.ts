@@ -155,6 +155,8 @@ export function createStorageService(): StorageService {
   const isDebug = true;
   const isLocalNetwork = hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
 
+  // Note: For development, visit https://192.168.0.121:3001/api/storage/keys 
+  // in browser first to accept the self-signed certificate, else you'll get err_cert_authority_invalid when calling the API.
   if (isDebug) {
     return new DatabaseService('https://192.168.0.121:3001/api'); // Use the Vite dev server port
   }

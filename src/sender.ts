@@ -36,6 +36,8 @@ type StatusChangeListener = {
     client: SenderClient;
 }
 
+let isDebug = false;
+
 export class Sender {
     private static instance: Sender | null = null;
     private listeners: StatusChangeListener[] = [];
@@ -74,16 +76,25 @@ export class Sender {
         return Sender.instance;
     }
 
-    constructor() { }
+    constructor() {
+        if (localStorage.getItem("SenderDebug") === 'true') {
+            isDebug = true;
+        }
+        else if (localStorage.getItem("SenderDebug") === 'false') {
+            isDebug = false;
+        } else {
+            isDebug = false; // default to false
+        }
+     }
 
     public setActiveClient(client: SenderClient) {
         this.activeClient = client;
-        console.log(`Active client set to: ${client}`);
+        this.log(`Active client set to: ${client}`);
     }
 
     public clearActiveClient() {
         this.activeClient = null;
-        console.log('Active client cleared');
+        this.log('Active client cleared');
     }
 
     getStatus() {
@@ -119,10 +130,10 @@ export class Sender {
     private notifyStatusChange() {
         this.listeners.forEach(listener => {
             if (listener.client === this.activeClient) {
-                console.debug(`Notifying ${listener.client} listener`);
+                this.log(`Notifying ${listener.client} listener`);
                 listener.callback();
             } else {
-                console.debug(`Skipping ${listener.client} listener (not active)`);
+                this.log(`Skipping ${listener.client} listener (not active)`);
             }
         });
     }
@@ -140,7 +151,7 @@ export class Sender {
 
     private remainingStatus: string = '';
 
-    private setStatus(s: string, ) {
+    private setStatus(s: string,) {
         s = this.remainingStatus + s;
         this.remainingStatus = '';
 
@@ -181,10 +192,16 @@ export class Sender {
         this.notifyStatusChange();
 
         appendLineToResponseEditor(`response: ${s}`);
-        console.log(`response: "${s}"`);
+        this.log(`response: "${s}"`);
     }
 
-    private setError(e: string, ) {
+    private log(message?: any, ...optionalParams: any[]) {
+        if (isDebug) {
+            console.log(message, ...optionalParams);
+        }
+    }
+
+    private setError(e: string,) {
         this.error = e;
         appendLineToResponseEditor(e);
         this.notifyStatusChange();
@@ -217,7 +234,7 @@ export class Sender {
             }
 
         } catch (error) {
-            console.log(error);
+            console.error(error);
         }
         this.notifyStatusChange();
     }
@@ -281,29 +298,29 @@ export class Sender {
         const received = await waitForTrue(() => this.statusReceived);
         if (!received) {
             throw new Error('Failed to get position update');
-        } 
+        }
 
         this.notifyStatusChange();
         return this.getStatus();
     }
-    
+
     async getToolOffsets(client: SenderClient) {
         this.setActiveClient(client);
         this.lastResponse = ''; // Reset last response
 
         await this.sendCommand('#', client);
-        
-        const received = await waitForTrueWithTimeout(() => 
-            this.lastResponse.includes('toolOffsets:') && 
+
+        const received = await waitForTrueWithTimeout(() =>
+            this.lastResponse.includes('toolOffsets:') &&
             this.lastResponse.includes('ok'), 50, 100
         );
-    
+
         if (!received) {
             throw new Error('Failed to get tool offsets');
         }
 
         this.stop();
-    
+
         return this.lastResponse;
     }
 
@@ -318,7 +335,7 @@ export class Sender {
 
     private async write(sequence: string) {
         if (!this.port) return;
-        console.log('command: ', sequence);
+        this.log('command: ', sequence);
         if (!this.port.writable) {
             if (sequence != '?') {
                 this.setError('Port is not writable, try reconnecting the USB and switching to GCODE mode.');
@@ -355,7 +372,7 @@ export class Sender {
         this.notifyCurrentCommand(this.currentLine);
 
         this.waitForOkOrError = true;
-        //console.log(`command: "${line}"`);
+        //this.log(`command: "${line}"`);
         appendLineToResponseEditor(`command: ${line}`);
         await this.write(line + '\n');
         await this.readFromPort();
@@ -382,15 +399,15 @@ export class Sender {
             if (line.startsWith('error:')) {
                 this.remainingResponse += line;
                 appendLineToResponseEditor(`response: ${this.remainingResponse}`);
-                console.log(`response: "${this.remainingResponse}"`);
+                this.log(`response: "${this.remainingResponse}"`);
                 this.setError(line);
                 this.remainingResponse = '';
                 this.stop();
-            } else if (line.startsWith('ok')||line.endsWith('ok')) {
+            } else if (line.startsWith('ok') || line.endsWith('ok')) {
                 this.remainingResponse += line;
                 appendLineToResponseEditor(`response: ${this.remainingResponse}`);
                 this.lastResponse = this.remainingResponse;
-                console.log(`response: "${this.remainingResponse}"`);
+                this.log(`response: "${this.remainingResponse}"`);
                 this.remainingResponse = '';
                 this.waitForOkOrError = false;
                 this.lineIndex++;
@@ -514,6 +531,7 @@ export class Sender {
 }
 
 function appendLineToResponseEditor(text: string) {
+
     var editorSession = gcodeResponseEditor.getSession();
     var lastRow = editorSession.getLength();
     var timestamp = new Date().toLocaleTimeString(); // Get current time
@@ -542,7 +560,7 @@ function waitForTrue(checkFunction: () => boolean): Promise<boolean> {
 }
 
 function waitForTrueWithTimeout(
-    checkFunction: () => boolean, 
+    checkFunction: () => boolean,
     maxIterations: number = 50,
     delayMs: number = 100
 ): Promise<boolean> {

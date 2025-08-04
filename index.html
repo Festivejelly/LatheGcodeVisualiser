@@ -164,7 +164,30 @@
                             <button class="arrow slow jog-btn" style="--col: 11; --row: 5" id="slowDown">
                                 <i class="fas fa-arrow-down"></i></button>
 
+                            <!-- Zeroing -->
+                            <button class="zero-btn mpos-btn" style="--col: 1; --row: 5" id="MposZeroZ">MPOS Zero Z</button>
+                            <button class="zero-btn mpos-btn" style="--col: 1; --row: 6" id="MposZeroX">MPOS Zero X</button>
+                            <button class="zero-btn mpos-btn" style="--col: 1; --row: 7" id="MposZeroY">MPOS Zero Y</button>
 
+                            <button class="zero-btn wpos-btn" style="--col: 2; --row: 5" id="WposZeroZ">WPOS Zero Z</button>
+                            <button class="zero-btn wpos-btn" style="--col: 2; --row: 6" id="WposZeroX">WPOS Zero X</button>
+                            <button class="zero-btn wpos-btn" style="--col: 2; --row: 7" id="WposZeroY">WPOS Zero Y</button>
+
+                        </div>
+                        <div class="positionLocation">
+                            <div class="position-displays">
+                                <div id="mposLocation">
+                                    <span id="mposCurrentPosition">MPOS:</span>
+                                    <input id="mposCurrentPositionValue" readonly value="X0 Y0 Z0"></input>
+                                </div>
+                                <div id="wposLocation">
+                                    <span id="wposCurrentPosition">WPOS:</span>
+                                    <input id="wposCurrentPositionValue" readonly value="X0 Y0 Z0"></input>
+                                </div>
+                            </div>
+                            <div id="positionButtonContainer">
+                                <button id="getPositionButton" title="Get current position from controller">Get Position</button>
+                            </div>
                         </div>
                         <div id="incrementControls">
                             <button class="increment-btn" data-increment="0.001">0.001</button>
