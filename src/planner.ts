@@ -92,6 +92,9 @@ const manualTaskName = document.getElementById('manualTaskName') as HTMLSpanElem
 const cncTaskName = document.getElementById('cncTaskName') as HTMLSpanElement;
 const cncTaskSenderProgressLabel = document.getElementById('cncTaskSenderProgressLabel') as HTMLSpanElement;
 const cncTaskSenderProgress = document.getElementById('cncTaskSenderProgress') as HTMLProgressElement;
+const skipCncTaskButton = document.getElementById('skipCncTask') as HTMLButtonElement;
+const skipManualTaskButton = document.getElementById('skipManualTask') as HTMLButtonElement;
+const skipToolChangeTaskButton = document.getElementById('skipToolChangeTask') as HTMLButtonElement;
 
 //tool change elements
 
@@ -1216,6 +1219,21 @@ document.addEventListener('DOMContentLoaded', () => {
   completeCncTaskButton.onclick = function () {
     completeCncTaskButton.innerText = 'Next Task -->';
     cncTaskModal.style.display = 'none';
+    executeNextTask();
+  }
+
+  skipCncTaskButton.onclick = function () {
+    cncTaskModal.style.display = 'none';
+    executeNextTask();
+  }
+
+  skipToolChangeTaskButton.onclick = function () {
+    toolChangeTaskModal.style.display = 'none';
+    executeNextTask();
+  }
+
+  skipManualTaskButton.onclick = function () {
+    manualTaskModal.style.display = 'none';
     executeNextTask();
   }
 

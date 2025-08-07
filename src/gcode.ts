@@ -1,4 +1,4 @@
-import { Sender, SenderClient } from './sender';
+import { Sender, SenderClient, SenderStatus } from './sender';
 import { gcodeResponseEditor } from './main';
 import { gcodeSenderEditor } from './main';
 
@@ -49,6 +49,9 @@ export class GCode {
     private mposCurrentPositionValue: HTMLInputElement;
     private wposCurrentPositionValue: HTMLInputElement;
     private getPositionButton: HTMLButtonElement;
+    private motorZToggleBtn: HTMLButtonElement;
+    private motorXToggleBtn: HTMLButtonElement;
+    private motorYToggleBtn: HTMLButtonElement;
 
 
     constructor() {
@@ -116,14 +119,27 @@ export class GCode {
         this.mposCurrentPositionValue = document.getElementById('mposCurrentPositionValue') as HTMLInputElement;
         this.wposCurrentPositionValue = document.getElementById('wposCurrentPositionValue') as HTMLInputElement;
 
+        this.motorZToggleBtn = document.getElementById('MotorZToggleBtn') as HTMLButtonElement;
+        this.motorXToggleBtn = document.getElementById('MotorXToggleBtn') as HTMLButtonElement;
+        this.motorYToggleBtn = document.getElementById('MotorYToggleBtn') as HTMLButtonElement;
+
         this.sender = Sender.getInstance();
         this.sender.addStatusChangeListener(() => this.handleStatusChange(), SenderClient.GCODE);
 
         this.getPositionButton.addEventListener('click', async () => {
+            
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
             const status = await this.sender!.getPosition(SenderClient.GCODE);
             if (status) {
                 this.mposCurrentPositionValue.value = `X${status.mX.toFixed(3)} Y${status.mY.toFixed(3)} Z${status.mZ.toFixed(3)}`;
                 this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
+
+                //update the steppers enabled status
+                this.updateMotorStatus(status);
             }
         });
 
@@ -331,6 +347,70 @@ export class GCode {
             this.sender.sendCommand('G92 Y0', SenderClient.GCODE);
         });
 
+
+        this.motorZToggleBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            const isEnabled = this.motorZToggleBtn.classList.contains('motor-enable');
+            //if isEnabled remove motor-enabled class and add motor-disabled class
+            if (isEnabled) {
+                this.motorZToggleBtn.classList.remove('motor-enable');
+                this.motorZToggleBtn.classList.add('motor-disable');
+                this.motorZToggleBtn.title = 'Click to disable X axis';
+            } else {
+                this.motorZToggleBtn.classList.add('motor-enable');
+                this.motorZToggleBtn.classList.remove('motor-disable');
+                this.motorZToggleBtn.title = 'Click to enable X axis';
+            }
+            const command = isEnabled ? 'M18 Z' : 'M17 Z';
+            this.sender.sendCommand(command, SenderClient.GCODE);
+        });
+
+        this.motorXToggleBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            const isEnabled = this.motorXToggleBtn.classList.contains('motor-enable');
+            //if isEnabled remove motor-enabled class and add motor-disabled class
+            if (isEnabled) {
+                this.motorXToggleBtn.classList.remove('motor-enable');
+                this.motorXToggleBtn.classList.add('motor-disable');
+                this.motorXToggleBtn.title = 'Click to enable X axis';
+            } else {
+                this.motorXToggleBtn.classList.add('motor-enable');
+                this.motorXToggleBtn.classList.remove('motor-disable');
+                this.motorXToggleBtn.title = 'Click to disable X axis';
+            }
+            const command = isEnabled ? 'M18 X' : 'M17 X';
+            this.sender.sendCommand(command, SenderClient.GCODE);
+        });
+
+        this.motorYToggleBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            const isEnabled = this.motorYToggleBtn.classList.contains('motor-enable');
+            //if isEnabled remove motor-enabled class and add motor-disabled class
+            if (isEnabled) {
+                this.motorYToggleBtn.classList.remove('motor-enable');
+                this.motorYToggleBtn.classList.add('motor-disable');
+                this.motorYToggleBtn.title = 'Click to enable Y axis';
+            } else {
+                this.motorYToggleBtn.classList.add('motor-enable');
+                this.motorYToggleBtn.classList.remove('motor-disable');
+                this.motorYToggleBtn.title = 'Click to disable Y axis';
+            }
+            const command = isEnabled ? 'M18 Y' : 'M17 Y';
+            this.sender.sendCommand(command, SenderClient.GCODE);
+        });
+
         this.editTools = document.getElementById('editToolsButton') as HTMLButtonElement;
         this.editToolsModal = document.getElementById('editToolsModal') as HTMLDivElement;
         this.editToolsClose = document.getElementById('editToolsModalCloseButton') as HTMLButtonElement;
@@ -443,8 +523,13 @@ export class GCode {
             if (status) {
                 this.mposCurrentPositionValue.value = `X${status.mX.toFixed(3)} Y${status.mY.toFixed(3)} Z${status.mZ.toFixed(3)}`;
                 this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
+
+                //update the steppers enabled status
+                this.updateMotorStatus(status);
             }
         });
+
+
 
         this.sendButton.addEventListener('click', () => {
 
@@ -500,6 +585,38 @@ export class GCode {
         this.stopButton = document.getElementById('stopButton') as HTMLButtonElement;
         this.stopButton.addEventListener('click', () => this.sender!.stop());
         this.stopButton.style.display = 'none';
+    }
+
+    updateMotorStatus(status: SenderStatus) {
+        if (status.xEna === 1) {
+            this.motorXToggleBtn.classList.add('motor-enable');
+            this.motorXToggleBtn.classList.remove('motor-disable');
+            this.motorXToggleBtn.title = 'Click to disable X axis';
+        } else {
+            this.motorXToggleBtn.classList.remove('motor-enable');
+            this.motorXToggleBtn.classList.add('motor-disable');
+            this.motorXToggleBtn.title = 'Click to enable X axis';
+        }
+
+        if (status.yEna === 1) {
+            this.motorYToggleBtn.classList.add('motor-enable');
+            this.motorYToggleBtn.classList.remove('motor-disable');
+            this.motorYToggleBtn.title = 'Click to disable Y axis';
+        } else {
+            this.motorYToggleBtn.classList.remove('motor-enable');
+            this.motorYToggleBtn.classList.add('motor-disable');
+            this.motorYToggleBtn.title = 'Click to enable Y axis';
+        }
+
+        if (status.zEna === 1) {
+            this.motorZToggleBtn.classList.add('motor-enable');
+            this.motorZToggleBtn.classList.remove('motor-disable');
+            this.motorZToggleBtn.title = 'Click to disable Z axis';
+        } else {
+            this.motorZToggleBtn.classList.remove('motor-enable');
+            this.motorZToggleBtn.classList.add('motor-disable');
+            this.motorZToggleBtn.title = 'Click to enable Z axis';
+        }
     }
 
     addToolRow(toolNumber: number, zOffset: number, xOffset: number, wOffset: number, uOffset: number) {

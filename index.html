@@ -173,6 +173,14 @@
                             <button class="zero-btn wpos-btn" style="--col: 2; --row: 6" id="WposZeroX">WPOS Zero X</button>
                             <button class="zero-btn wpos-btn" style="--col: 2; --row: 7" id="WposZeroY">WPOS Zero Y</button>
 
+                            <!-- Stepper motor status-->
+                            <button class="motor-btn motor-enable" style="--col: 3; --row: 5" id="MotorZToggleBtn" title="Click to disable Z axis"><i class="fas fa-power-off">&nbsp;</i><span>Z</span></button>
+                            <button class="motor-btn motor-enable" style="--col: 3; --row: 6" id="MotorXToggleBtn" title="Click to disable X axis"><i class="fas fa-power-off">&nbsp;</i><span>X</span></button>
+                            <button class="motor-btn motor-disable" style="--col: 3; --row: 7" id="MotorYToggleBtn" title="Click to enable Y axis"><i class="fas fa-power-off">&nbsp;</i><span>Y</span></button>
+
+                        </div>
+                        <div>
+                            <hr>
                         </div>
                         <div class="positionLocation">
                             <div class="position-displays">
@@ -1210,11 +1218,14 @@
                     <span id="manualTaskName"></span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="manualTaskDescription" name="manualTaskDescription" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                    <textarea id="manualTaskDescription" name="manualTaskDescription" class="full-width-textarea" rows="8" cols="50" disabled></textarea>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelManualTask">Cancel</button>
                     <button id="completeManualTask" class="interaction-ready-button">Next Task --></button>
+                </div>
+                <div class="modal-pad">
+                    <button id="skipManualTask">Skip Task <i class="fas fa-forward"></i></button>
                 </div>
             </div>
         </div>
@@ -1234,7 +1245,7 @@
                     <span>Description:</span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="cncTaskDescription" name="cncTaskDescription" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                    <textarea id="cncTaskDescription" name="cncTaskDescription" class="full-width-textarea" rows="8" cols="50" disabled></textarea>
                 </div>
                 <div>
                     <span>Gcode:</span>
@@ -1248,6 +1259,9 @@
                 </div>
                 <div class="modal-pad">
                     <button id="completeCncTask" disabled>Next Task --></button>
+                </div>
+                <div class="modal-pad">
+                    <button id="skipCncTask">Skip Task <i class="fas fa-forward"></i></button>
                 </div>
                 <div id="currentGcodeLineContainer" class="modal-pad">
                     <span id="currentGcodeLineLabel">Current Gcode Line:</span>
@@ -1279,7 +1293,7 @@
                     <span>Description:</span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="toolChangeTaskDescription" name="toolChangeTaskDescription" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                    <textarea id="toolChangeTaskDescription" name="toolChangeTaskDescription" class="full-width-textarea" rows="8" cols="50" disabled></textarea>
                 </div>
                 <div>
                     <span>Tool change info:</span>
@@ -1299,6 +1313,9 @@
                 </div>
                 <div class="modal-pad">
                     <button id="completeToolChangeTask" disabled>Next Task --></button>
+                </div>
+                <div class="modal-pad">
+                    <button id="skipToolChangeTask">Skip Task <i class="fas fa-forward"></i></button>
                 </div>
             </div>
         </div>
