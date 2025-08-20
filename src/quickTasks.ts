@@ -158,7 +158,8 @@ const quickTaskToolOffsetsToolNumber = document.getElementById('quickTaskToolOff
 const quickTaskToolOffsetsToolType = document.getElementById('quickTaskToolOffsetsToolType') as HTMLSelectElement;
 const quickTaskToolOffsetsOffsetX = document.getElementById('quickTaskToolOffsetsOffsetX') as HTMLInputElement;
 const quickTaskToolOffsetsOffsetZ = document.getElementById('quickTaskToolOffsetsOffsetZ') as HTMLInputElement;
-
+const quickTaskToolOffsetGetXPosButton = document.getElementById('quickTaskToolOffsetGetXPosButton') as HTMLButtonElement;
+const quickTaskToolOffsetGetZPosButton = document.getElementById('quickTaskToolOffsetGetZPosButton') as HTMLButtonElement;
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -725,6 +726,26 @@ document.addEventListener("DOMContentLoaded", () => {
   if (localStorageProbeDiameter !== null) {
     quickTaskToolOffsetsProbeDiameter.value = localStorageProbeDiameter;
   }
+
+  quickTaskToolOffsetGetXPosButton.addEventListener('click', async () => {
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    quickTaskToolOffsetsOffsetX.value = currentPosX.toFixed(3);
+  });
+
+  quickTaskToolOffsetGetZPosButton.addEventListener('click', async () => {
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosZ = latestStatus?.z!;
+    quickTaskToolOffsetsOffsetZ.value = currentPosZ.toFixed(3);
+  });
 
   //<---- Populate default retract values from local storage ---->
   const drillingRetractFeedRate = localStorage.getItem('drillingRetractFeedRate');
