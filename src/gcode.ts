@@ -12,17 +12,7 @@ const gcodeCommands = [
     { command: 'G90', description: 'Set to absolute positioning' },
     { command: 'G91', description: 'Set to relative positioning' },
     { command: 'G92 X0 Z0', description: 'Sets X and Z axis to 0 at current position' },
-    { command: 'M905 X0.05 Z0.04', description: 'Sets backlash compensation values in mm' },
-    // NEW MACHINE COORDINATE COMMANDS
-    { command: 'G28.1', description: 'Set machine zero at current position (all axes)' },
-    { command: 'G28.1 Z', description: 'Set machine zero for Z axis only' },
-    { command: 'G28.1 X', description: 'Set machine zero for X axis only' },
-    { command: 'G28.3 X0 Z0', description: 'Set machine coordinates X=0, Z=0 at current position' },
-    { command: 'G28.3 Z-12.5', description: 'Set machine Z coordinate (accounting for probe length)' },
-    { command: 'G28', description: 'Move to machine zero (home position)' },
-    { command: 'G28 Z', description: 'Move Z axis to machine zero only' },
-    { command: 'G53 Z-25', description: 'Move to machine coordinate Z=-25mm' },
-    { command: 'G53 X-10 Z-25', description: 'Move to machine coordinates X=-10, Z=-25' },
+    { command: 'M905 X0.05 Z0.04', description: 'Sets backlash compensation values in mm' }
 ];
 
 export class GCode {
@@ -46,7 +36,6 @@ export class GCode {
     private fastFeedrateInput: HTMLInputElement;
     private slowFeedrateInput: HTMLInputElement;
     private moveDistanceInput: HTMLInputElement;
-    private mposCurrentPositionValue: HTMLInputElement;
     private wposCurrentPositionValue: HTMLInputElement;
     private getPositionButton: HTMLButtonElement;
     private motorZToggleBtn: HTMLButtonElement;
@@ -116,7 +105,6 @@ export class GCode {
         this.sendSingleCommandButton = document.getElementById('gcodeSendSingleCommandButton') as HTMLButtonElement;
         this.singleCommandSender = document.getElementById('singleCommandSender') as HTMLInputElement;
         this.getPositionButton = document.getElementById('getPositionButton') as HTMLButtonElement;
-        this.mposCurrentPositionValue = document.getElementById('mposCurrentPositionValue') as HTMLInputElement;
         this.wposCurrentPositionValue = document.getElementById('wposCurrentPositionValue') as HTMLInputElement;
 
         this.motorZToggleBtn = document.getElementById('MotorZToggleBtn') as HTMLButtonElement;
@@ -135,7 +123,6 @@ export class GCode {
 
             const status = await this.sender!.getPosition(SenderClient.GCODE);
             if (status) {
-                this.mposCurrentPositionValue.value = `X${status.mX.toFixed(3)} Y${status.mY.toFixed(3)} Z${status.mZ.toFixed(3)}`;
                 this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
 
                 //update the steppers enabled status
@@ -284,42 +271,12 @@ export class GCode {
         });
 
         // Zeroing buttons
-        const mposZeroZ = document.getElementById('MposZeroZ') as HTMLButtonElement;
-        const mposZeroX = document.getElementById('MposZeroX') as HTMLButtonElement;
-        const mposZeroY = document.getElementById('MposZeroY') as HTMLButtonElement;
 
         const wposZeroZ = document.getElementById('WposZeroZ') as HTMLButtonElement;
         const wposZeroX = document.getElementById('WposZeroX') as HTMLButtonElement;
         const wposZeroY = document.getElementById('WposZeroY') as HTMLButtonElement;
 
         //event handlers for zeroing buttons
-        mposZeroZ.addEventListener('click', () => {
-            if (!this.sender?.isConnected()) {
-                alert("Please connect to the controller first.");
-                return;
-            }
-
-            this.sender.sendCommand('G28.1 Z', SenderClient.GCODE);
-        });
-
-        mposZeroX.addEventListener('click', () => {
-            if (!this.sender?.isConnected()) {
-                alert("Please connect to the controller first.");
-                return;
-            }
-
-            this.sender.sendCommand('G28.1 X', SenderClient.GCODE);
-        });
-
-        mposZeroY.addEventListener('click', () => {
-            if (!this.sender?.isConnected()) {
-                alert("Please connect to the controller first.");
-                return;
-            }
-
-            this.sender.sendCommand('G28.1 Y', SenderClient.GCODE);
-        });
-
         wposZeroZ.addEventListener('click', () => {
             if (!this.sender?.isConnected()) {
                 alert("Please connect to the controller first.");
@@ -521,7 +478,6 @@ export class GCode {
 
             const status = await this.sender!.getPosition(SenderClient.GCODE);
             if (status) {
-                this.mposCurrentPositionValue.value = `X${status.mX.toFixed(3)} Y${status.mY.toFixed(3)} Z${status.mZ.toFixed(3)}`;
                 this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
 
                 //update the steppers enabled status

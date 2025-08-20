@@ -182,27 +182,20 @@ export class Sender {
                 this.z = Number(coords[2]);
 
             }
-            if (parts[2].startsWith('MPos:')) {
-                const coords = parts[2].substring('MPos:'.length).split(',');
-                this.mX = Number(coords[0]);
-                this.mY = Number(coords[1]);
-                this.mZ = Number(coords[2]);
-
-            }
-            if (parts[3].startsWith('Steppers:')) {
-                const coords = parts[3].substring('Steppers:'.length).split(',');
+            if (parts[2].startsWith('Steppers:')) {
+                const coords = parts[2].substring('Steppers:'.length).split(',');
                 this.xEna = Number(coords[0]);
                 this.yEna = Number(coords[1]);
                 this.zEna = Number(coords[2]);
 
             }
-            if (parts[4].startsWith('FS:')) {
-                const coords = parts[4].substring('FS:'.length).split(',');
+            if (parts[3].startsWith('FS:')) {
+                const coords = parts[3].substring('FS:'.length).split(',');
                 this.feed = Number(coords[0]);
                 this.rpm = Number(coords[1]);
             }
-            if (parts[5].startsWith('Id:')) {
-                this.version = String(parts[5].substring('Id:'.length));
+            if (parts[4].startsWith('Id:')) {
+                this.version = String(parts[4].substring('Id:'.length));
             }
         }
         this.notifyStatusChange();
