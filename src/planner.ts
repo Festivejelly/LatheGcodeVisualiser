@@ -1046,7 +1046,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     //set the selected task collection to the one we just saved
     await storage.setItem('selectedTaskCollection', JSON.stringify({ name: taskCollectionName }));
+    
     rebuildavailableTasksElements();
+
+
+    updateTaskNumbers();
+    rebuildTaskElements();
   });
 
   availableTasks.addEventListener('click', async event => {
@@ -1107,6 +1112,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
+  });
+
+  tasksToExecute.addEventListener('click', async event => {
+    const target = event.target as HTMLElement;
+
+    if (target.matches('.icon-tooltip')) {
+      const parentDiv = target.parentNode as HTMLDivElement;
+      const taskId = parentDiv.getAttribute('data-task-id');
+      const collectionName = parentDiv.getAttribute('data-collection-name');
+      let taskData: TaskData | null = null;
+
+      //get task from selected collection
+      const taskCollection = await storage.getItem(`taskCollection_${collectionName}`);
+
+      if (taskCollection) {
+        const collection = JSON.parse(taskCollection) as TaskCollection;
+        const task = collection.tasks.find((task: TaskData) => task.id === taskId);
+        if (task) {
+          taskData = task;
+        }
+      }
+
+      if (taskData) {
+        newTaskModal.style.display = 'block';
+        newTaskName.value = taskData.name;
+        newTaskType.value = taskData.type.toString();
+        newTaskDescription.value = taskData.description;
+        collectionToSaveTo.value = collectionName || 'default';
+        taskTextTitle.textContent = 'Edit Task';
+
+        if (taskData.type === TaskType.TOOL_CHANGE) {
+          toolChangeTaskContainer.style.display = 'block';
+          gcodeTaskContainer.style.display = 'none';
+          toolChangeTaskName.textContent = taskData.name;
+          newTaskToolChangeNewTool.value = taskData.toolName || '';
+          toolChangeTaskInstructions.textContent = taskData.description || '';
+        } else if (taskData.type === TaskType.GCODE) {
+          toolChangeTaskContainer.style.display = 'none';
+          gcodeTaskContainer.style.display = 'block';
+          newTaskGcode.disabled = false;
+          newTaskGcode.value = taskData.gcode || '';
+          newTaskGcodeRepeatable.checked = taskData.isRepeatable || false;
+        } else if (taskData.type === TaskType.MANUAL) {
+          toolChangeTaskContainer.style.display = 'none';
+          gcodeTaskContainer.style.display = 'none';
+        }
+
+        if (taskId) {
+          newTaskModal.setAttribute('data-task-id', taskId.toString());
+        }
+      }
+    }
+
   });
 
   closeTaskModal.onclick = function () {

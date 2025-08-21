@@ -601,16 +601,6 @@ export class GCode {
         zInput.className = 'input-cell';
         zCell.appendChild(zInput);
 
-        // W Offset cell
-        const wCell = document.createElement('td');
-        wCell.className = 'data-cell';
-        const wInput = document.createElement('input');
-        wInput.type = 'number';
-        wInput.value = wOffset.toString();
-        wInput.step = "0.001";
-        wInput.className = 'input-cell';
-        wCell.appendChild(wInput);
-
         // X Offset cell
         const xCell = document.createElement('td');
         xCell.className = 'data-cell';
@@ -620,6 +610,16 @@ export class GCode {
         xInput.step = "0.001";
         xInput.className = 'input-cell';
         xCell.appendChild(xInput);
+
+        // W Offset cell
+        const wCell = document.createElement('td');
+        wCell.className = 'data-cell';
+        const wInput = document.createElement('input');
+        wInput.type = 'number';
+        wInput.value = wOffset.toString();
+        wInput.step = "0.001";
+        wInput.className = 'input-cell';
+        wCell.appendChild(wInput);
 
         // U Offset cell
         const uCell = document.createElement('td');
@@ -658,7 +658,7 @@ export class GCode {
 
         actionCell.appendChild(saveButton);
 
-        row.append(toolCell, zCell, wCell, xCell, uCell, actionCell);
+        row.append(toolCell, zCell, xCell, wCell, uCell, actionCell);
         tbody.appendChild(row);
     }
 
