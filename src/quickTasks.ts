@@ -218,6 +218,8 @@ document.addEventListener("DOMContentLoaded", () => {
       //if its a cone task show an alert saying not implemented
       if (taskId === 'quickTaskCone' || taskId === 'quickTaskGrooving') {
         alert('Not Yet Implemented, coming soon!');
+      } else if (taskId === 'quickTaskToolOffsets') {
+        config.modal.style.display = 'none';
       } else {
         config.modal.style.display = 'block';
       }
@@ -288,25 +290,31 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!isConnected || !sender) {
           alert('Please connect to the machine first');
           return;
-        }
+        } else {
 
-        const response = await sender.getToolOffsets(SenderClient.GCODE);
-        const toolOffsets = parseToolOffsets(response);
+          config.modal.style.display = 'block';
+          const response = await sender.getToolOffsets(SenderClient.GCODE);
+          const toolOffsets = parseToolOffsets(response);
 
-        // Clear existing options
-        quickTaskToolOffsetsToolNumber.innerHTML = '';
+          // Clear existing options
+          quickTaskToolOffsetsToolNumber.innerHTML = '';
 
-        if (toolOffsets.length > 0) {
-          for (let i = 1; i <= (toolOffsets.length - 1); i++) {
-            const option = document.createElement('option');
-            option.value = `T${i}`;
-            option.textContent = `T${i}`;
-            quickTaskToolOffsetsToolNumber.appendChild(option);
+          if (toolOffsets.length > 0) {
+            for (let i = 1; i <= (toolOffsets.length - 1); i++) {
+              const option = document.createElement('option');
+              option.value = `T${i}`;
+              option.textContent = `T${i}`;
+              quickTaskToolOffsetsToolNumber.appendChild(option);
+            }
+
+            //set the default value to the first tool
+            quickTaskToolOffsetsToolNumber.value = 'T1';
+
+            //clear tool offsets
+            quickTaskToolOffsetsOffsetX.value = '';
+            quickTaskToolOffsetsOffsetZ.value = '';
+
           }
-
-          //set the default value to the first tool
-          quickTaskToolOffsetsToolNumber.value = 'T1';
-
         }
       }
 
