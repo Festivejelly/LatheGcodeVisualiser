@@ -36,6 +36,9 @@ export class CanvasDrawer {
     private stockDiameterInMM: number = 0; // Store the stock diameter for later use
     private isBoringOperation: boolean = false; // Track if the operation is boring
     private hasOperationType: boolean = false; // Track if the operation type has been found
+    private hasToolWidth: boolean = false; // Track if the tool width has been found
+    private extToolWidthInMM: number = 2;
+    private intToolWidthInMM: number = 1.5;
 
     constructor() { }
 
@@ -50,6 +53,7 @@ export class CanvasDrawer {
 
         this.isBoringOperation = false; // Reset boring operation status
         this.hasOperationType = false; // Reset operation type status
+        this.hasToolWidth = false; // Reset tool width status
 
         const lines = data.split('\n');
         lines.forEach((line, index) => {
@@ -64,6 +68,21 @@ export class CanvasDrawer {
                     this.hasOperationType = true;
                 }
             }
+
+        if (!this.hasToolWidth && this.hasOperationType) {
+            if (line.includes('; tool width')) {
+                const toolWidthMatch = line.match(/; tool width\s*([0-9.]+)/i);
+                if (toolWidthMatch && toolWidthMatch[1]) {
+                    if (!this.isBoringOperation) {
+                        this.extToolWidthInMM = parseFloat(toolWidthMatch[1]);
+                        this.hasToolWidth = true;
+                    } else {
+                        this.intToolWidthInMM = parseFloat(toolWidthMatch[1]);
+                        this.hasToolWidth = true;
+                    }
+                }
+            }
+        }
 
             const command: GCodeCommand = { isRelative: isRelative, movementType };
             const parts = line.match(/([GXYZF])([0-9.-]+)/g);
@@ -140,6 +159,12 @@ export class CanvasDrawer {
             }
             commands.push(newCommand);
         });
+
+        if (!this.hasToolWidth) {
+
+            this.extToolWidthInMM = 2; // (for turning/profiling/facing operations)
+            this.intToolWidthInMM = 1.5; // (for boring/drilling operations)
+        }
 
         return drawableCommands;
     }
@@ -352,16 +377,20 @@ export class CanvasDrawer {
         ctx.setLineDash([]);
     }
 
-        removeStockMaterial(stockCanvas: HTMLCanvasElement, scaleFactor: number) {
+    removeStockMaterial(stockCanvas: HTMLCanvasElement, scaleFactor: number) {
         const ctx = stockCanvas.getContext('2d');
         if (!ctx) return;
 
         const doActualCut = () => {
 
-            const toolWidthMM = 2;
-            const toolWidthPixels = toolWidthMM * scaleFactor;
+            let toolWidthMM = this.extToolWidthInMM;
+            let toolWidthPixels = toolWidthMM * scaleFactor;
 
             if (this.isBoringOperation) {
+
+                let toolWidthMM = this.intToolWidthInMM;
+                let toolWidthPixels = toolWidthMM * scaleFactor;
+
                 // Logic for Boring Operation
                 const dirZ = this.canvasZ - this.previousCanvasZ;
                 // dirX is calculated based on canvasX/previousCanvasX which are CH/2 - (gcodeX * S)
@@ -388,7 +417,7 @@ export class CanvasDrawer {
                     previousRadiusPixels = previousRadiusGcode * scaleFactor;
                 } else {
                     // Should not happen if scaleFactor is always positive
-                    previousRadiusPixels = currentRadiusPixels; 
+                    previousRadiusPixels = currentRadiusPixels;
                 }
                 // Y-coordinate of the previous bore's inner surface
                 const previousToolEdgeY = centerY - previousRadiusPixels;

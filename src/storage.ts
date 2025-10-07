@@ -47,7 +47,7 @@ class LocalStorageService implements StorageService {
   async getKeys(prefix?: string): Promise<string[]> {
     const logPrefix = prefix ? `with prefix "${prefix}"` : 'all keys';
     console.log(`[LocalStorageService] Retrieving keys ${logPrefix}`);
-    
+
     try {
       const keys = Object.keys(localStorage);
       const filteredKeys = prefix ? keys.filter(key => key.startsWith(prefix)) : keys;
@@ -75,7 +75,7 @@ class DatabaseService implements StorageService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value })
       });
-      
+
       if (response.ok) {
         console.log(`[DatabaseService] Successfully saved record with key: "${key}"`);
       } else {
@@ -111,7 +111,7 @@ class DatabaseService implements StorageService {
       const response = await fetch(`${this.apiUrl}/storage/${key}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         console.log(`[DatabaseService] Successfully deleted record with key: "${key}"`);
       } else {
@@ -126,7 +126,7 @@ class DatabaseService implements StorageService {
   async getKeys(prefix?: string): Promise<string[]> {
     const logPrefix = prefix ? `with prefix "${prefix}"` : 'all keys';
     console.log(`[DatabaseService] Retrieving keys ${logPrefix}`);
-    
+
     try {
       const url = prefix ? `${this.apiUrl}/storage/keys?prefix=${prefix}` : `${this.apiUrl}/storage/keys`;
       const response = await fetch(url);
@@ -152,11 +152,13 @@ export function createStorageService(): StorageService {
   // Check if we're running on the local network and can access the API
   const hostname = window.location.hostname;
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-  const isDebug = false;
+  const isDebug = true;
   const isLocalNetwork = hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
 
+  // Note: For development, visit https://192.168.0.121:3001/api/storage/keys 
+  // in browser first to accept the self-signed certificate, else you'll get err_cert_authority_invalid when calling the API.
   if (isDebug) {
-    return new DatabaseService('http://192.168.0.127:3001/api'); // Change this to your debug API URL
+    return new DatabaseService('https://192.168.0.121:3001/api'); // Use the Vite dev server port
   }
   else if (isLocalhost) {
     // Running directly on the garage computer

@@ -158,7 +158,8 @@ const quickTaskToolOffsetsToolNumber = document.getElementById('quickTaskToolOff
 const quickTaskToolOffsetsToolType = document.getElementById('quickTaskToolOffsetsToolType') as HTMLSelectElement;
 const quickTaskToolOffsetsOffsetX = document.getElementById('quickTaskToolOffsetsOffsetX') as HTMLInputElement;
 const quickTaskToolOffsetsOffsetZ = document.getElementById('quickTaskToolOffsetsOffsetZ') as HTMLInputElement;
-
+const quickTaskToolOffsetGetXPosButton = document.getElementById('quickTaskToolOffsetGetXPosButton') as HTMLButtonElement;
+const quickTaskToolOffsetGetZPosButton = document.getElementById('quickTaskToolOffsetGetZPosButton') as HTMLButtonElement;
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -176,6 +177,8 @@ document.addEventListener("DOMContentLoaded", () => {
     w: number;  // Z-axis compensation
     u: number;  // X-axis compensation
   }
+
+  let taskInProgress = false;
 
   const parseToolOffsets = (response: string): ToolOffset[] => {
     // Remove 'Tool offsets:' prefix and 'ok' suffix
@@ -210,20 +213,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const config = quickTaskConfig[taskId];
     const openButton = quickTaskConfig[taskId].openButton;
     openButton.addEventListener('click', async () => {
-      if (!sender?.isConnected()) {
-        alert('Please connect to the machine first');
+      let isConnected = sender?.isConnected();
+
+      activeQuickTaskConfig = config;
+      taskInProgress = false;
+
+      //if its a cone task show an alert saying not implemented
+      if (taskId === 'quickTaskCone' || taskId === 'quickTaskGrooving') {
+        alert('Not Yet Implemented, coming soon!');
+      } else if (taskId === 'quickTaskToolOffsets') {
+        config.modal.style.display = 'none';
       } else {
-        activeQuickTaskConfig = config;
+        config.modal.style.display = 'block';
+      }
 
-        //if its a cone task show an alert saying not implemented
-        if (taskId === 'quickTaskCone' || taskId === 'quickTaskGrooving') {
-          alert('Not Yet Implemented, coming soon!');
+      if (taskId === 'quickTaskProfiling') {
+        //set current position to the current X and Z position
+        //if not connected set position to 0,0
+        if (!isConnected || !sender) {
+          quickTaskProfilingCurrentPosition.value = `X: 0.000 Z: 0.000`;
+          quickTaskProfilingXStartPosition.value = `0.000`;
         } else {
-          config.modal.style.display = 'block';
-        }
-
-        if (taskId === 'quickTaskProfiling') {
-          //set current position to the current X and Z position
           const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
@@ -231,9 +241,15 @@ document.addEventListener("DOMContentLoaded", () => {
           quickTaskProfilingXStartPosition.value = currentPosX.toFixed(3);
           quickTaskProfilingZStartPosition.value = currentPosZ.toFixed(3);
         }
+      }
 
-        if (taskId === 'quickTaskFacing') {
-          //set current position to the current X and Z position
+      if (taskId === 'quickTaskFacing') {
+        //set current position to the current X and Z position
+        if (!isConnected || !sender) {
+          quickTaskFacingCurrentPosition.value = `X: 0.000 Z: 0.000`;
+          quickTaskFacingXStartPosition.value = `0.000`;
+          quickTaskFacingZStartPosition.value = `0.000`;
+        } else {
           const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
@@ -241,29 +257,45 @@ document.addEventListener("DOMContentLoaded", () => {
           quickTaskFacingXStartPosition.value = currentPosX.toFixed(3);
           quickTaskFacingZStartPosition.value = currentPosZ.toFixed(3);
         }
+      }
 
-        if (taskId === 'quickTaskBoring') {
-          //set current position to the current X and Z position
+      if (taskId === 'quickTaskBoring') {
+        //set current position to the current X and Z position
+        if (!isConnected || !sender) {
+          quickTaskBoringCurrentPosition.value = `X: 0.000 Z: 0.000`;
+          quickTaskBoringXStartPosition.value = `0.000`;
+        } else {
           const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
           quickTaskBoringXStartPosition.value = currentPosX.toFixed(3);
-          quickTaskBoringZStartPosition.value = currentPosZ.toFixed(3);
         }
+      }
 
-        if (taskId === 'quickTaskDrilling') {
-          //set current position to the current X and Z position
+      if (taskId === 'quickTaskDrilling') {
+        //set current position to the current X and Z position
+        if (!isConnected || !sender) {
+          quickTaskDrillingCurrentPosition.value = `X: 0.000 Z: 0.000`;
+          quickTaskDrillingZStartPosition.value = `0.000`;
+        } else {
           const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskDrillingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
           quickTaskDrillingZStartPosition.value = currentPosZ.toFixed(3);
         }
+      }
 
-        //if task is tool offsets, populate the tool number select with the available tools
-        if (taskId === 'quickTaskToolOffsets') {
+      //if task is tool offsets, populate the tool number select with the available tools
+      if (taskId === 'quickTaskToolOffsets') {
 
+        if (!isConnected || !sender) {
+          alert('Please connect to the machine first');
+          return;
+        } else {
+
+          config.modal.style.display = 'block';
           const response = await sender.getToolOffsets(SenderClient.GCODE);
           const toolOffsets = parseToolOffsets(response);
 
@@ -281,23 +313,36 @@ document.addEventListener("DOMContentLoaded", () => {
             //set the default value to the first tool
             quickTaskToolOffsetsToolNumber.value = 'T1';
 
+            //clear tool offsets
+            quickTaskToolOffsetsOffsetX.value = '';
+            quickTaskToolOffsetsOffsetZ.value = '';
+
           }
         }
       }
+
     });
 
     // Execute button
     config.executeButton.addEventListener('click', () => {
+      //if not connected, show an alert
+      if (!sender?.isConnected()) {
+        alert('Please connect to the machine first');
+        return;
+      }
+      taskInProgress = true;
       config.taskFunction();
     });
 
     // Stop button
     config.stopButton.addEventListener('click', () => {
+      taskInProgress = false;
       sender?.stop();
     });
 
     // Close button
     config.closeButton.addEventListener('click', () => {
+      taskInProgress = false;
       config.modal.style.display = 'none';
     });
   });
@@ -324,6 +369,10 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   quickTaskProfilingRefreshPositionButton.addEventListener('click', async () => {
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
     const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
@@ -395,6 +444,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   quickTaskFacingRefreshPositionButton.addEventListener('click', async () => {
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
     const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
@@ -418,7 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //populate the stored values for the facing task
   const facingFeedrate = localStorage.getItem('facingFeedrate');
-  if (facingFeedrate  !== null) {
+  if (facingFeedrate !== null) {
     quickTaskFacingFeedrate.value = facingFeedrate;
   }
 
@@ -489,24 +542,21 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   quickTaskBoringRefreshPositionButton.addEventListener('click', async () => {
+    //if not connected, show an alert
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
     const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
     quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
-    quickTaskBoringXStartPosition.value = currentPosX.toFixed(3);
-    quickTaskBoringZStartPosition.value = currentPosZ.toFixed(3);
   });
 
   quickTaskBoringDepth.addEventListener('input', checkBoringFields);
   quickTaskBoringFeedRate.addEventListener('input', checkBoringFields);
   quickTaskBoringRetractFeedRate.addEventListener('input', checkBoringFields);
 
-  quickTaskBoringRefreshPositionButton.addEventListener('click', async () => {
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-    const currentPosX = latestStatus?.x!;
-    const currentPosZ = latestStatus?.z!;
-    quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
-  });
 
   quickTaskBoringType.addEventListener('change', () => {
     if (quickTaskBoringType.value === 'Absolute') {
@@ -578,6 +628,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   quickTaskDrillingRefreshPositionButton.addEventListener('click', async () => {
+
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
     const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
@@ -686,6 +741,26 @@ document.addEventListener("DOMContentLoaded", () => {
     quickTaskToolOffsetsProbeDiameter.value = localStorageProbeDiameter;
   }
 
+  quickTaskToolOffsetGetXPosButton.addEventListener('click', async () => {
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    quickTaskToolOffsetsOffsetX.value = currentPosX.toFixed(3);
+  });
+
+  quickTaskToolOffsetGetZPosButton.addEventListener('click', async () => {
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosZ = latestStatus?.z!;
+    quickTaskToolOffsetsOffsetZ.value = currentPosZ.toFixed(3);
+  });
+
   //<---- Populate default retract values from local storage ---->
   const drillingRetractFeedRate = localStorage.getItem('drillingRetractFeedRate');
   if (drillingRetractFeedRate !== null) {
@@ -737,8 +812,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const isRun = status.condition === 'run';
+    const isStreaming = sender.isStreaming();
+    const busy = isRun || isStreaming;
 
-    if (!isRun) {
+    if (!busy && !taskInProgress) {
 
       //show execute button
       activeQuickTaskConfig.executeButton.style.display = 'flex';
@@ -752,7 +829,7 @@ document.addEventListener("DOMContentLoaded", () => {
       //hide the parent div of the progress slider
       activeQuickTaskConfig.progressBar.parentElement!.style.display = 'none';
 
-    } else if (isRun) {
+    } else {
 
       //hide execute button
       activeQuickTaskConfig.executeButton.style.display = 'none';
@@ -775,9 +852,12 @@ document.addEventListener("DOMContentLoaded", () => {
 //<---- Profiling functions ---->
 async function profilingTask(copyToClipboard = false) {
 
-  const currentPosX = parseFloat(quickTaskProfilingXStartPosition.value);
-  const currentPosZ = parseFloat(quickTaskProfilingZStartPosition.value);
-  if (isNaN(currentPosX) || isNaN(currentPosZ)) {
+  const isConnected = sender?.isConnected();
+
+  const startPosX = parseFloat(quickTaskProfilingXStartPosition.value);
+  const startPosZ = parseFloat(quickTaskProfilingZStartPosition.value);
+
+  if (isNaN(startPosX) || isNaN(startPosZ)) {
     alert('Please enter a valid starting position');
     return;
   }
@@ -796,7 +876,8 @@ async function profilingTask(copyToClipboard = false) {
 
   // Set initial position
   commands.push(`G90`); // Set to absolute positioning
-  commands.push(`G0 X${currentPosX} Z${currentPosZ} F${retractFeedrate} ; move to start position`);
+  commands.push(`G1 X${startPosX} F100 ; move to start position`);
+  commands.push(`G1 Z${startPosZ} F100 ; move to start position`);
   commands.push('G91'); // Set to relative positioning
 
   // Calculate target position and total depth required with exact precision
@@ -807,7 +888,7 @@ async function profilingTask(copyToClipboard = false) {
     // For absolute, calculate based on final diameter
     const profilingFinalDiameter = Number(parseFloat(quickTaskProfilingFinalDiameter.value).toFixed(3));
     targetX = -profilingFinalDiameter / 2; // X position for the final diameter
-    totalRequired = Math.abs(targetX - currentPosX);
+    totalRequired = Math.abs(targetX - startPosX);
     totalRequired = Number(totalRequired.toFixed(3));
   } else {
     // For relative, use the specified depth
@@ -878,7 +959,7 @@ async function profilingTask(copyToClipboard = false) {
   // Calculate exact finishing pass depth to achieve target diameter
   let finalPass = 0;
   if (profilingType === 'Absolute') {
-    const currentPosition = Number((currentPosX + totalCut).toFixed(3));
+    const currentPosition = Number((startPosX + totalCut).toFixed(3));
     finalPass = Number(Math.abs(targetX - currentPosition).toFixed(3));
   } else {
     finalPass = finishingDepth;
@@ -894,9 +975,11 @@ async function profilingTask(copyToClipboard = false) {
     commands.push(`G1 Z-${profilingLength} F${retractFeedrate} ; retract`);
   }
 
-  commands.push('G90'); // Set to absolute positioning
-  commands.push(`G0 X${currentPosX} Z${currentPosZ} F${retractFeedrate} ; move to final position`);
-  commands.push(`G91`); // Set back to relative positioning
+  //move back to start position
+  commands.push(`G90`); // Set to absolute positioning
+  commands.push(`G1 X${startPosX} F100 ; move to start position`);
+  commands.push(`G1 Z${startPosZ} F100 ; move to start position`);
+
 
   if (copyToClipboard) {
     // Copy to clipboard
@@ -905,6 +988,11 @@ async function profilingTask(copyToClipboard = false) {
     }).catch(() => {
       alert('Failed to copy G-code to clipboard');
     });
+    return;
+  }
+
+  if (!isConnected) {
+    alert('Please connect to the machine first');
     return;
   }
 
@@ -1007,11 +1095,19 @@ async function updateProfilingDepthPerPassFromPasses() {
 //other quick task functions
 async function facingTask(copyToClipboard: boolean = false) {
 
+  let isConnected = sender?.isConnected();
+
   let commands: string[] = [];
 
-  const startPosition = Number(parseFloat(quickTaskFacingXStartPosition.value).toFixed(3));
+  const startPosX = Number(parseFloat(quickTaskFacingXStartPosition.value).toFixed(3));
+  const startPosZ = Number(parseFloat(quickTaskFacingZStartPosition.value).toFixed(3));
 
-  const startDiameter = Math.abs(startPosition!) * 2; // e.g. 16
+  if (isNaN(startPosX) || isNaN(startPosZ)) {
+    alert('Please enter a valid starting position');
+    return;
+  }
+
+  const startDiameter = Math.abs(startPosX!) * 2; // e.g. 16
   const endDiameter = Number(parseFloat(quickTaskFacingEndDiameter.value).toFixed(3)); // e.g. 2
   const feedrate = Number(parseFloat(quickTaskFacingFeedrate.value).toFixed(3));    // mm/min, e.g. 70
   const travelFeedRate = Number(parseFloat(quickTaskFacingTravelFeedRate.value).toFixed(3));   // mm/min, e.g. 200
@@ -1026,9 +1122,10 @@ async function facingTask(copyToClipboard: boolean = false) {
   localStorage.setItem('facingPeckingRetractionRate', peckingRetractionRate.toString());
   localStorage.setItem('facingUsePecking', usePecking.toString());
 
-  commands.push(`G90`); //set to absolute positioning
-  commands.push(`G0 X${startPosition} F${travelFeedRate} ; move to start position`);
-  commands.push('G91'); //set to relative positioning
+  commands.push(`G90`); // Set to absolute positioning
+  commands.push(`G1 X${startPosX} F100 ; move to start position`);
+  commands.push(`G1 Z${startPosZ} F100 ; move to start position`);
+  commands.push('G91'); // Set to relative positioning
 
   const xStart = startDiameter / 2;
   const xEnd = endDiameter / 2;
@@ -1084,11 +1181,18 @@ async function facingTask(copyToClipboard: boolean = false) {
     return;
   }
 
+  if (!isConnected) {
+    alert('Please connect to the machine first');
+    return;
+  }
+
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
 
 function drillingTask(copyToClipboard: boolean = false) {
+
+  let isConnected = sender?.isConnected();
 
   //drilling modal inputs
   const drillingDepth = parseFloat(quickTaskDrillingDepth.value);
@@ -1102,8 +1206,8 @@ function drillingTask(copyToClipboard: boolean = false) {
   let clearChips = false;
   let numberOfPecksPerformed = 0;
 
-  const currentPosZ = parseFloat(quickTaskDrillingZStartPosition.value);
-  if (isNaN(currentPosZ)) {
+  const startPosZ = parseFloat(quickTaskDrillingZStartPosition.value);
+  if (isNaN(startPosZ)) {
     alert('Please enter a valid starting Z position');
     return;
   }
@@ -1115,9 +1219,10 @@ function drillingTask(copyToClipboard: boolean = false) {
 
 
   //go to centre line of the part
-  commands.push('G90'); //set to absolute positioning
-  commands.push(`G0 X0 Z${currentPosZ} F${retractFeedrate} ; move to start position`);
-  commands.push('G91'); //set to relative positioning
+  commands.push(`G90`); // Set to absolute positioning
+  commands.push(`G1 X0 F100 ; move to start position`);
+  commands.push(`G1 Z${startPosZ} F100 ; move to start position`);
+  commands.push('G91'); // Set to relative positioning
 
   if (drillingPeckCheckbox) {
 
@@ -1184,6 +1289,11 @@ function drillingTask(copyToClipboard: boolean = false) {
     return;
   }
 
+  if (!isConnected) {
+    alert('Please connect to the machine first');
+    return;
+  }
+
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 
 }
@@ -1197,8 +1307,8 @@ function coneTask() {
 }
 
 async function boringTask(copyToClipboard: boolean = false) {
-  const currentStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-  const currentPosX = currentStatus?.x!;
+
+  let isConnected = sender?.isConnected();
 
   // Boring modal inputs with precise handling
   const boringDepth = Number(parseFloat(quickTaskBoringDepth.value).toFixed(3));
@@ -1206,11 +1316,17 @@ async function boringTask(copyToClipboard: boolean = false) {
   const boringType = quickTaskBoringType.value;
   const boringPasses = parseInt(quickTaskBoringPasses.value, 10);
   const retractFeedrate = Number(parseFloat(quickTaskBoringRetractFeedRate.value).toFixed(3));
+  const startX = Number(parseFloat(quickTaskBoringXStartPosition.value).toFixed(3));
+  const startZ = Number(parseFloat(quickTaskBoringZStartPosition.value).toFixed(3));
 
   localStorage.setItem('boringRetractFeedrate', retractFeedrate.toString());
   localStorage.setItem('boringFeedRate', boringFeedRate.toString());
 
   const commands: string[] = [];
+
+  commands.push(`G90`); // Set to absolute positioning
+  commands.push(`G1 X${startX} F100 ; move to start position`);
+  commands.push(`G1 Z${startZ} F100 ; move to start position`);
   commands.push('G91'); // Set to relative positioning
 
   // Calculate target position and total depth required with exact precision
@@ -1221,7 +1337,7 @@ async function boringTask(copyToClipboard: boolean = false) {
     // For absolute, calculate based on final diameter with exact precision
     const boringFinalDiameter = Number(parseFloat(quickTaskBoringFinalDiameter.value).toFixed(3));
     targetX = -boringFinalDiameter / 2;
-    totalRequired = Math.abs(currentPosX - targetX);
+    totalRequired = Math.abs(startX - targetX);
     totalRequired = Number(totalRequired.toFixed(3));
   } else {
     // For relative, use the specified depth of cut
@@ -1293,7 +1409,7 @@ async function boringTask(copyToClipboard: boolean = false) {
   // Calculate exact finishing pass depth to achieve target diameter
   let finalPass = 0;
   if (boringType === 'Absolute') {
-    const currentPosition = Number((currentPosX - totalCut).toFixed(3));
+    const currentPosition = Number((startX - totalCut).toFixed(3));
     finalPass = Number(Math.abs(currentPosition - targetX).toFixed(3));
   } else {
     finalPass = finishingDepth;
@@ -1309,7 +1425,10 @@ async function boringTask(copyToClipboard: boolean = false) {
     commands.push(`G0 Z-${boringDepth} F${retractFeedrate} ; retract`);
   }
 
-  commands.push('G90'); // Set to absolute positioning
+  // Move back to start position
+  commands.push(`G90`); // Set to absolute positioning
+  commands.push(`G1 X${startX} F100 ; move to start position`);
+  commands.push(`G1 Z${startZ} F100 ; move to start position`);
 
   if (copyToClipboard) {
     // Copy to clipboard
@@ -1321,14 +1440,19 @@ async function boringTask(copyToClipboard: boolean = false) {
     return;
   }
 
+  if (!isConnected) {
+    alert('Please connect to the machine first');
+    return;
+  }
+
   // Send all commands at once
   sender?.sendCommands(commands, SenderClient.QUICKTASKS);
 }
 
 //<---- Boring functions ---->
 async function updatePassesFromDepthPerPass() {
-  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-  const startPosX = latestStatus?.x!;
+
+  const startPosX = Number(parseFloat(quickTaskBoringXStartPosition.value).toFixed(3));
 
   // Calculate total depth required with high precision
   let totalDepth: number;
@@ -1368,8 +1492,8 @@ async function updatePassesFromDepthPerPass() {
 
 // Function to handle when passes are manually changed
 async function updateDepthPerPassFromPasses() {
-  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
-  const startPosX = latestStatus?.x!;
+
+  const startPosX = Number(parseFloat(quickTaskBoringXStartPosition.value).toFixed(3));
 
   // Calculate total depth required with high precision
   let totalDepth: number;
@@ -1417,49 +1541,46 @@ async function updateDepthPerPassFromPasses() {
 }
 
 function threadingTask(copyToClipboard: boolean = false) {
-  const status = sender?.getStatus();
-  if (!status || !status.isConnected) {
+
+  //get threading inputs
+  const threadingSize = quickTaskThreadingSize.value;
+
+  if (threadingSize === '') {
+    alert('Please select a thread size');
+    return;
+  }
+
+  const threadingDirection = quickTaskThreadingDirection.value as ThreadingDirection;
+  const threadingExternalOrInternal = quickTaskThreadingExternalOrInternal.value as ThreadingType;
+  const threadingLength = parseFloat(quickTaskThreadingLength.value);
+  const threadingPasses = parseInt(quickTaskThreadingPasses.value, 10);
+
+  //get threading spec
+  const threadSpec = Threading.getThreadSpecByName(threadingSize) as ThreadSpec;
+
+  const gcode = Threading.generateThreadingGcode(threadSpec, threadingExternalOrInternal, threadingDirection, threadingLength, threadingPasses);
+
+  if (copyToClipboard) {
+    // Copy to clipboard
+    navigator.clipboard.writeText(gcode).then(() => {
+      alert('G-code copied to clipboard');
+    }).catch(() => {
+      alert('Failed to copy G-code to clipboard');
+    });
+    return;
+  }
+
+  if (!sender?.isConnected()) {
     alert('Please connect to the machine first');
     return;
-  } else {
-    if (status.version !== minimumVersion) {
-      alert(`Threading is only supported on ${minimumVersion} controllers. Please see the help page for more information.`);
-      return;
-    } else {
-      //get threading inputs
-      const threadingSize = quickTaskThreadingSize.value;
-
-      if (threadingSize === '') {
-        alert('Please select a thread size');
-        return;
-      }
-
-      const threadingDirection = quickTaskThreadingDirection.value as ThreadingDirection;
-      const threadingExternalOrInternal = quickTaskThreadingExternalOrInternal.value as ThreadingType;
-      const threadingLength = parseFloat(quickTaskThreadingLength.value);
-      const threadingPasses = parseInt(quickTaskThreadingPasses.value, 10);
-
-      //get threading spec
-      const threadSpec = Threading.getThreadSpecByName(threadingSize) as ThreadSpec;
-
-      const gcode = Threading.generateThreadingGcode(threadSpec, threadingExternalOrInternal, threadingDirection, threadingLength, threadingPasses);
-
-      if (copyToClipboard) {
-        // Copy to clipboard
-        navigator.clipboard.writeText(gcode).then(() => {
-          alert('G-code copied to clipboard');
-        }).catch(() => {
-          alert('Failed to copy G-code to clipboard');
-        });
-        return;
-      }
-
-      const commands: string[] = [];
-      commands.push('G90'); //set to absolute positioning
-      commands.push(gcode);
-      sender?.sendCommands(commands, SenderClient.QUICKTASKS);
-    }
   }
+
+  const commands: string[] = [];
+  commands.push('G90'); //set to absolute positioning
+  commands.push(gcode);
+  sender?.sendCommands(commands, SenderClient.QUICKTASKS);
+
+
 }
 
 function toolOffsetsTask() {

@@ -164,7 +164,30 @@
                             <button class="arrow slow jog-btn" style="--col: 11; --row: 5" id="slowDown">
                                 <i class="fas fa-arrow-down"></i></button>
 
+                            <!-- Zeroing -->
+                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 5" id="WposZeroZ">WPOS Zero Z</button>
+                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 6" id="WposZeroX">WPOS Zero X</button>
+                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 7" id="WposZeroY">WPOS Zero Y</button>
 
+                            <!-- Stepper motor status-->
+                            <button class="motor-btn motor-enable" style="--col: 2; --row: 5" id="MotorZToggleBtn" title="Click to disable Z axis"><i class="fas fa-power-off">&nbsp;</i><span>Z</span></button>
+                            <button class="motor-btn motor-enable" style="--col: 2; --row: 6" id="MotorXToggleBtn" title="Click to disable X axis"><i class="fas fa-power-off">&nbsp;</i><span>X</span></button>
+                            <button class="motor-btn motor-disable" style="--col: 2; --row: 7" id="MotorYToggleBtn" title="Click to enable Y axis"><i class="fas fa-power-off">&nbsp;</i><span>Y</span></button>
+
+                        </div>
+                        <div>
+                            <hr>
+                        </div>
+                        <div class="positionLocation">
+                            <div class="position-displays">
+                                <div id="wposLocation">
+                                    <span id="wposCurrentPosition">WPOS:</span>
+                                    <input id="wposCurrentPositionValue" readonly value="X0 Y0 Z0"></input>
+                                </div>
+                            </div>
+                            <div id="positionButtonContainer">
+                                <button id="getPositionButton" title="Get current position from controller">Get Position</button>
+                            </div>
                         </div>
                         <div id="incrementControls">
                             <button class="increment-btn" data-increment="0.001">0.001</button>
@@ -185,13 +208,17 @@
                         </div>
                     </div>
 
-                    <div id="gcodeResponseContainer" style="display: none;">
+                    <div id="gcodeResponseContainer">
                         <div id="gcodeResponseHeader">GCode Responses</div>
                         <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
                         <div class="senderError" style="display: none;"></div>
                         <div id="senderProgressContainer">
                             <span id="senderProgressLabel" style="display: none;">Progress...</span>
                             <progress id="senderProgress" max="1" style="display: none;"></progress>
+                        </div>
+                        <div class="innerContainer">
+                            <button id="resumeButton">Resume</button>
+                            <button id="clearConsoleButton">Clear Console</button>
                         </div>
                     </div>
                 </div>
@@ -388,11 +415,7 @@
                     <div class="innerContainer">
                         <h1>Planner</h1>
                         <div class="planner-guidance">
-                            <span>Use this tool to create a job of tasks to execute. This can be manual, gcode, button
-                                press
-                                emulation or a
-                                combination
-                                of them.
+                            <span>Use this tool to create a job of tasks to execute. This can be manual or gcode.
                                 When you click execute the job wizard will execute the tasks one after another. Each
                                 task
                                 with require confirmation to start.</span>
@@ -535,12 +558,12 @@
                                     </th>
                                     <th class="flex-1 p-1 text-left border-b">
                                         <div class="leading-tight">
-                                            Z Cut<br>Compensation
+                                            X Position<br>Offset
                                         </div>
                                     </th>
                                     <th class="flex-1 p-1 text-left border-b">
                                         <div class="leading-tight">
-                                            X Position<br>Offset
+                                            Z Cut<br>Compensation
                                         </div>
                                     </th>
                                     <th class="flex-1 p-1 text-left border-b">
@@ -1131,16 +1154,18 @@
                     </select>
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskToolOffsetsOffsetX">X Value</label>
-                    <input type="text" id="quickTaskToolOffsetsOffsetX" name="quickTaskToolOffsetsOffsetX" placeholder="0">
+                    <label for="quickTaskToolOffsetsOffsetZ">Z Value</label>
+                    <input type="text" id="quickTaskToolOffsetsOffsetZ" name="quickTaskToolOffsetsOffsetZ">
+                    <button id="quickTaskToolOffsetGetZPosButton">Get Z Position</button>
                 </div>
                 <div class="modal-pad-bottom">
-                    <label for="quickTaskToolOffsetsOffsetZ">Z Value</label>
-                    <input type="text" id="quickTaskToolOffsetsOffsetZ" name="quickTaskToolOffsetsOffsetZ" placeholder="0">
+                    <label for="quickTaskToolOffsetsOffsetX">X Value</label>
+                    <input type="text" id="quickTaskToolOffsetsOffsetX" name="quickTaskToolOffsetsOffsetX">
+                    <button id="quickTaskToolOffsetGetXPosButton">Get X Position</button>
                 </div>
                 <div class="modal-pad-bottom">
                     <label for="quickTaskToolOffsetsProbeDiameter">Probe diameter</label>
-                    <input type="text" id="quickTaskToolOffsetsProbeDiameter" name="quickTaskToolOffsetsProbeDiameter" placeholder="5">
+                    <input type="text" id="quickTaskToolOffsetsProbeDiameter" name="quickTaskToolOffsetsProbeDiameter" value="5">
                 </div>
                 <div class="modal-pad-bottom">
                 </div>
@@ -1181,38 +1206,61 @@
         </div>
         <!-- Manual Task Modal -->
         <div id="manualTaskModal" class="task-modal">
-            <div class="task-modal-content">
-                <h2>Manual Task Instructions</h2>
+            <div class="task-modal-content task-modal-manual">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-users-cog icon-tooltip" data-tooltip="Manual Task" style="font-size: inherit;"></i>
+                    <h2 style="margin: 0;">Manual Task</h2>
+                </div>
                 <hr>
                 <div>
                     <span id="manualTaskName"></span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="manualTaskInstructions" name="manualTaskInstructions" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                    <textarea id="manualTaskDescription" name="manualTaskDescription" class="full-width-textarea" rows="8" cols="50" disabled></textarea>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelManualTask">Cancel</button>
                     <button id="completeManualTask" class="interaction-ready-button">Next Task --></button>
                 </div>
+                <div class="modal-pad">
+                    <button id="skipManualTask">Skip Task <i class="fas fa-forward"></i></button>
+                </div>
             </div>
         </div>
         <!-- Gcode Task Modal -->
         <div id="cncTaskModal" class="task-modal">
-            <div class="task-modal-content">
-                <h2>CNC Task Gcode</h2>
+            <div class="task-modal-content task-modal-gcode">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-code icon-tooltip" data-tooltip="Gcode Task" style="font-size: inherit;"></i>
+                    <h2 style="margin: 0;">Gcode Task</h2>
+                </div>
                 <hr>
                 <div>
                     <span id="cncTaskName"></span>
                 </div>
+                <hr>
+                <div>
+                    <span>Description:</span>
+                </div>
                 <div class="modal-pad">
-                    <textarea id="cncTaskGcode" name="cncTaskGcode" class="full-width-textarea" rows="4" cols="50" disabled></textarea>
+                    <textarea id="cncTaskDescription" name="cncTaskDescription" class="full-width-textarea" rows="8" cols="50" disabled></textarea>
+                </div>
+                <div>
+                    <span>Gcode:</span>
+                </div>
+                <div class="modal-pad">
+                    <textarea id="cncTaskGcode" name="cncTaskGcode" class="full-width-textarea" rows="12" cols="50" disabled></textarea>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelCncTask">Cancel</button>
                     <button id="executeGcode">Execute Gcode</button>
+                    <button id="gcodeTaskResume" style="display: none;">Resume Gcode</button>
                 </div>
                 <div class="modal-pad">
                     <button id="completeCncTask" disabled>Next Task --></button>
+                </div>
+                <div class="modal-pad">
+                    <button id="skipCncTask">Skip Task <i class="fas fa-forward"></i></button>
                 </div>
                 <div id="currentGcodeLineContainer" class="modal-pad">
                     <span id="currentGcodeLineLabel">Current Gcode Line:</span>
@@ -1228,25 +1276,45 @@
                 </div>
             </div>
         </div>
-        <!-- key Emulation Task Modal -->
-        <div id="emulationTaskModal" class="task-modal">
-            <div class="task-modal-content">
-                <h2>Key Emulation Task</h2>
+        <!-- Tool Change Task Modal -->
+        <div id="toolChangeTaskModal" class="task-modal">
+            <div class="task-modal-content task-modal-tool-change">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-wrench icon-tooltip" data-tooltip="Tool Change Task" style="font-size: inherit;"></i>
+                    <h2 style="margin: 0;">Tool Change Task</h2>
+                </div>
                 <hr>
                 <div>
-                    <span id="emulationTaskName"></span>
+                    <span id="toolChangeTaskName"></span>
+                </div>
+                <hr>
+                <div>
+                    <span>Description:</span>
                 </div>
                 <div class="modal-pad">
-                    <ul id="emulationExecutionTasks">
-                        <!-- List items will be added here -->
-                    </ul>
-                    <div class="modal-pad">
-                        <button id="completeEmulationTask" disabled>Mark Complete</button>
-                    </div>
-                    <div id="emulationTaskSenderProgressContainer" class="modal-pad">
-                        <span id="emulationTaskSenderProgressLabel">Execution in progress...</span>
-                        <progress id="emulationTaskSenderProgress" max="1"></progress>
-                    </div>
+                    <textarea id="toolChangeTaskDescription" name="toolChangeTaskDescription" class="full-width-textarea" rows="8" cols="50" disabled></textarea>
+                </div>
+                <div>
+                    <span>Tool change info:</span>
+                </div>
+                <div class="modal-pad">
+                    <span>New Tool:</span>
+                    <input type="text" id="toolChangeNewTool" name="newTool" readonly>
+                </div>
+                <div class="modal-pad">
+                    <span>Instructions:</span>
+                    <!-- Instructions will be dynamically set -->
+                    <span id="toolChangeTaskInstructions"></span>
+                </div>
+                <div class="modal-pad">
+                    <button id="cancelToolChange">Cancel</button>
+                    <button id="executeToolChange">Execute tool change</button>
+                </div>
+                <div class="modal-pad">
+                    <button id="completeToolChangeTask" disabled>Next Task --></button>
+                </div>
+                <div class="modal-pad">
+                    <button id="skipToolChangeTask">Skip Task <i class="fas fa-forward"></i></button>
                 </div>
             </div>
         </div>
@@ -1256,6 +1324,17 @@
                 <h2>All Tasks Complete</h2>
                 <div class="modal-pad">
                     <button id="completeTaskCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+        <!-- Gcode Paused Modal -->
+        <div id="gcodePausedModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>G-Code Paused</h2>
+                <span id="gcodePausedMessage"></span>
+                <div class="modal-pad">
+                    <button id="gcodePausedCancelTaskButton">Cancel Task</button>
+                    <button id="gcodePausedResumeTaskButton">Resume</button>
                 </div>
             </div>
         </div>
@@ -1370,24 +1449,24 @@
                     <hr>
                     <div class="modal-pad">Task Name:</div>
                     <div>
-                        <input type="text" id="newTaskName" name="newTaskName" placeholder="Enter task name...">
+                        <input type="text" id="newTaskName" name="newTaskName" class="full-width-textarea" placeholder="Enter task name...">
                     </div>
                     <div class="modal-pad">Task Type:</div>
                     <div>
                         <select id="newTaskType" name="newTaskType">
-                            <option value="manual">Manual</option>
-                            <option value="gcode">GCode</option>
-                            <option value="emulation" disabled>Key Emulation</option>
+                            <option value="MANUAL">Manual</option>
+                            <option value="GCODE">GCode</option>
+                            <option value="TOOL_CHANGE">Tool Change</option>
                         </select>
                     </div>
                     <div class="modal-pad">Task Description:</div>
                     <div>
-                        <textarea id="newTaskDescription" name="newTaskDescription" class="full-width-textarea" rows="4" cols="50" placeholder="Enter Description..."></textarea>
+                        <textarea id="newTaskDescription" name="newTaskDescription" class="full-width-textarea" rows="8" cols="50" placeholder="Enter Description..."></textarea>
                     </div>
                     <div id="gcodeTaskContainer" style="display:none">
                         <div class="modal-pad">Task GCode:</div>
                         <div>
-                            <textarea id="newTaskGcode" name="newTaskGcode" class="full-width-textarea" rows="4" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
+                            <textarea id="newTaskGcode" name="newTaskGcode" class="full-width-textarea" rows="8" cols="50" placeholder="Disabled for manual tasks" disabled></textarea>
                         </div>
 
                         <div class="modal-pad">
@@ -1399,175 +1478,10 @@
                         </div>
                     </div>
                     <hr>
-                    <div id="emulationOuterContainer" class="emulate-noselect" style="display:none">
+                    <div id="toolChangeTaskContainer" style="display:none">
+                        <div class="modal-pad">Tool name:</div>
                         <div>
-                            <span>Use built in controller functions by emulating button presses
-                                Simply click the buttons you want to emulate to build up a sequence which will be
-                                displayed at the bottom. Each emulated press will have a 500ms delay between them.
-                                <br>
-                                <br>
-                                <i>Tip: Hover over the buttons for a description.</i>
-                            </span>
-                        </div>
-                        <div id="emulationInnerContainer">
-                            <div class="flexCol outerCol">
-                                <div id="numberContainer">
-                                    <div id="emulationNewTasksNumbers">
-                                        <button id="emulateKey9" data-button-key="B_9" class="standard-font material-symbols-outlined">
-                                            9
-                                        </button>
-                                        <button id="emulateKey8" data-button-key="B_8" class="standard-font material-symbols-outlined">
-                                            8
-                                        </button>
-                                        <button id="emulateKey7" data-button-key="B_7" class="standard-font material-symbols-outlined">
-                                            7
-                                        </button>
-                                        <button id="emulateKey6" data-button-key="B_6" class="standard-font material-symbols-outlined">
-                                            6
-                                        </button>
-                                        <button id="emulateKey5" data-button-key="B_5" class="standard-font material-symbols-outlined">
-                                            5
-                                        </button>
-                                        <button id="emulateKey4" data-button-key="B_4" class="standard-font material-symbols-outlined">
-                                            4
-                                        </button>
-                                        <button id="emulateKey3" data-button-key="B_3" class="standard-font material-symbols-outlined">
-                                            3
-                                        </button>
-                                        <button id="emulateKey2" data-button-key="B_2" class="standard-font material-symbols-outlined">
-                                            2
-                                        </button>
-                                        <button id="emulateKey1" data-button-key="B_1" class="standard-font material-symbols-outlined">
-                                            1
-                                        </button>
-                                        <button id="emulateKey0" data-button-key="B_0" class="standard-font material-symbols-outlined">
-                                            0
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flexCol middleCol">
-                                <div id="modeContainer">
-                                    <div id="emulationNewTasksMode">
-                                        <button id="emulateKeyBack" data-button-key="B_BACKSPACE" class="material-symbols-outlined">
-                                            backspace
-                                        </button>
-                                        <button id="emulateKeyGearbox" data-button-key="B_MODE_GEARS" class="material-symbols-outlined">
-                                            manufacturing
-                                        </button>
-                                        <button id="emulateKeyTurning" data-button-key="B_MODE_TURN" class="material-symbols-outlined">
-                                            reply
-                                        </button>
-                                        <button id="emulateKeyFacing" data-button-key="B_MODE_FACE" class="material-symbols-outlined">
-                                            turn_slight_left
-                                        </button>
-                                        <button id="emulateKeyCone" data-button-key="B_MODE_CONE" class="material-symbols-outlined">
-                                            arrow_forward_ios
-                                        </button>
-                                        <button id="emulateKeyParting" data-button-key="B_MODE_CUT" class="material-symbols-outlined">
-                                            publish
-                                        </button>
-                                        <button id="emulateKeyThreading" data-button-key="B_MODE_THREAD" class="material-symbols-outlined">
-                                            home_improvement_and_tools
-                                        </button>
-                                        <button id="emulateKeyMode" data-button-key="B_MODE_OTHER" class="standard-font material-symbols-outlined">
-                                            M
-                                        </button>
-                                    </div>
-                                </div>
-                                <div id="movementContainer">
-                                    <div id="emulationNewTasksMovement">
-                                        <button id="emulateKeyLeft" data-button-key="B_LEFT" class="material-symbols-outlined">
-                                            arrow_left_alt
-                                        </button>
-                                        <button id="emulateKeyRight" data-button-key="B_RIGHT" class="material-symbols-outlined">
-                                            arrow_right_alt
-                                        </button>
-                                        <button id="emulateKeyUp" data-button-key="B_UP" class="material-symbols-outlined">
-                                            arrow_upward_alt
-                                        </button>
-                                        <button id="emulateKeyDown" data-button-key="B_DOWN" class="material-symbols-outlined">
-                                            arrow_downward_alt
-                                        </button>
-                                        <button id="emulateKeyPlay" data-button-key="B_ON" class="material-symbols-outlined">
-                                            play_arrow
-                                        </button>
-                                        <button id="emulateKeyStop" data-button-key="B_OFF" class="material-symbols-outlined">
-                                            crop_square
-                                        </button>
-                                        <button id="emulateKeyStopLeft" data-button-key="B_STOPL" class="material-symbols-outlined">
-                                            keyboard_tab_rtl
-                                        </button>
-                                        <button id="emulateKeyStopRight" data-button-key="B_STOPR" class="material-symbols-outlined">
-                                            keyboard_tab
-                                        </button>
-                                        <button id="emulateKeyStopUp" data-button-key="B_STOPU" class="material-symbols-outlined">
-                                            vertical_align_top
-                                        </button>
-                                        <button id="emulateKeyStopDown" data-button-key="B_STOPD" class="material-symbols-outlined">
-                                            vertical_align_bottom
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flexCol outerCol">
-                                <div id="otherContainer">
-                                    <div id="emulationNewTasksOther">
-                                        <button id="emulateKeyZ" data-button-key="B_Z" class="standard-font material-symbols-outlined">
-                                            Z
-                                        </button>
-                                        <button id="emulateKeyX" data-button-key="B_X" class="standard-font material-symbols-outlined">
-                                            X
-                                        </button>
-                                        <button id="emulateKeyB" data-button-key="B_B" class="standard-font material-symbols-outlined">
-                                            B
-                                        </button>
-                                        <button id="emulateKeyA" data-button-key="B_A" class="standard-font material-symbols-outlined">
-                                            A
-                                        </button>
-                                        <button id="emulateKeyAngle" data-button-key="B_DISPL" class="material-symbols-outlined" title="Angle/Taco">
-                                            rotate_left
-                                        </button>
-                                        <button id="emulateKeySteps" data-button-key="B_STEPZ" class="material-symbols-outlined">
-                                            signal_cellular_alt
-                                        </button>
-                                        <button id="emulateKeySettings" data-button-key="B_SETTINGS" class="material-symbols-outlined">
-                                            settings
-                                        </button>
-                                        <button id="emulateKeyReverse" data-button-key="B_REVERSE" class="material-symbols-outlined">
-                                            sync_alt
-                                        </button>
-                                        <button id="emulateKeyMeasure" data-button-key="B_MEASURE" class="material-symbols-outlined">
-                                            space_bar
-                                        </button>
-                                        <button id="emulateKeyPlus" data-button-key="B_PLUS" class="standard-font material-symbols-outlined">
-                                            +
-                                        </button>
-                                        <button id="emulateKeyMinus" data-button-key="B_MINUS" class="standard-font material-symbols-outlined">
-                                            -
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <span>
-                                Emulated sequence: <i>Tip: Drag to reorder or delete</i>
-                            </span>
-                        </div>
-                        <div class="emulation-modal-pad-border">
-                            <div id="emulationNewTasks">
-                            </div>
-                        </div>
-                        <div class="modal-pad-bottom">
-                            <div id="emulatedTasksDelete" class="container-wrapper-inner">
-                                <span>
-                                    Drag here to delete
-                                </span>
-                            </div>
-                            <div id="emulatedButtonListDelete" class="container-wrapper-delete">
-
-                            </div>
+                            <input type="text" id="newTaskToolChangeNewTool" name="newTaskToolChangeNewTool" placeholder="Enter new tool number..." pattern="T\d+" title="Must be in format T followed by numbers (e.g., T0, T12)" maxlength="4" oninput="this.value = this.value.replace(/[^T0-9]/g, '').replace(/^(?!T).*/, '').replace(/T.*?(\d+).*/, 'T$1')">
                         </div>
                     </div>
                     <div class="modal-pad">Collection to save to:</div>

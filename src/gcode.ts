@@ -1,4 +1,4 @@
-import { Sender, SenderClient } from './sender';
+import { Sender, SenderClient, SenderStatus } from './sender';
 import { gcodeResponseEditor } from './main';
 import { gcodeSenderEditor } from './main';
 
@@ -12,12 +12,14 @@ const gcodeCommands = [
     { command: 'G90', description: 'Set to absolute positioning' },
     { command: 'G91', description: 'Set to relative positioning' },
     { command: 'G92 X0 Z0', description: 'Sets X and Z axis to 0 at current position' },
-    { command: 'M905 X0.05 Z0.04', description: 'Sets backlash compensation values in mm' },
+    { command: 'M905 X0.05 Z0.04', description: 'Sets backlash compensation values in mm' }
 ];
 
 export class GCode {
 
     private sendButton: HTMLButtonElement;
+    private resumeButton: HTMLButtonElement;
+    private clearConsoleButton: HTMLButtonElement;
     private sendSingleCommandButton: HTMLButtonElement;
     private stopButton: HTMLButtonElement;
     private senderError: HTMLDivElement;
@@ -29,7 +31,6 @@ export class GCode {
     private toolButtons: NodeListOf<HTMLButtonElement>;
     private sender: Sender | null;
     private singleCommandSender: HTMLInputElement;
-    private minimumVersion: string;
     private editTools: HTMLButtonElement;
     private editToolsModal: HTMLDivElement;
     private editToolsClose: HTMLButtonElement;
@@ -37,6 +38,12 @@ export class GCode {
     private fastFeedrateInput: HTMLInputElement;
     private slowFeedrateInput: HTMLInputElement;
     private moveDistanceInput: HTMLInputElement;
+    private wposCurrentPositionValue: HTMLInputElement;
+    private getPositionButton: HTMLButtonElement;
+    private motorZToggleBtn: HTMLButtonElement;
+    private motorXToggleBtn: HTMLButtonElement;
+    private motorYToggleBtn: HTMLButtonElement;
+
 
     constructor() {
 
@@ -84,8 +91,6 @@ export class GCode {
             }
         });
 
-        this.minimumVersion = 'H4V12FJ';
-
         this.senderError = document.querySelector<HTMLDivElement>('.senderError')!;
         this.runProgress = document.getElementById('senderProgress') as HTMLProgressElement
         this.runProgressLabel = document.getElementById('senderProgressLabel') as HTMLSpanElement;
@@ -101,9 +106,45 @@ export class GCode {
         this.sendButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
         this.sendSingleCommandButton = document.getElementById('gcodeSendSingleCommandButton') as HTMLButtonElement;
         this.singleCommandSender = document.getElementById('singleCommandSender') as HTMLInputElement;
+        this.getPositionButton = document.getElementById('getPositionButton') as HTMLButtonElement;
+        this.wposCurrentPositionValue = document.getElementById('wposCurrentPositionValue') as HTMLInputElement;
+
+        this.motorZToggleBtn = document.getElementById('MotorZToggleBtn') as HTMLButtonElement;
+        this.motorXToggleBtn = document.getElementById('MotorXToggleBtn') as HTMLButtonElement;
+        this.motorYToggleBtn = document.getElementById('MotorYToggleBtn') as HTMLButtonElement;
 
         this.sender = Sender.getInstance();
         this.sender.addStatusChangeListener(() => this.handleStatusChange(), SenderClient.GCODE);
+
+        this.resumeButton = document.getElementById('resumeButton') as HTMLButtonElement;
+        this.resumeButton.addEventListener('click', async () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+            await this.sender?.resume();
+        });
+
+        this.clearConsoleButton = document.getElementById('clearConsoleButton') as HTMLButtonElement;
+        this.clearConsoleButton.addEventListener('click', () => {
+            gcodeResponseEditor.setValue('');
+        });
+
+        this.getPositionButton.addEventListener('click', async () => {
+
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            const status = await this.sender!.getPosition(SenderClient.GCODE);
+            if (status) {
+                this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
+
+                //update the steppers enabled status
+                this.updateMotorStatus(status);
+            }
+        });
 
         //get feedrate from local storage
         let fastFeedrate = localStorage.getItem('fastFeedrate');
@@ -236,11 +277,6 @@ export class GCode {
                 return;
             }
 
-            if (this.sender.getStatus().version != this.minimumVersion) {
-                alert(`This feature is only available on firmware version ${this.minimumVersion} or later. Please see help tab for more information.`);
-                return;
-            }
-
             let commandArray = new Array(1);
             commandArray[0] = toolSelector.value;
 
@@ -248,6 +284,104 @@ export class GCode {
                 this.sender.sendCommands(commandArray, SenderClient.GCODE);
             }
 
+        });
+
+        // Zeroing buttons
+
+        const wposZeroZ = document.getElementById('WposZeroZ') as HTMLButtonElement;
+        const wposZeroX = document.getElementById('WposZeroX') as HTMLButtonElement;
+        const wposZeroY = document.getElementById('WposZeroY') as HTMLButtonElement;
+
+        //event handlers for zeroing buttons
+        wposZeroZ.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G92 Z0', SenderClient.GCODE);
+        });
+
+        wposZeroX.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G92 X0', SenderClient.GCODE);
+        });
+
+        wposZeroY.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G92 Y0', SenderClient.GCODE);
+        });
+
+
+        this.motorZToggleBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            const isEnabled = this.motorZToggleBtn.classList.contains('motor-enable');
+            //if isEnabled remove motor-enabled class and add motor-disabled class
+            if (isEnabled) {
+                this.motorZToggleBtn.classList.remove('motor-enable');
+                this.motorZToggleBtn.classList.add('motor-disable');
+                this.motorZToggleBtn.title = 'Click to disable X axis';
+            } else {
+                this.motorZToggleBtn.classList.add('motor-enable');
+                this.motorZToggleBtn.classList.remove('motor-disable');
+                this.motorZToggleBtn.title = 'Click to enable X axis';
+            }
+            const command = isEnabled ? 'M18 Z' : 'M17 Z';
+            this.sender.sendCommand(command, SenderClient.GCODE);
+        });
+
+        this.motorXToggleBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            const isEnabled = this.motorXToggleBtn.classList.contains('motor-enable');
+            //if isEnabled remove motor-enabled class and add motor-disabled class
+            if (isEnabled) {
+                this.motorXToggleBtn.classList.remove('motor-enable');
+                this.motorXToggleBtn.classList.add('motor-disable');
+                this.motorXToggleBtn.title = 'Click to enable X axis';
+            } else {
+                this.motorXToggleBtn.classList.add('motor-enable');
+                this.motorXToggleBtn.classList.remove('motor-disable');
+                this.motorXToggleBtn.title = 'Click to disable X axis';
+            }
+            const command = isEnabled ? 'M18 X' : 'M17 X';
+            this.sender.sendCommand(command, SenderClient.GCODE);
+        });
+
+        this.motorYToggleBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            const isEnabled = this.motorYToggleBtn.classList.contains('motor-enable');
+            //if isEnabled remove motor-enabled class and add motor-disabled class
+            if (isEnabled) {
+                this.motorYToggleBtn.classList.remove('motor-enable');
+                this.motorYToggleBtn.classList.add('motor-disable');
+                this.motorYToggleBtn.title = 'Click to enable Y axis';
+            } else {
+                this.motorYToggleBtn.classList.add('motor-enable');
+                this.motorYToggleBtn.classList.remove('motor-disable');
+                this.motorYToggleBtn.title = 'Click to disable Y axis';
+            }
+            const command = isEnabled ? 'M18 Y' : 'M17 Y';
+            this.sender.sendCommand(command, SenderClient.GCODE);
         });
 
         this.editTools = document.getElementById('editToolsButton') as HTMLButtonElement;
@@ -288,7 +422,7 @@ export class GCode {
                 alert("Please connect to the controller first.");
                 return;
             }
-            
+
             const tbody = document.getElementById('toolOffsetTableBody');
             if (!tbody) return;
 
@@ -319,25 +453,25 @@ export class GCode {
             w: number;  // Z-axis compensation
             u: number;  // X-axis compensation
         }
-        
+
         const parseToolOffsets = (response: string): ToolOffset[] => {
             // Remove 'Tool offsets:' prefix and 'ok' suffix
             const offsetsString = response.replace('toolOffsets:', '').replace('ok', '');
-            
+
             // Split into individual tool strings by the pipe character
             const toolStrings = offsetsString.split('|');
-            
+
             return toolStrings.map(toolString => {
                 // Extract tool number
                 const toolMatch = toolString.match(/T(\d+)/);
                 const tool = toolMatch ? parseInt(toolMatch[1]) : 0;
-                
+
                 // Extract values using regular expressions
                 const zMatch = toolString.match(/Z=(-?\d+\.?\d*)/);
                 const xMatch = toolString.match(/X=(-?\d+\.?\d*)/);
                 const wMatch = toolString.match(/W=(-?\d+\.?\d*)/);
                 const uMatch = toolString.match(/U=(-?\d+\.?\d*)/);
-                
+
                 return {
                     tool,
                     z: zMatch ? parseFloat(zMatch[1]) : 0,
@@ -352,10 +486,22 @@ export class GCode {
             this.editToolsModal.style.display = 'none';
         });
 
-        this.connectButton.addEventListener('click', () => {
+        this.connectButton.addEventListener('click', async () => {
             this.gcodeResponseContainer.style.display = 'block';
-            if (!this.sender?.isConnected() && this.sender) this.sender.connect();
+            if (!this.sender?.isConnected() && this.sender) {
+                await this.sender.connect();
+            }
+
+            const status = await this.sender!.getPosition(SenderClient.GCODE);
+            if (status) {
+                this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
+
+                //update the steppers enabled status
+                this.updateMotorStatus(status);
+            }
         });
+
+
 
         this.sendButton.addEventListener('click', () => {
 
@@ -413,12 +559,44 @@ export class GCode {
         this.stopButton.style.display = 'none';
     }
 
+    updateMotorStatus(status: SenderStatus) {
+        if (status.xEna === 1) {
+            this.motorXToggleBtn.classList.add('motor-enable');
+            this.motorXToggleBtn.classList.remove('motor-disable');
+            this.motorXToggleBtn.title = 'Click to disable X axis';
+        } else {
+            this.motorXToggleBtn.classList.remove('motor-enable');
+            this.motorXToggleBtn.classList.add('motor-disable');
+            this.motorXToggleBtn.title = 'Click to enable X axis';
+        }
+
+        if (status.yEna === 1) {
+            this.motorYToggleBtn.classList.add('motor-enable');
+            this.motorYToggleBtn.classList.remove('motor-disable');
+            this.motorYToggleBtn.title = 'Click to disable Y axis';
+        } else {
+            this.motorYToggleBtn.classList.remove('motor-enable');
+            this.motorYToggleBtn.classList.add('motor-disable');
+            this.motorYToggleBtn.title = 'Click to enable Y axis';
+        }
+
+        if (status.zEna === 1) {
+            this.motorZToggleBtn.classList.add('motor-enable');
+            this.motorZToggleBtn.classList.remove('motor-disable');
+            this.motorZToggleBtn.title = 'Click to disable Z axis';
+        } else {
+            this.motorZToggleBtn.classList.remove('motor-enable');
+            this.motorZToggleBtn.classList.add('motor-disable');
+            this.motorZToggleBtn.title = 'Click to enable Z axis';
+        }
+    }
+
     addToolRow(toolNumber: number, zOffset: number, xOffset: number, wOffset: number, uOffset: number) {
         const tbody = document.getElementById('toolOffsetTableBody');
         if (!tbody) return;
-    
+
         const row = document.createElement('tr');
-        
+
         // Tool number cell
         const toolCell = document.createElement('td');
         toolCell.className = 'tool-cell';
@@ -428,7 +606,7 @@ export class GCode {
         toolInput.readOnly = true;
         toolInput.className = 'tool-input'
         toolCell.appendChild(toolInput);
-    
+
         // Z Offset cell
         const zCell = document.createElement('td');
         zCell.className = 'data-cell';
@@ -438,17 +616,7 @@ export class GCode {
         zInput.step = "0.001";  // Added step for precision
         zInput.className = 'input-cell';
         zCell.appendChild(zInput);
-    
-        // W Offset cell
-        const wCell = document.createElement('td');
-        wCell.className = 'data-cell';
-        const wInput = document.createElement('input');
-        wInput.type = 'number';
-        wInput.value = wOffset.toString();
-        wInput.step = "0.001";
-        wInput.className = 'input-cell';
-        wCell.appendChild(wInput);
-    
+
         // X Offset cell
         const xCell = document.createElement('td');
         xCell.className = 'data-cell';
@@ -458,7 +626,17 @@ export class GCode {
         xInput.step = "0.001";
         xInput.className = 'input-cell';
         xCell.appendChild(xInput);
-    
+
+        // W Offset cell
+        const wCell = document.createElement('td');
+        wCell.className = 'data-cell';
+        const wInput = document.createElement('input');
+        wInput.type = 'number';
+        wInput.value = wOffset.toString();
+        wInput.step = "0.001";
+        wInput.className = 'input-cell';
+        wCell.appendChild(wInput);
+
         // U Offset cell
         const uCell = document.createElement('td');
         uCell.className = 'data-cell';
@@ -468,7 +646,7 @@ export class GCode {
         uInput.step = "0.001";
         uInput.className = 'input-cell';
         uCell.appendChild(uInput);
-    
+
         // Save button cellS
         const actionCell = document.createElement('td');
         actionCell.className = 'action-cell';
@@ -482,7 +660,7 @@ export class GCode {
                 <circle cx="25" cy="30" r="8" fill="none" stroke="white" stroke-width="2" />
             </svg>
         `;
-        
+
         saveButton.addEventListener('click', () => {
             const x = xInput.value;
             const z = zInput.value;
@@ -495,8 +673,8 @@ export class GCode {
         });
 
         actionCell.appendChild(saveButton);
-    
-        row.append(toolCell, zCell, wCell , xCell, uCell, actionCell);
+
+        row.append(toolCell, zCell, xCell, wCell, uCell, actionCell);
         tbody.appendChild(row);
     }
 
@@ -504,6 +682,7 @@ export class GCode {
 
         if (!this.sender) return;
         const status = this.sender.getStatus();
+
         if (status.isConnected === false) {
             this.connectButton.innerText = 'Connect';
             this.connectButton.disabled = false;
@@ -518,32 +697,30 @@ export class GCode {
         }
 
         const isRun = status.condition === 'run';
-        if (this.runProgress) {
-            this.runProgress.value = status.progress;
-            this.runProgress.style.display = isRun ? 'block' : 'none';
-            this.runProgressLabel.style.display = isRun ? 'block' : 'none';
+        const isStreaming = this.sender.isStreaming();
+        const busy = isRun || isStreaming;
 
-            if (!isRun) {
-                this.sendButton.disabled = false;
-                this.sendButton.style.display = 'inline-block';
-                this.sendSingleCommandButton.disabled = false;
+        this.runProgress.value = status.progress;
+        this.runProgress.style.display = isStreaming ? 'block' : 'none';
+        this.runProgressLabel.style.display = isStreaming ? 'block' : 'none';
 
-                //enable jogging controls
-                this.jogButtons.forEach((btn) => {
-                    btn.disabled = false;
-                });
+        this.sendButton.disabled = busy;
+        this.sendButton.style.display =  busy ? 'none' : 'inline-block';
+        this.sendSingleCommandButton.disabled = busy;
 
-                //enable tool change buttons
-                this.toolButtons.forEach((btn) => {
-                    btn.disabled = false;
-                });
+        //enable jogging controls
+        this.jogButtons.forEach((btn) => {
+            btn.disabled = busy;
+        });
 
-            } else if (isRun) {
-                this.sendButton.style.display = 'none';
-            }
-        }
+        //enable tool change buttons
+        this.toolButtons.forEach((btn) => {
+            btn.disabled = busy;
+        });
 
-        if (this.stopButton) this.stopButton.style.display = isRun ? 'inline-block' : 'none';
+        
+
+        if (this.stopButton) this.stopButton.style.display = busy ? 'inline-block' : 'none';
 
         const isDisconnecting = this.sender.getDisconnectingStatus();
         if (this.senderError && !isDisconnecting) {

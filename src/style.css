@@ -122,7 +122,7 @@ button:focus-visible {
 input[readonly] {
     /* dark background */
     cursor: not-allowed;
-    background-color: darkslategrey;
+    background-color: #3e3e3e;
     border-color: rgb(118, 118, 118);
 }
 
@@ -413,12 +413,12 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #gcodeResponseContainer {
-    border: 1px solid #ccc;
+    border-top: 1px solid #ccc;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-top: 5px;
+    margin: 5px 0px 5px 0px;
 }
 
 .senderError {
@@ -559,7 +559,7 @@ input[type="file"]::file-selector-button:hover {
 #latheControls #jogControls {
     display: grid;
     grid-template-columns: repeat(12, 60px);
-    grid-template-rows: repeat(6, 60px);
+    grid-template-rows: repeat(7, 60px);
     justify-content: center;
     align-items: center;
     place-items: center;
@@ -599,6 +599,71 @@ input[type="file"]::file-selector-button:hover {
 
 #latheControls .tool-btn:hover {
     background-color: #6c5ce7;
+}
+
+#latheControls .zero-btn {
+    /* existing styles */
+    width: 50px;
+    height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    line-height: 20px;
+    font-size: 12px;
+    padding: 0px;
+}
+
+#latheControls .zero-btn:hover {
+    background-color: #6c5ce7;
+}
+
+#latheControls .wpos-btn {
+    background-color: #268591;
+}
+
+#latheControls .mpos-btn {
+    background-color: #915b26;
+}
+
+.zero-btn {
+    grid-column: var(--col);
+    grid-row: var(--row);
+}
+
+.zero-labels {
+    grid-column: var(--col);
+    grid-row: var(--row);
+}
+
+#latheControls .motor-btn {
+    /* existing styles */
+    width: 50px;
+    height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    line-height: 20px;
+    font-size: 12px;
+    padding: 0px;
+}
+
+.motor-btn {
+    grid-column: var(--col);
+    grid-row: var(--row);
+}
+
+#latheControls .motor-enable {
+    background-color: #4CAF50;
+}
+
+#latheControls .motor-disable {
+    background-color: #b9321a;
 }
 
 #latheControls .tool {
@@ -761,6 +826,19 @@ input[type="file"]::file-selector-button:hover {
     flex: 0 0 60px;
     padding: 4px;
     border-bottom: 1px solid #444;
+}
+
+.position-displays {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.positionLocation {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
 }
 
 
@@ -1027,7 +1105,7 @@ input[type="file"]::file-selector-button:hover {
     background-color: #386e97;
 }
 
-.task-emulation {
+.task-tool-change {
     background-color: #e74c3c;
 }
 
@@ -1377,6 +1455,18 @@ input[type="file"]::file-selector-button:hover {
     min-width: 600px;
     display: flex;
     flex-direction: column;
+}
+
+.task-modal-manual {
+    border: 5px solid #4c956c;
+}
+
+.task-modal-gcode {
+    border: 5px solid #386e97;
+}
+
+.task-modal-tool-change {
+    border: 5px solid #e74c3c;
 }
 
 .full-width-textarea {

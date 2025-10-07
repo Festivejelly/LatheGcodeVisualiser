@@ -10,5 +10,12 @@ export default defineConfig({
     build: {
         outDir: 'docs'
     },
+    server: {
+        https: {
+            key: './key.pem',
+            cert: './cert.pem'
+        },
+        host: '0.0.0.0', // Allow access from other devices on network
+    }
     // ... any other configurations ...
 });
