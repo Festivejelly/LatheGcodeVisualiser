@@ -413,12 +413,12 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #gcodeResponseContainer {
-    border: 1px solid #ccc;
+    border-top: 1px solid #ccc;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-top: 5px;
+    margin: 5px 0px 5px 0px;
 }
 
 .senderError {

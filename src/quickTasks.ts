@@ -806,8 +806,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const isRun = status.condition === 'run';
+    const isStreaming = sender.isStreaming();
+    const busy = isRun || isStreaming;
 
-    if (!isRun) {
+    if (!busy) {
 
       //show execute button
       activeQuickTaskConfig.executeButton.style.display = 'flex';
@@ -821,7 +823,7 @@ document.addEventListener("DOMContentLoaded", () => {
       //hide the parent div of the progress slider
       activeQuickTaskConfig.progressBar.parentElement!.style.display = 'none';
 
-    } else if (isRun) {
+    } else {
 
       //hide execute button
       activeQuickTaskConfig.executeButton.style.display = 'none';

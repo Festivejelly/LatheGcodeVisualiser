@@ -208,13 +208,17 @@
                         </div>
                     </div>
 
-                    <div id="gcodeResponseContainer" style="display: none;">
+                    <div id="gcodeResponseContainer">
                         <div id="gcodeResponseHeader">GCode Responses</div>
                         <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
                         <div class="senderError" style="display: none;"></div>
                         <div id="senderProgressContainer">
                             <span id="senderProgressLabel" style="display: none;">Progress...</span>
                             <progress id="senderProgress" max="1" style="display: none;"></progress>
+                        </div>
+                        <div class="innerContainer">
+                            <button id="resumeButton">Resume</button>
+                            <button id="clearConsoleButton">Clear Console</button>
                         </div>
                     </div>
                 </div>
@@ -1250,6 +1254,7 @@
                 <div class="modal-pad">
                     <button id="cancelCncTask">Cancel</button>
                     <button id="executeGcode">Execute Gcode</button>
+                    <button id="gcodeTaskResume" style="display: none;">Resume Gcode</button>
                 </div>
                 <div class="modal-pad">
                     <button id="completeCncTask" disabled>Next Task --></button>
@@ -1319,6 +1324,17 @@
                 <h2>All Tasks Complete</h2>
                 <div class="modal-pad">
                     <button id="completeTaskCloseButton">Close</button>
+                </div>
+            </div>
+        </div>
+        <!-- Gcode Paused Modal -->
+        <div id="gcodePausedModal" class="task-modal">
+            <div class="task-modal-content center-modal">
+                <h2>G-Code Paused</h2>
+                <span id="gcodePausedMessage"></span>
+                <div class="modal-pad">
+                    <button id="gcodePausedCancelTaskButton">Cancel Task</button>
+                    <button id="gcodePausedResumeTaskButton">Resume</button>
                 </div>
             </div>
         </div>

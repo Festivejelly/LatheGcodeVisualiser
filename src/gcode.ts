@@ -18,6 +18,8 @@ const gcodeCommands = [
 export class GCode {
 
     private sendButton: HTMLButtonElement;
+    private resumeButton: HTMLButtonElement;
+    private clearConsoleButton: HTMLButtonElement;
     private sendSingleCommandButton: HTMLButtonElement;
     private stopButton: HTMLButtonElement;
     private senderError: HTMLDivElement;
@@ -114,8 +116,22 @@ export class GCode {
         this.sender = Sender.getInstance();
         this.sender.addStatusChangeListener(() => this.handleStatusChange(), SenderClient.GCODE);
 
+        this.resumeButton = document.getElementById('resumeButton') as HTMLButtonElement;
+        this.resumeButton.addEventListener('click', async () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+            await this.sender?.resume();
+        });
+
+        this.clearConsoleButton = document.getElementById('clearConsoleButton') as HTMLButtonElement;
+        this.clearConsoleButton.addEventListener('click', () => {
+            gcodeResponseEditor.setValue('');
+        });
+
         this.getPositionButton.addEventListener('click', async () => {
-            
+
             if (!this.sender?.isConnected()) {
                 alert("Please connect to the controller first.");
                 return;
@@ -681,32 +697,30 @@ export class GCode {
         }
 
         const isRun = status.condition === 'run';
-        if (this.runProgress) {
-            this.runProgress.value = status.progress;
-            this.runProgress.style.display = isRun ? 'block' : 'none';
-            this.runProgressLabel.style.display = isRun ? 'block' : 'none';
+        const isStreaming = this.sender.isStreaming();
+        const busy = isRun || isStreaming;
 
-            if (!isRun) {
-                this.sendButton.disabled = false;
-                this.sendButton.style.display = 'inline-block';
-                this.sendSingleCommandButton.disabled = false;
+        this.runProgress.value = status.progress;
+        this.runProgress.style.display = isStreaming ? 'block' : 'none';
+        this.runProgressLabel.style.display = isStreaming ? 'block' : 'none';
 
-                //enable jogging controls
-                this.jogButtons.forEach((btn) => {
-                    btn.disabled = false;
-                });
+        this.sendButton.disabled = busy;
+        this.sendButton.style.display =  busy ? 'none' : 'inline-block';
+        this.sendSingleCommandButton.disabled = busy;
 
-                //enable tool change buttons
-                this.toolButtons.forEach((btn) => {
-                    btn.disabled = false;
-                });
+        //enable jogging controls
+        this.jogButtons.forEach((btn) => {
+            btn.disabled = busy;
+        });
 
-            } else if (isRun) {
-                this.sendButton.style.display = 'none';
-            }
-        }
+        //enable tool change buttons
+        this.toolButtons.forEach((btn) => {
+            btn.disabled = busy;
+        });
 
-        if (this.stopButton) this.stopButton.style.display = isRun ? 'inline-block' : 'none';
+        
+
+        if (this.stopButton) this.stopButton.style.display = busy ? 'inline-block' : 'none';
 
         const isDisconnecting = this.sender.getDisconnectingStatus();
         if (this.senderError && !isDisconnecting) {

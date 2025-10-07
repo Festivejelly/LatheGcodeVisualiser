@@ -31,7 +31,8 @@ export class SenderStatus {
         readonly feed: number,
         readonly rpm: number,
         readonly version: string,
-        readonly lastResponse: string) { }
+        readonly lastResponse: string,
+        readonly isStreaming: boolean) { }
 }
 
 type StatusChangeListener = {
@@ -53,7 +54,6 @@ export class Sender {
     private waitForOkOrError = false;
     private lines: string[] = [];
     private lineIndex = 0;
-    private unparsedResponse = '';
     private remainingResponse = '';
     private error = '';
     private statusReceived = false;
@@ -75,6 +75,8 @@ export class Sender {
     private version = '';
     private lastResponse = '';
 
+    private statusPollInterval: number | null = null;
+
     public static getInstance(): Sender {
         if (!Sender.instance) {
             Sender.instance = new Sender();
@@ -91,7 +93,20 @@ export class Sender {
         } else {
             isDebug = false; // default to false
         }
-     }
+    }
+
+    //getters for debugging
+    public getIsOn(): boolean {
+        return this.isOn;
+    }
+
+    public getLineIndex(): number {
+        return this.lineIndex;
+    }
+
+    public getLinesLength(): number {
+        return this.lines.length;
+    }
 
     public setActiveClient(client: SenderClient) {
         this.activeClient = client;
@@ -104,11 +119,21 @@ export class Sender {
     }
 
     getStatus() {
+
+        const total = this.lines?.length ?? 0;
+        const idx = this.lineIndex ?? 0;
+
+        // Streaming = we’ve started a batch and haven’t finished acking all lines yet
+        const streaming = this.waitForOkOrError || (total > 0 && idx < total);
+
+        // Keep progress as 0..1 (your handler already uses it this way)
+        const progress = total ? idx / total : 0;
+
         this.lastStatus = new SenderStatus(
             this.port !== null,
             this.isOn ? 'run' : 'idle',
             this.error,
-            this.lines.length ? this.lineIndex / this.lines.length : 0,
+            progress,
             this.currentLine,
             this.feedRate,
             this.z,
@@ -123,13 +148,20 @@ export class Sender {
             this.feed,
             this.rpm,
             this.version,
-            this.lastResponse
+            this.lastResponse,
+            streaming
         );
         return this.lastStatus;
     }
 
     public getCurrentCommand(): string {
         return this.currentLine;
+    }
+
+    public shouldShowResume(): boolean {
+        return !this.isOn &&                      // Controller is paused/idle
+            this.lineIndex < this.lines.length && // Still have lines to send
+            this.lines.length > 0;                // There is actually a job loaded
     }
 
     public addStatusChangeListener(callback: () => void, client: SenderClient): void {
@@ -159,49 +191,124 @@ export class Sender {
     }
 
     private remainingStatus: string = '';
+    // private previousIsOn: boolean | null = null;
 
-    private setStatus(s: string,) {
-        s = this.remainingStatus + s;
+    private setStatus(fragment: string) {
+        // Append new data to any partial we already had
+        let buf = this.remainingStatus + fragment;
         this.remainingStatus = '';
 
-        if (s.startsWith('<')) s = s.substring(1);
-        if (s.endsWith('>')) {
-            s = s.slice(0, -1);
-        } else {
-            // Status message is not complete, store it and wait for the next part
-            this.remainingStatus = s;
-            return;
-        }
-        const parts = s.split('|');
-        if (parts.length >= 3) {
-            this.statusReceived = true;
-            if (parts[1].startsWith('WPos:')) {
-                const coords = parts[1].substring('WPos:'.length).split(',');
-                this.x = Number(coords[0]);
-                this.y = Number(coords[1]);
-                this.z = Number(coords[2]);
+        // Extract zero or more complete <...> packets
+        while (true) {
+            const start = buf.indexOf('<');
+            if (start === -1) {
+                // No start marker at all -> discard any noise before next call
+                return;
+            }
+            const end = buf.indexOf('>', start + 1);
+            if (end === -1) {
+                // Incomplete: keep from '<' onward for the next fragment
+                this.remainingStatus = buf.slice(start);
+                return;
+            }
 
-            }
-            if (parts[2].startsWith('Steppers:')) {
-                const coords = parts[2].substring('Steppers:'.length).split(',');
-                this.xEna = Number(coords[0]);
-                this.yEna = Number(coords[1]);
-                this.zEna = Number(coords[2]);
+            // We have a complete packet: parse its payload (between < and >)
+            const payload = buf.slice(start + 1, end);
+            this.parseStatusPayload(payload);
 
-            }
-            if (parts[3].startsWith('FS:')) {
-                const coords = parts[3].substring('FS:'.length).split(',');
-                this.feed = Number(coords[0]);
-                this.rpm = Number(coords[1]);
-            }
-            if (parts[4].startsWith('Id:')) {
-                this.version = String(parts[4].substring('Id:'.length));
-            }
+            // Advance and continue (there might be more packets in this buf)
+            buf = buf.slice(end + 1);
+            if (!buf.length) return;
         }
+    }
+
+    private lastLoggedStatus?: {
+        state: string; x: number; y: number; z: number;
+        feed: number; rpm: number; steppers: string;
+    };
+
+    // Parses one complete payload like "Idle|WPos:...|Steppers:...|FS:...|Id:..."
+    private parseStatusPayload(payload: string) {
+        const parts = payload.split('|');
+        if (!parts.length) return;
+
+        const state = (parts[0] ?? '').trim();        // "Idle" or "Run"
+        this.statusReceived = true;
+        this.isOn = state !== 'Idle';
+
+        for (let i = 1; i < parts.length; i++) {
+            const p = parts[i];
+
+            if (p.startsWith('WPos:')) {
+                const c = p.slice(5).split(',');
+                if (c[0] !== undefined && c[0] !== '') this.x = Number(c[0]);
+                if (c[1] !== undefined && c[1] !== '') this.y = Number(c[1]);
+                if (c[2] !== undefined && c[2] !== '') this.z = Number(c[2]);
+                continue;
+            }
+
+            if (p.startsWith('Steppers:')) {
+                const e = p.slice(9).split(',');
+                if (e[0] !== undefined && e[0] !== '') this.xEna = Number(e[0]);
+                if (e[1] !== undefined && e[1] !== '') this.yEna = Number(e[1]);
+                if (e[2] !== undefined && e[2] !== '') this.zEna = Number(e[2]);
+                continue;
+            }
+
+            if (p.startsWith('FS:')) {
+                const f = p.slice(3).split(',');
+                if (f[0] !== undefined && f[0] !== '') this.feed = Number(f[0]);
+                if (f[1] !== undefined && f[1] !== '') this.rpm = Number(f[1]);
+                continue;
+            }
+
+            if (p.startsWith('Id:')) {
+                this.version = String(p.slice(3));
+                continue;
+            }
+            // ignore unknowns
+        }
+
         this.notifyStatusChange();
 
-        appendLineToResponseEditor(`response: ${s}`);
-        this.log(`response: "${s}"`);
+        // ---- log only on *meaningful* change ----
+        const eps = 1e-3; // mm threshold for logging
+        const steppersKey = `${this.xEna},${this.yEna},${this.zEna}`;
+
+        const changed =
+            !this.lastLoggedStatus ||
+            this.lastLoggedStatus.state !== state ||
+            Math.abs(this.x - this.lastLoggedStatus.x) >= eps ||
+            Math.abs(this.y - this.lastLoggedStatus.y) >= eps ||
+            Math.abs(this.z - this.lastLoggedStatus.z) >= eps ||
+            this.feed !== this.lastLoggedStatus.feed ||
+            this.rpm !== this.lastLoggedStatus.rpm ||
+            this.lastLoggedStatus.steppers !== steppersKey;
+
+        if (changed) {
+            const printable = `<${payload}>`;
+            appendLineToResponseEditor(`response: ${printable}`);
+            this.log(`response: "${printable}"`);
+            this.lastLoggedStatus = {
+                state, x: this.x, y: this.y, z: this.z,
+                feed: this.feed, rpm: this.rpm, steppers: steppersKey
+            };
+        }
+    }
+
+    async resume() {
+        if (this.port && this.writer) {
+            await this.write('~');
+            this.heldByHost = false;
+        }
+    }
+
+    public isWaitingForOk(): boolean {
+        return this.waitForOkOrError;
+    }
+    public hasPendingLines(): boolean {
+        const total = this.lines?.length ?? 0;
+        return this.lineIndex < total;
     }
 
     private log(message?: any, ...optionalParams: any[]) {
@@ -224,7 +331,15 @@ export class Sender {
         try {
             this.setActiveClient(SenderClient.GCODE);  // Connection is owned by GCODE
             if (!this.port) {
+
+                this.statusBuf = "";
+                this.textBuf = "";
+                this.remainingResponse = "";
+                this.statusReceived = false;
+
                 await this.selectPort();
+
+                this.startContinuousReading();
 
                 this.write('!'); // Stop any running job
 
@@ -234,10 +349,11 @@ export class Sender {
                     return;
                 }
                 this.isDisconnecting = false;
-                this.isOn = false; //idle
+
                 this.setError('');
                 this.waitForOkOrError = false;
-                this.unparsedResponse = '';
+
+                this.startStatusPolling();
             } else {
                 this.closePort();
             }
@@ -248,8 +364,77 @@ export class Sender {
         this.notifyStatusChange();
     }
 
+    private startStatusPolling() {
+        // Stop any existing polling first
+        this.stopStatusPolling();
+
+        // Poll every 250ms
+        this.statusPollInterval = window.setInterval(() => {
+            if (this.port && this.writer && !this.isDisconnecting && !this.isProcessingResponse && !this.waitForOkOrError) {
+                this.write('?');
+            }
+        }, 250);
+    }
+
+    private stopStatusPolling() {
+        if (this.statusPollInterval !== null) {
+            window.clearInterval(this.statusPollInterval);
+            this.statusPollInterval = null;
+        }
+    }
+
+    public isStreaming(): boolean {
+        const total = this.lines?.length ?? 0;
+        const idx = Math.min(this.lineIndex ?? 0, total);
+        return this.waitForOkOrError || (total > 0 && idx < total);
+    }
+
+    private m0Waiting = false;   // true while an M0 is pending resume
+    private heldByHost = false;  // true after we send '!' (feed hold)
+    private pauseReason: string | undefined;
+
+    public getPauseReason(): string | undefined {
+        return this.pauseReason;
+    }
+
+    private extractPauseReasonFromM0(raw: string): string | undefined {
+        // prefer a semicolon comment on the same line
+        const semi = raw.indexOf(';');
+        if (semi >= 0) {
+            const txt = raw.slice(semi + 1).trim();
+            if (txt) return txt;
+        }
+        // optional fallbacks:
+        const mMsg = raw.match(/\(\s*MSG\s*,\s*([^)]+)\)/i);
+        if (mMsg) return mMsg[1].trim();
+
+        const mPar = raw.match(/\(([^)]+)\)/);
+        if (mPar) return mPar[1].trim();
+
+        const mFree = raw.match(/^\s*M0\b\s+([^;()]+)\s*(?:[;(].*)?$/i);
+        if (mFree) return mFree[1].trim();
+
+        return undefined;
+    }
+
+    public canResume(): boolean {
+        // Only show Resume when we truly paused: M0 hold or feed-hold
+        return this.m0Waiting || this.heldByHost;
+    }
+
+    //not used currently
+    /*     private isRealtime(line: string) {
+            return /^\s*[!?~]\s*$/.test(line);
+        } */
+
     async disconnect() {
+        this.statusBuf = "";
+        this.textBuf = "";
+        this.remainingResponse = "";
         this.isDisconnecting = true;
+        this.isReading = false;
+        this.stopStatusPolling();
+        this.statusReceived = false;
         if (this.port)
             this.closePort();
     }
@@ -262,12 +447,11 @@ export class Sender {
         if (!text) return;
         this.setActiveClient(client);
 
-        this.isOn = true;
         this.lines = text.split('\n');
         this.lineIndex = 0;
         this.waitForOkOrError = false;
-        this.write('~');
-        this.writeCurrentLine();
+        await this.write('~');
+        await this.writeCurrentLine();
 
         this.notifyStatusChange();
     }
@@ -275,41 +459,27 @@ export class Sender {
     async sendCommand(command: string, client: SenderClient) {
         this.setActiveClient(client);
 
-        this.isOn = true;
         this.lines = [command];
         this.lineIndex = 0;
         this.waitForOkOrError = false;
-        this.write('~');
-        this.writeCurrentLine();
+        await this.write('~');
+        await this.writeCurrentLine();
         this.notifyStatusChange();
     }
 
     async sendCommands(commands: string[], client: SenderClient) {
         this.setActiveClient(client);
 
-        this.isOn = true;
         this.lines = commands;
         this.lineIndex = 0;
         this.waitForOkOrError = false;
-        this.write('~');
-        this.writeCurrentLine();
+        await this.write('~');
+        await this.writeCurrentLine();
         this.notifyStatusChange();
     }
 
     async getPosition(client: SenderClient) {
         this.setActiveClient(client);
-
-        // Reset the statusReceived flag before requesting new status
-        this.statusReceived = false;
-
-        await this.write('?');
-
-        const received = await waitForTrue(() => this.statusReceived);
-        if (!received) {
-            throw new Error('Failed to get position update');
-        }
-
-        this.notifyStatusChange();
         return this.getStatus();
     }
 
@@ -333,13 +503,30 @@ export class Sender {
         return this.lastResponse;
     }
 
+    private async done() {
+        this.waitForOkOrError = false;
+
+        // Clear batch/bookkeeping so “streaming” logic won’t stick true
+        this.lines = [];
+        this.lineIndex = 0;
+        this.currentLine = '';
+        this.notifyStatusChange();
+    }
+
     async stop() {
         this.error = '';
-        await this.write('!',);
-        if (!this.isOn) return;
-        this.isOn = false;
+        await this.write('!');
+        this.heldByHost = true;
         this.notifyStatusChange();
-        this.clearActiveClient();
+    }
+    
+    async unhold() {
+        if (this.port && this.writer) {
+            this.heldByHost = false;
+            this.m0Waiting = false;
+            this.pauseReason = undefined;
+            this.notifyStatusChange();
+        }
     }
 
     private async write(sequence: string) {
@@ -365,17 +552,22 @@ export class Sender {
     }
 
     private async writeCurrentLine() {
-        if (!this.isOn || this.waitForOkOrError) return;
+        if (this.waitForOkOrError) return;
         if (this.lineIndex >= this.lines.length) {
-            this.stop();
+            this.done();
             return;
         }
-        const line = this.lines[this.lineIndex].split(';')[0].trim();
+
+        const raw = this.lines[this.lineIndex];
+        const line = raw.split(';')[0].trim();
         if (!line) {
             this.lineIndex++;
             this.writeCurrentLine();
             return;
         }
+
+        this.m0Waiting = /^\s*M0\b/i.test(line);
+        this.pauseReason = this.m0Waiting ? this.extractPauseReasonFromM0(raw) : undefined;
 
         this.currentLine = line;
         this.notifyCurrentCommand(this.currentLine);
@@ -384,51 +576,130 @@ export class Sender {
         //this.log(`command: "${line}"`);
         appendLineToResponseEditor(`command: ${line}`);
         await this.write(line + '\n');
-        await this.readFromPort();
     };
 
+    private isProcessingResponse: boolean = false;
+    private statusBuf = '';   // holds a partial "<..."
+    private textBuf = '';     // holds a partial line
+
     private async processResponse(response: string) {
-        this.unparsedResponse = (this.remainingResponse + response).trimStart();
-        this.remainingResponse = '';
+        // 0) Normalize CRs and prepend any partial status from last time
+        let s = (this.statusBuf + response).replace(/\r/g, "");
+        this.statusBuf = "";
 
-        // Split the response into lines
-        const lines = this.unparsedResponse.split(/\r?\n/).map(line => line.replace(/\r/g, ''));
-
-        for (let line of lines) {
-            // Cut out status message.
-            const statuses = line.match(/(<[^>]+>)/);
-            if (statuses && statuses.length > 1) {
-                statuses.shift();
-                for (const s of statuses) {
-                    line = line.replace(s, '');
-                }
-                this.setStatus(statuses.pop()!);
+        // 1) Extract zero or more COMPLETE <...> packets; keep trailing partial in statusBuf
+        const completeStatuses: string[] = [];
+        while (true) {
+            const start = s.indexOf("<");
+            if (start === -1) break;
+            const end = s.indexOf(">", start + 1);
+            if (end === -1) {
+                // stash the partial "<..."; leave the text before it as remainder
+                this.statusBuf = s.slice(start);
+                s = s.slice(0, start);
+                break;
             }
+            completeStatuses.push(s.slice(start, end + 1)); // includes < and >
+            s = s.slice(0, start) + s.slice(end + 1);       // remove that packet and continue
+        }
 
-            if (line.startsWith('error:')) {
-                this.remainingResponse += line;
+        // 2) Feed all complete statuses to your parser
+        for (const st of completeStatuses) this.setStatus(st);
+
+        // 3) Append remaining NON-status text to a carry-over buffer,
+        //    then process ONLY COMPLETE lines; keep the trailing partial for next call
+        this.textBuf += s;
+
+        while (true) {
+            const nl = this.textBuf.indexOf("\n");
+            if (nl === -1) break;                      // no complete line yet; wait for next chunk
+            const raw = this.textBuf.slice(0, nl).trim();
+            this.textBuf = this.textBuf.slice(nl + 1); // drop the processed line
+
+            if (!raw) continue;
+
+            if (/^error:/i.test(raw)) {
+                this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
                 appendLineToResponseEditor(`response: ${this.remainingResponse}`);
                 this.log(`response: "${this.remainingResponse}"`);
-                this.setError(line);
-                this.remainingResponse = '';
+                this.setError(raw);
+                this.remainingResponse = "";
                 this.stop();
-            } else if (line.startsWith('ok') || line.endsWith('ok')) {
-                this.remainingResponse += line;
+                continue;
+            }
+
+            if (/^\s*ok\b/i.test(raw) || /\bok\b/i.test(raw)) {
+                this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
                 appendLineToResponseEditor(`response: ${this.remainingResponse}`);
                 this.lastResponse = this.remainingResponse;
                 this.log(`response: "${this.remainingResponse}"`);
-                this.remainingResponse = '';
+                this.remainingResponse = "";
+
                 this.waitForOkOrError = false;
                 this.lineIndex++;
+
                 this.notifyStatusChange();
-                if (this.isOn) await this.writeCurrentLine();
-            } else {
-                //some response is not complete, accumulate it
-                this.remainingResponse += line;
+
+                if (this.m0Waiting) {
+                    this.m0Waiting = false;           
+                    this.pauseReason = undefined;     
+                }
+
+                // optional: immediate status ping (guarded)
+                if (this.port && this.writer && !this.isDisconnecting && !this.waitForOkOrError) {
+                    void this.write('?');
+                }
+
+                // send next line (don’t gate on this.isOn anymore)
+                await this.writeCurrentLine();
+                continue;
+            }
+
+            // Not ok/error: accumulate/log if you want
+            this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
+        }
+    }
+
+
+    private isReading: boolean = false;
+
+    private async startContinuousReading() {
+        console.log('=== startContinuousReading: STARTED ===')
+
+        if (this.isReading) {
+            console.log('Already reading, returning');
+            return;
+        }
+        this.isReading = true;
+
+        while (this.port && !this.isDisconnecting && this.isReading) {
+            try {
+                if (!this.port.readable) {
+                    console.log('Port not readable, waiting...');
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    continue;
+                }
+                if (!this.reader) {
+                    console.log('Creating reader...');
+                    const textDecoder = new TextDecoderStream();
+                    this.port.readable.pipeTo(textDecoder.writable);
+                    this.reader = textDecoder.readable.getReader();
+                }
+                //console.log('Waiting for read...');
+                const { value, done } = await this.reader.read();
+                //console.log('Read complete - done:', done, 'value:', value);
+                if (done) break;
+                //console.log('Read result - done:', done, 'value length:', value?.length);
+                if (value) {
+                    await this.processResponse(value);
+                }
+            } catch (e: any) {
+                this.setError(e.message || String(e));
+                this.closePort();
+                break;
             }
         }
-
-        this.unparsedResponse = '';
+        this.isReading = false;
     }
 
     private async selectPort() {
@@ -445,7 +716,7 @@ export class Sender {
             try {
                 await this.port.open({ baudRate: 115200 });
                 this.notifyStatusChange();
-                this.readSoon();
+                //this.readSoon();
             } catch (e) {
                 this.setError(`Unable to open port - likely some other app is using it - try closing Arduino IDE.\n${e}`);
                 this.closePort();
