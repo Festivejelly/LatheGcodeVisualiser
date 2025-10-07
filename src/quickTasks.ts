@@ -178,6 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
     u: number;  // X-axis compensation
   }
 
+  let taskInProgress = false;
+
   const parseToolOffsets = (response: string): ToolOffset[] => {
     // Remove 'Tool offsets:' prefix and 'ok' suffix
     const offsetsString = response.replace('toolOffsets:', '').replace('ok', '');
@@ -214,6 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
       let isConnected = sender?.isConnected();
 
       activeQuickTaskConfig = config;
+      taskInProgress = false;
 
       //if its a cone task show an alert saying not implemented
       if (taskId === 'quickTaskCone' || taskId === 'quickTaskGrooving') {
@@ -327,16 +330,19 @@ document.addEventListener("DOMContentLoaded", () => {
         alert('Please connect to the machine first');
         return;
       }
+      taskInProgress = true;
       config.taskFunction();
     });
 
     // Stop button
     config.stopButton.addEventListener('click', () => {
+      taskInProgress = false;
       sender?.stop();
     });
 
     // Close button
     config.closeButton.addEventListener('click', () => {
+      taskInProgress = false;
       config.modal.style.display = 'none';
     });
   });
@@ -809,7 +815,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const isStreaming = sender.isStreaming();
     const busy = isRun || isStreaming;
 
-    if (!busy) {
+    if (!busy && !taskInProgress) {
 
       //show execute button
       activeQuickTaskConfig.executeButton.style.display = 'flex';

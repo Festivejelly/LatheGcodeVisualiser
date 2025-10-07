@@ -517,6 +517,9 @@ export class Sender {
         this.error = '';
         await this.write('!');
         this.heldByHost = true;
+        this.lines = [];
+        this.lineIndex = 0;
+        this.currentLine = '';
         this.notifyStatusChange();
     }
     
