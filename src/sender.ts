@@ -272,18 +272,11 @@ export class Sender {
         this.notifyStatusChange();
 
         // ---- log only on *meaningful* change ----
-        const eps = 1e-3; // mm threshold for logging
         const steppersKey = `${this.xEna},${this.yEna},${this.zEna}`;
 
         const changed =
             !this.lastLoggedStatus ||
-            this.lastLoggedStatus.state !== state ||
-            Math.abs(this.x - this.lastLoggedStatus.x) >= eps ||
-            Math.abs(this.y - this.lastLoggedStatus.y) >= eps ||
-            Math.abs(this.z - this.lastLoggedStatus.z) >= eps ||
-            this.feed !== this.lastLoggedStatus.feed ||
-            this.rpm !== this.lastLoggedStatus.rpm ||
-            this.lastLoggedStatus.steppers !== steppersKey;
+            this.lastLoggedStatus.state !== state;
 
         if (changed) {
             const printable = `<${payload}>`;
