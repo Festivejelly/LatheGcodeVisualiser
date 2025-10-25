@@ -5,7 +5,7 @@ import { Threading, type ThreadingType, type ThreadSpec, type ThreadingDirection
 let sender: Sender | null;
 let minimumVersion = 'H4V12FJ';
 
-const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTMLButtonElement, closeButton: HTMLButtonElement, executeButton: HTMLButtonElement, stopButton: HTMLButtonElement, progressBar: HTMLProgressElement, taskFunction: () => void } } = {
+const quickTaskConfig: { [key: string]: { modal: HTMLDivElement, openButton: HTMLButtonElement, closeButton: HTMLButtonElement, executeButton: HTMLButtonElement, stopButton: HTMLButtonElement, progressBar: HTMLProgressElement, taskFunction: () => Promise<void> } } = {
   'quickTaskFacing': {
     openButton: document.getElementById('quickTaskFacingButton') as HTMLButtonElement,
     modal: document.getElementById('quickTaskFacingModal') as HTMLDivElement,
@@ -163,7 +163,7 @@ const quickTaskToolOffsetGetZPosButton = document.getElementById('quickTaskToolO
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  let activeQuickTaskConfig: { modal: HTMLDivElement, openButton: HTMLButtonElement, closeButton: HTMLButtonElement, executeButton: HTMLButtonElement, stopButton: HTMLButtonElement, progressBar: HTMLProgressElement, taskFunction: () => void };
+  let activeQuickTaskConfig: { modal: HTMLDivElement, openButton: HTMLButtonElement, closeButton: HTMLButtonElement, executeButton: HTMLButtonElement, stopButton: HTMLButtonElement, progressBar: HTMLProgressElement, taskFunction: () => Promise<void> };
   sender = Sender.getInstance();
   sender.addStatusChangeListener(() => handleStatusChange(), SenderClient.QUICKTASKS);
 
@@ -324,14 +324,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Execute button
-    config.executeButton.addEventListener('click', () => {
+    config.executeButton.addEventListener('click', async () => {
       //if not connected, show an alert
       if (!sender?.isConnected()) {
         alert('Please connect to the machine first');
         return;
       }
       taskInProgress = true;
-      config.taskFunction();
+      await config.taskFunction();
+      taskInProgress = false;
     });
 
     // Stop button
@@ -1190,7 +1191,7 @@ async function facingTask(copyToClipboard: boolean = false) {
 }
 
 
-function drillingTask(copyToClipboard: boolean = false) {
+async function drillingTask(copyToClipboard: boolean = false) {
 
   let isConnected = sender?.isConnected();
 
@@ -1298,11 +1299,11 @@ function drillingTask(copyToClipboard: boolean = false) {
 
 }
 
-function groovingTask() {
+async function groovingTask() {
   alert('Not Yet Implemented');
 }
 
-function coneTask() {
+async function coneTask() {
   alert('Not Yet Implemented');
 }
 
@@ -1540,7 +1541,7 @@ async function updateDepthPerPassFromPasses() {
   quickTaskBoringDepthPerPass.value = depthPerPass.toFixed(3);
 }
 
-function threadingTask(copyToClipboard: boolean = false) {
+async function threadingTask(copyToClipboard: boolean = false) {
 
   //get threading inputs
   const threadingSize = quickTaskThreadingSize.value;
@@ -1583,7 +1584,7 @@ function threadingTask(copyToClipboard: boolean = false) {
 
 }
 
-function toolOffsetsTask() {
+async function toolOffsetsTask() {
 
   const status = sender?.getStatus();
   if (!status || !status.isConnected) {
