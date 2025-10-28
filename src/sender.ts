@@ -515,7 +515,7 @@ export class Sender {
         this.currentLine = '';
         this.notifyStatusChange();
     }
-    
+
     async unhold() {
         if (this.port && this.writer) {
             this.heldByHost = false;
@@ -626,7 +626,12 @@ export class Sender {
 
             if (/^\s*ok\b/i.test(raw) || /\bok\b/i.test(raw)) {
                 this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
-                appendLineToResponseEditor(`response: ${this.remainingResponse}`);
+
+
+                const formattedResponse = this.formatToolOffsets(this.remainingResponse);
+
+
+                appendLineToResponseEditor(`response: ${formattedResponse}`);
                 this.lastResponse = this.remainingResponse;
                 this.log(`response: "${this.remainingResponse}"`);
                 this.remainingResponse = "";
@@ -637,8 +642,8 @@ export class Sender {
                 this.notifyStatusChange();
 
                 if (this.m0Waiting) {
-                    this.m0Waiting = false;           
-                    this.pauseReason = undefined;     
+                    this.m0Waiting = false;
+                    this.pauseReason = undefined;
                 }
 
                 // optional: immediate status ping (guarded)
@@ -654,6 +659,38 @@ export class Sender {
             // Not ok/error: accumulate/log if you want
             this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
         }
+    }
+
+    private formatToolOffsets(raw: string): string {
+        // Check if this is a tool offsets response
+        if (!raw.startsWith('toolOffsets:')) {
+            return raw;
+        }
+
+        // Extract the data after "toolOffsets:"
+        const data = raw.substring('toolOffsets:'.length);
+
+        // Split by pipe to get individual tools
+        const tools = data.split('|');
+
+        let formatted = 'Tool Offsets:\n';
+        formatted += '─'.repeat(60) + '\n';
+        formatted += 'Tool | Z Offset | X Offset | W Comp   | U Comp\n';
+        formatted += '─'.repeat(60) + '\n';
+
+        tools.forEach((tool, index) => {
+            if (!tool.trim()) return;
+
+            // Parse the tool data (format: T0:Z=0.000,X=0.000,W=0.000,U=0.000)
+            const match = tool.match(/T(\d+):Z=([-\d.]+),X=([-\d.]+),W=([-\d.]+),U=([-\d.]+)/);
+            if (match) {
+                const [, toolNum, z, x, w, u] = match;
+                formatted += `T${toolNum?.padStart(2)}  | ${z?.padStart(8)} | ${x?.padStart(8)} | ${w?.padStart(8)} | ${u?.padStart(8)}\n`;
+            }
+        });
+
+        formatted += '─'.repeat(60);
+        return formatted;
     }
 
 
