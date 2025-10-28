@@ -166,7 +166,7 @@ export function createStorageService(): StorageService {
   } else if (isLocalNetwork) {
     // Running from office computer, connecting to garage computer
     // Use the same hostname/IP but port 3001 for the API
-    return new DatabaseService(`http://${hostname}:3001/api`);
+    return new DatabaseService(`https://${hostname}:3001/api`);
   } else {
     // Use localStorage when deployed (GitHub Pages, etc.)
     return new LocalStorageService();
