@@ -8,7 +8,7 @@ export default defineConfig({
     },
     plugins: [viteSingleFile()],
     build: {
-        outDir: 'docs'
+        outDir: 'dist'
     },
     server: {
         https: {
