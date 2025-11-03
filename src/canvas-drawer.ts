@@ -4,12 +4,19 @@ export enum MovementType {
     Retract
 }
 
+export enum ToolType {
+    External,  // Turning, profiling, facing tools (default)
+    Internal,  // Boring bars, internal grooving tools, drills
+}
+
 export type GCodeCommand = {
     x?: number;
     z?: number;
     isRelative: boolean;
     absolutePosition?: AbsolutePosition;
     movementType?: MovementType;
+    toolType?: ToolType;
+    toolWidth?: number;
     lineNumber?: number; // Line number in the original G-code file
     originalLine?: string; // Original line text from the G-code file
 };
@@ -35,11 +42,8 @@ export class CanvasDrawer {
     private canvasZ: number = 0;
     private ctx: CanvasRenderingContext2D | null = null;
     private stockDiameterInMM: number = 0; // Store the stock diameter for later use
-    private isBoringOperation: boolean = false; // Track if the operation is boring
-    private hasOperationType: boolean = false; // Track if the operation type has been found
-    private hasToolWidth: boolean = false; // Track if the tool width has been found
-    private extToolWidthInMM: number = 2;
-    private intToolWidthInMM: number = 1.5;
+    private currentToolType: ToolType = ToolType.External; // Default to external
+    private currentToolWidth: number = 2; // Default tool width
     private actualNegativeZOffset: number = 0; // Store the actual negative Z offset used for this drawing
 
     constructor() { }
@@ -53,44 +57,31 @@ export class CanvasDrawer {
         let stockDiameterInMM = 0;
         let hasFoundAbsoluteX = false;
 
-        this.isBoringOperation = false; // Reset boring operation status
-        this.hasOperationType = false; // Reset operation type status
-        this.hasToolWidth = false; // Reset tool width status
+        // Track current tool type and width through the parsing
+        let currentToolType = ToolType.External; // Default to external
+        let currentToolWidth = 2; // Default width
 
         const lines = data.split('\n');
         lines.forEach((line, index) => {
             const movementType: MovementType = this.determineMovementType(line);
 
-            if (!this.hasOperationType) {
-                if (line.toLowerCase().includes('; op type boring') || line.toLowerCase().includes('; op type drilling')) {
-                    this.isBoringOperation = true;
-                    this.hasOperationType = true;
-                } else if (line.toLowerCase().includes('; op type turning') || line.toLowerCase().includes('; op type profiling') || line.toLowerCase().includes('; op type facing')) {
-                    this.isBoringOperation = false;
-                    this.hasOperationType = true;
-                }
+            // Check for tool change commands
+            const toolInfo = this.parseToolChange(line);
+            if (toolInfo) {
+                currentToolType = toolInfo.toolType;
+                currentToolWidth = toolInfo.toolWidth;
             }
 
-        if (!this.hasToolWidth && this.hasOperationType) {
-            if (line.includes('; tool width')) {
-                const toolWidthMatch = line.match(/; tool width\s*([0-9.]+)/i);
-                if (toolWidthMatch && toolWidthMatch[1]) {
-                    if (!this.isBoringOperation) {
-                        this.extToolWidthInMM = parseFloat(toolWidthMatch[1]);
-                        this.hasToolWidth = true;
-                    } else {
-                        this.intToolWidthInMM = parseFloat(toolWidthMatch[1]);
-                        this.hasToolWidth = true;
-                    }
-                }
-            }
-        }
+            const command: GCodeCommand = {
+                isRelative: isRelative,
+                movementType,
+                toolType: currentToolType,
+                toolWidth: currentToolWidth
+            };
 
-            const command: GCodeCommand = { isRelative: isRelative, movementType };
-            
             // Extract the G-code part (before any comment)
             const codePart = line.includes(';') ? line.substring(0, line.indexOf(';')).trim() : line.trim();
-            
+
             // First, check for stock diameter in comments before processing the command
             if (!hasFoundAbsoluteX && line.includes(';')) {
                 const commentPart = line.substring(line.indexOf(';'));
@@ -113,28 +104,33 @@ export class CanvasDrawer {
                     }
                 }
             }
-            
+
             // Skip if there's no actual code (empty line or comment-only line)
             if (!codePart) {
                 commands.push({
                     isRelative: isRelative,
                     movementType,
+                    toolType: currentToolType,
+                    toolWidth: currentToolWidth,
                     lineNumber: index + 1,
                     originalLine: line,
                     absolutePosition: { ...absolutePosition }
                 });
                 return;
             }
-            
+
             // Check if this line contains a movement command (G0, G1, G2, G3)
             const hasMovementCommand = /\b(G0|G1|G2|G3)\b/i.test(codePart);
-            
+
+            // Check for positioning mode commands (G90, G91)
+            const hasPositioningMode = /\b(G90|G91)\b/i.test(codePart);
+
             // Check if line starts with X or Z (standalone movement coordinates)
             const startsWithMovementCoord = /^[XZ]/i.test(codePart);
-            
-            // Only parse coordinates if there's a movement command OR line starts with X/Z
-            const shouldParseCoordinates = hasMovementCommand || startsWithMovementCoord;
-            
+
+            // Only parse coordinates if there's a movement command OR positioning mode OR line starts with X/Z
+            const shouldParseCoordinates = hasMovementCommand || hasPositioningMode || startsWithMovementCoord;
+
             const parts = shouldParseCoordinates ? codePart.match(/([GXYZF])([0-9.-]+)/g) : null;
 
             parts?.forEach(part => {
@@ -187,13 +183,30 @@ export class CanvasDrawer {
             commands.push(newCommand);
         });
 
-        if (!this.hasToolWidth) {
+        return drawableCommands;
+    }
 
-            this.extToolWidthInMM = 2; // (for turning/profiling/facing operations)
-            this.intToolWidthInMM = 1.5; // (for boring/drilling operations)
+    parseToolChange(line: string): { toolType: ToolType, toolWidth: number } | null {
+        // Check for M0 tool change comment
+        const m0Match = line.match(/M0\s*\(CHANGE TO .+?\)/i);
+        if (!m0Match) return null;
+
+        const lowerLine = line.toLowerCase();
+
+        // Extract tool width if present (e.g., "1.5mm", "2.5mm", "4mm")
+        const widthMatch = line.match(/(\d+(?:\.\d+)?)\s*mm/i);
+        const toolWidth = widthMatch ? parseFloat(widthMatch[1]) : 2; // Default to 2mm
+
+        // Determine tool type based on keywords
+        if (lowerLine.includes('drill') ||
+            lowerLine.includes('boring') ||
+            lowerLine.includes('internal') ||
+            lowerLine.includes('grooving tool')) {
+            return { toolType: ToolType.Internal, toolWidth };
         }
 
-        return drawableCommands;
+        // Default to external tools
+        return { toolType: ToolType.External, toolWidth };
     }
 
     determineMovementType(line: string): MovementType {
@@ -226,9 +239,9 @@ export class CanvasDrawer {
         let minX = 0;
         let minZ = 0;
 
-        let initialCommand = commands.find(command => !command.isRelative);
-        let cumulativeXRelative = initialCommand && initialCommand.x ? initialCommand.x : 0;
-        let cumulativeZRelative = initialCommand && initialCommand.z ? initialCommand.z : 0;
+        // Track cumulative position for relative moves
+        let cumulativeX = 0;
+        let cumulativeZ = 0;
 
         const screenEdgeMargin = 5;
 
@@ -236,32 +249,28 @@ export class CanvasDrawer {
             if (command.x !== undefined) {
                 if (command.isRelative) {
                     // For relative moves, add to the current position
-                    cumulativeXRelative += command.x;
-                    if (cumulativeXRelative < minX) {
-                        minX = cumulativeXRelative;
-                    }
+                    cumulativeX += command.x;
                 } else {
-                    // For absolute moves, update minX directly
-                    if (command.x < minX) {
-                        minX = command.x;
-                    }
+                    // For absolute moves, update the cumulative position
+                    cumulativeX = command.x;
+                }
+                if (cumulativeX < minX) {
+                    minX = cumulativeX;
                 }
             }
             if (command.z !== undefined) {
                 if (command.isRelative) {
                     // For relative moves, add to the current position
-                    cumulativeZRelative += command.z;
-                    if (cumulativeZRelative > maxZ) {
-                        maxZ = cumulativeZRelative;
-                    }
+                    cumulativeZ += command.z;
                 } else {
-                    // For absolute moves, update maxZ directly
-                    if (command.z > maxZ) {
-                        maxZ = command.z;
-                    }
-                    if (command.z < minZ) {
-                        minZ = command.z;
-                    }
+                    // For absolute moves, update the cumulative position
+                    cumulativeZ = command.z;
+                }
+                if (cumulativeZ > maxZ) {
+                    maxZ = cumulativeZ;
+                }
+                if (cumulativeZ < minZ) {
+                    minZ = cumulativeZ;
                 }
             }
         });
@@ -276,7 +285,7 @@ export class CanvasDrawer {
 
         // Calculate the actual negative Z space we need (only as much as actually used)
         const actualNegativeZSpace = Math.abs(effectiveMinZ); // e.g., if minZ is -5, this is 5
-        
+
         // Store this for use in drawing methods
         this.actualNegativeZOffset = actualNegativeZSpace;
 
@@ -328,16 +337,26 @@ export class CanvasDrawer {
 
         // Remove material from the stock based on cutting operations
         for (let i = 0; i < maxCount; i++) {
+            const cmd = drawableCommands[i];
+
+            // Update current tool type and width from the command
+            this.currentToolType = cmd.toolType ?? ToolType.External; // Default to external
+            this.currentToolWidth = cmd.toolWidth ?? 2;
+
             // Setup for this command (whether it's a cut or not)
-            if (drawableCommands[i].isRelative) {
-                this.currentX += drawableCommands[i].x ?? 0;
-                this.currentZ += drawableCommands[i].z ?? 0;
+            if (cmd.isRelative) {
+                this.currentX += cmd.x ?? 0;
+                this.currentZ += cmd.z ?? 0;
             } else {
-                this.currentX = drawableCommands[i].x ?? this.absX;
-                this.currentZ = drawableCommands[i].z ?? this.absZ;
+                this.currentX = cmd.x ?? this.absX;
+                this.currentZ = cmd.z ?? this.absZ;
                 this.absX = this.currentX;
                 this.absZ = this.currentZ;
             }
+
+            // Always update absX and absZ to track current absolute position
+            this.absX = this.currentX;
+            this.absZ = this.currentZ;
 
             this.canvasX = (canvas.height / 2) - (this.currentX * scalingFactor);
             // Shift Z origin to allow for negative Z rendering
@@ -428,20 +447,14 @@ export class CanvasDrawer {
         const ctx = stockCanvas.getContext('2d');
         if (!ctx) return;
 
+        const toolWidthMM = this.currentToolWidth;
+        const toolWidthPixels = toolWidthMM * scaleFactor;
+        const isInternalCut = this.currentToolType === ToolType.Internal;
+
         const doActualCut = () => {
-
-            let toolWidthMM = this.extToolWidthInMM;
-            let toolWidthPixels = toolWidthMM * scaleFactor;
-
-            if (this.isBoringOperation) {
-
-                let toolWidthMM = this.intToolWidthInMM;
-                let toolWidthPixels = toolWidthMM * scaleFactor;
-
-                // Logic for Boring Operation
+            if (isInternalCut) {
+                // Internal cutting logic (boring, drilling, internal grooving)
                 const dirZ = this.canvasZ - this.previousCanvasZ;
-                // dirX is calculated based on canvasX/previousCanvasX which are CH/2 - (gcodeX * S)
-                // So, dirX = (prevGcodeX - currentGcodeX) * S, correctly reflecting change in radius
                 const dirX = this.canvasX - this.previousCanvasX;
                 const moveLength = Math.sqrt(dirZ * dirZ + dirX * dirX);
 
@@ -449,43 +462,36 @@ export class CanvasDrawer {
                 ctx.fillStyle = 'black';
 
                 const centerY = stockCanvas.height / 2;
-
-                // this.currentX is the G-code X value (e.g., -2 for 2mm radius bore)
                 const currentRadiusGcode = Math.abs(this.currentX);
                 const currentRadiusPixels = currentRadiusGcode * scaleFactor;
-                // Y-coordinate of the bore's inner surface for the current half (e.g., upper half)
-                const currentToolEdgeY = centerY - currentRadiusPixels;
+                
+                // For drilling on centerline (X=0), use half the tool diameter instead
+                const effectiveCurrentRadius = currentRadiusGcode === 0 ? (toolWidthMM / 2) * scaleFactor : currentRadiusPixels;
+                const currentToolEdgeY = centerY - effectiveCurrentRadius;
 
                 let previousRadiusPixels;
                 if (scaleFactor !== 0) {
-                    // this.previousCanvasX was (CH/2) - (previous_raw_gcode_X * scaleFactor)
                     const previousRawXGcode = ((stockCanvas.height / 2) - this.previousCanvasX) / (-scaleFactor);
                     const previousRadiusGcode = Math.abs(previousRawXGcode);
                     previousRadiusPixels = previousRadiusGcode * scaleFactor;
                 } else {
-                    // Should not happen if scaleFactor is always positive
-                    previousRadiusPixels = currentRadiusPixels;
+                    previousRadiusPixels = effectiveCurrentRadius;
                 }
-                // Y-coordinate of the previous bore's inner surface
-                const previousToolEdgeY = centerY - previousRadiusPixels;
+                
+                // For drilling on centerline at previous position, use half the tool diameter
+                const effectivePreviousRadius = previousRadiusPixels === 0 ? (toolWidthMM / 2) * scaleFactor : previousRadiusPixels;
+                const previousToolEdgeY = centerY - effectivePreviousRadius;
 
-                // --- Plunge cut or pure X-axis move (boring):
-                // A pure X-axis move in boring changes the radius at a constant Z.
-                // A plunge is a Z-move at a constant radius.
-                // The original moveLength condition should distinguish these.
-                if (moveLength < 0.001 || Math.abs(dirZ) < 0.001) { // handles X-only moves or very small moves
+                if (moveLength < 0.001 || Math.abs(dirZ) < 0.001) {
                     ctx.beginPath();
                     ctx.rect(
-                        this.canvasZ,       // Z-position of the tool face
-                        currentToolEdgeY,   // Top edge of cut (bore's inner surface)
-                        toolWidthPixels,    // Tool width (Z direction)
-                        currentRadiusPixels // Height of cut (from bore inner surface to centerline)
+                        this.canvasZ,
+                        currentToolEdgeY,
+                        toolWidthPixels,
+                        currentRadiusPixels
                     );
                     ctx.fill();
                 } else {
-                    // Angled or Z-axis dominant move (boring)
-
-                    // 1) Tool path polygon (erases the tool's direct path)
                     ctx.beginPath();
                     ctx.moveTo(this.previousCanvasZ, previousToolEdgeY);
                     ctx.lineTo(this.canvasZ, currentToolEdgeY);
@@ -494,54 +500,58 @@ export class CanvasDrawer {
                     ctx.closePath();
                     ctx.fill();
 
-                    // 2) Fill area between tool path and centerline - left part of tool
                     ctx.beginPath();
                     ctx.moveTo(this.previousCanvasZ, previousToolEdgeY);
                     ctx.lineTo(this.canvasZ, currentToolEdgeY);
-                    ctx.lineTo(this.canvasZ, centerY); // Fill towards centerline
-                    ctx.lineTo(this.previousCanvasZ, centerY); // Fill towards centerline
+                    ctx.lineTo(this.canvasZ, centerY);
+                    ctx.lineTo(this.previousCanvasZ, centerY);
                     ctx.closePath();
                     ctx.fill();
 
-                    // 3) Fill area on the right edge of the tool towards centerline
                     ctx.beginPath();
                     ctx.moveTo(this.canvasZ + toolWidthPixels, currentToolEdgeY);
                     ctx.lineTo(this.previousCanvasZ + toolWidthPixels, previousToolEdgeY);
-                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, centerY); // Fill towards centerline
-                    ctx.lineTo(this.canvasZ + toolWidthPixels, centerY); // Fill towards centerline
+                    ctx.lineTo(this.previousCanvasZ + toolWidthPixels, centerY);
+                    ctx.lineTo(this.canvasZ + toolWidthPixels, centerY);
                     ctx.closePath();
                     ctx.fill();
                 }
 
-                // Reset composite operation
                 ctx.globalCompositeOperation = "source-over";
-
             } else {
-                // Existing, working logic for Turning/Facing/Profiling operations
-
-                // Calculate movement direction
+                // External cutting logic (turning, profiling, facing)
+                // Only remove material if the tool is inside the stock envelope
+                // Check if current position is beyond the stock (positive Z direction)
+                const centerY = stockCanvas.height / 2;
+                const stockRadiusPixels = (this.stockDiameterInMM / 2) * scaleFactor;
+                
+                // Skip cutting if tool is outside the stock diameter (canvasX is further from center than stock radius)
+                const currentDistanceFromCenter = Math.abs(this.canvasX - centerY);
+                const previousDistanceFromCenter = Math.abs(this.previousCanvasX - centerY);
+                
+                // Only cut if at least one position is within or at the stock surface
+                if (currentDistanceFromCenter > stockRadiusPixels && previousDistanceFromCenter > stockRadiusPixels) {
+                    // Both positions are outside stock, no cutting
+                    return;
+                }
+                
                 const dirZ = this.canvasZ - this.previousCanvasZ;
                 const dirX = this.canvasX - this.previousCanvasX;
                 const moveLength = Math.sqrt(dirZ * dirZ + dirX * dirX);
 
-                // Remove material
                 ctx.globalCompositeOperation = "destination-out";
                 ctx.fillStyle = 'black';
 
-                // --- Plunge cut or pure X-axis move:
                 if (moveLength < 0.001 || Math.abs(dirZ) < 0.001) {
                     ctx.beginPath();
                     ctx.rect(
-                        this.canvasZ,                     // Left edge (Z-axis)
-                        this.canvasX,                     // Top edge (radius)
-                        toolWidthPixels,                  // Tool width (Z direction)
-                        stockCanvas.height - this.canvasX // Down to bottom
+                        this.canvasZ,
+                        this.canvasX,
+                        toolWidthPixels,
+                        stockCanvas.height - this.canvasX
                     );
                     ctx.fill();
-                }
-
-                else {
-                    // 1) Tool path polygon
+                } else {
                     ctx.beginPath();
                     ctx.moveTo(this.previousCanvasZ, this.previousCanvasX);
                     ctx.lineTo(this.canvasZ, this.canvasX);
@@ -550,7 +560,6 @@ export class CanvasDrawer {
                     ctx.closePath();
                     ctx.fill();
 
-                    // 2) Fill area between tool path and bottom of stock
                     ctx.beginPath();
                     ctx.moveTo(this.previousCanvasZ, this.previousCanvasX);
                     ctx.lineTo(this.canvasZ, this.canvasX);
@@ -559,7 +568,6 @@ export class CanvasDrawer {
                     ctx.closePath();
                     ctx.fill();
 
-                    // 3) Fill area on the right edge of the tool
                     ctx.beginPath();
                     ctx.moveTo(this.canvasZ + toolWidthPixels, this.canvasX);
                     ctx.lineTo(this.previousCanvasZ + toolWidthPixels, this.previousCanvasX);
@@ -569,10 +577,9 @@ export class CanvasDrawer {
                     ctx.fill();
                 }
 
-                // Reset composite
                 ctx.globalCompositeOperation = "source-over";
-            };
-        }
+            }
+        };
 
         doActualCut();
 
@@ -593,13 +600,14 @@ export class CanvasDrawer {
         if (drawableCommand.isRelative) {
             this.currentX += drawableCommand.x ?? 0;
             this.currentZ += drawableCommand.z ?? 0;
-        }
-        else {
+
+        } else {
             this.currentX = drawableCommand.x ?? this.absX;
             this.currentZ = drawableCommand.z ?? this.absZ;
-            this.absX = this.currentX;
-            this.absZ = this.currentZ;
         }
+        // Always update absX and absZ to track current absolute position
+        this.absX = this.currentX;
+        this.absZ = this.currentZ;
 
         // Clamp Z to the negative render limit
         const clampedZ = Math.max(this.currentZ, -negativeZRenderLimit);
