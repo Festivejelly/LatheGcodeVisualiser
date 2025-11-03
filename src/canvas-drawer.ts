@@ -22,6 +22,7 @@ const travelLineColour = '#6B8E23'
 const retractLineColour = '#FFA500'
 const currentLineColour = '#242424'
 const offSetFromScreenEdgeZ = 5;
+const negativeZRenderLimit = 10; // Allow rendering up to Z-10mm
 
 export class CanvasDrawer {
     private currentX: number = 0;
@@ -39,6 +40,7 @@ export class CanvasDrawer {
     private hasToolWidth: boolean = false; // Track if the tool width has been found
     private extToolWidthInMM: number = 2;
     private intToolWidthInMM: number = 1.5;
+    private actualNegativeZOffset: number = 0; // Store the actual negative Z offset used for this drawing
 
     constructor() { }
 
@@ -85,8 +87,10 @@ export class CanvasDrawer {
         }
 
             const command: GCodeCommand = { isRelative: isRelative, movementType };
-            const parts = line.match(/([GXYZF])([0-9.-]+)/g);
-
+            
+            // Extract the G-code part (before any comment)
+            const codePart = line.includes(';') ? line.substring(0, line.indexOf(';')).trim() : line.trim();
+            
             // First, check for stock diameter in comments before processing the command
             if (!hasFoundAbsoluteX && line.includes(';')) {
                 const commentPart = line.substring(line.indexOf(';'));
@@ -109,6 +113,29 @@ export class CanvasDrawer {
                     }
                 }
             }
+            
+            // Skip if there's no actual code (empty line or comment-only line)
+            if (!codePart) {
+                commands.push({
+                    isRelative: isRelative,
+                    movementType,
+                    lineNumber: index + 1,
+                    originalLine: line,
+                    absolutePosition: { ...absolutePosition }
+                });
+                return;
+            }
+            
+            // Check if this line contains a movement command (G0, G1, G2, G3)
+            const hasMovementCommand = /\b(G0|G1|G2|G3)\b/i.test(codePart);
+            
+            // Check if line starts with X or Z (standalone movement coordinates)
+            const startsWithMovementCoord = /^[XZ]/i.test(codePart);
+            
+            // Only parse coordinates if there's a movement command OR line starts with X/Z
+            const shouldParseCoordinates = hasMovementCommand || startsWithMovementCoord;
+            
+            const parts = shouldParseCoordinates ? codePart.match(/([GXYZF])([0-9.-]+)/g) : null;
 
             parts?.forEach(part => {
                 const value = parseFloat(part.slice(1));
@@ -197,6 +224,7 @@ export class CanvasDrawer {
     calculateDynamicScaleFactor(commands: GCodeCommand[], canvas: HTMLCanvasElement): number {
         let maxZ = 0;
         let minX = 0;
+        let minZ = 0;
 
         let initialCommand = commands.find(command => !command.isRelative);
         let cumulativeXRelative = initialCommand && initialCommand.x ? initialCommand.x : 0;
@@ -231,6 +259,9 @@ export class CanvasDrawer {
                     if (command.z > maxZ) {
                         maxZ = command.z;
                     }
+                    if (command.z < minZ) {
+                        minZ = command.z;
+                    }
                 }
             }
         });
@@ -239,15 +270,25 @@ export class CanvasDrawer {
 
         // Object size in mm
         const objectSizeX = Math.max(Math.abs(minX), stockRadius);
-        const objectSizeZ = Math.abs(maxZ);
+        const effectiveMinZ = Math.max(minZ, -negativeZRenderLimit); // Don't scale for Z beyond the limit
+        // Total Z range: from effectiveMinZ to maxZ
+        const objectSizeZ = maxZ - effectiveMinZ; // This handles the full range including negative Z
 
-        // Calculate available screen size, taking into account the margin
+        // Calculate the actual negative Z space we need (only as much as actually used)
+        const actualNegativeZSpace = Math.abs(effectiveMinZ); // e.g., if minZ is -5, this is 5
+        
+        // Store this for use in drawing methods
+        this.actualNegativeZOffset = actualNegativeZSpace;
+
+        // Calculate available screen size, taking into account the margin and actual negative Z buffer
         const availableScreenSizeX = (canvas.height / 2) - screenEdgeMargin;
+        // Include only the actual negative Z space needed, not the full limit
+        const totalZSizeWithBuffer = objectSizeZ + actualNegativeZSpace;
         const availableScreenSizeZ = canvas.width - screenEdgeMargin - offSetFromScreenEdgeZ;
 
         // Adjust scale for larger objects to fit within canvas
         const scaleX = availableScreenSizeX / objectSizeX;
-        const scaleZ = availableScreenSizeZ / objectSizeZ;
+        const scaleZ = availableScreenSizeZ / totalZSizeWithBuffer;
 
         // Choose the smaller scale factor to ensure the object fits within the canvas
         let scale = Math.min(scaleX, scaleZ);
@@ -269,7 +310,8 @@ export class CanvasDrawer {
 
         // These values will always be the ABS Zero from the start of the program
         this.previousCanvasX = (canvas.height / 2);
-        this.previousCanvasZ = canvas.width - offSetFromScreenEdgeZ;
+        // Shift Z origin to allow for negative Z rendering
+        this.previousCanvasZ = canvas.width - offSetFromScreenEdgeZ - (this.actualNegativeZOffset * scalingFactor);
 
         // Find the stock diameter from the first absolute X position
         let stockDiameterInMM = this.stockDiameterInMM; // Use the stored stock diameter
@@ -298,7 +340,8 @@ export class CanvasDrawer {
             }
 
             this.canvasX = (canvas.height / 2) - (this.currentX * scalingFactor);
-            this.canvasZ = canvas.width - (this.currentZ * scalingFactor) - offSetFromScreenEdgeZ;
+            // Shift Z origin to allow for negative Z rendering
+            this.canvasZ = canvas.width - (this.currentZ * scalingFactor) - offSetFromScreenEdgeZ - (this.actualNegativeZOffset * scalingFactor);
 
             // Remove stock for this cut, but only if it's an actual cutting operation
             if (showCuts) {
@@ -319,7 +362,8 @@ export class CanvasDrawer {
         this.absX = 0;
         this.absZ = 0;
         this.previousCanvasX = (canvas.height / 2);
-        this.previousCanvasZ = canvas.width - offSetFromScreenEdgeZ;
+        // Shift Z origin to allow for negative Z rendering
+        this.previousCanvasZ = canvas.width - offSetFromScreenEdgeZ - (this.actualNegativeZOffset * scalingFactor);
 
         // Draw the reference lines on top of the stock
         this.drawReferenceLines(canvas);
@@ -340,10 +384,13 @@ export class CanvasDrawer {
         let stockRadiusInPixels = stockDiameterInMM * scaleFactor / 2;
 
         // Calculate rectangle starting points and dimensions
-        const rectStartPointZ = 0;
+        // Stock should extend from Z0 leftwards (towards positive Z)
+        const z0Position = canvas.width - offSetFromScreenEdgeZ - (this.actualNegativeZOffset * scaleFactor);
+        const rectStartPointZ = 0; // Start from left edge
         const rectStartPointX = (canvas.height / 2) - stockRadiusInPixels;
         const rectHeight = stockDiameterInMM * scaleFactor;
-        const rectWidth = canvas.width;
+        // Stock width: from left edge to Z0
+        const rectWidth = z0Position;
 
         // Draw the stock material
         ctx.beginPath();
@@ -554,8 +601,12 @@ export class CanvasDrawer {
             this.absZ = this.currentZ;
         }
 
+        // Clamp Z to the negative render limit
+        const clampedZ = Math.max(this.currentZ, -negativeZRenderLimit);
+
         this.canvasX = (canvas.height / 2) - (this.currentX * scaleFactor);
-        this.canvasZ = canvas.width - (this.currentZ * scaleFactor) - offSetFromScreenEdgeZ;
+        // Shift Z origin to allow for negative Z rendering
+        this.canvasZ = canvas.width - (clampedZ * scaleFactor) - offSetFromScreenEdgeZ - (this.actualNegativeZOffset * scaleFactor);
 
         let lineColor = "";
 
