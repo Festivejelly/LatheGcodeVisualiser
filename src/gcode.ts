@@ -43,6 +43,10 @@ export class GCode {
     private motorZToggleBtn: HTMLButtonElement;
     private motorXToggleBtn: HTMLButtonElement;
     private motorYToggleBtn: HTMLButtonElement;
+    private homeZBtn: HTMLButtonElement;
+    private homeXBtn: HTMLButtonElement;
+    private homeYBtn: HTMLButtonElement;
+    private centreBtn: HTMLButtonElement;
 
 
     constructor() {
@@ -112,6 +116,11 @@ export class GCode {
         this.motorZToggleBtn = document.getElementById('MotorZToggleBtn') as HTMLButtonElement;
         this.motorXToggleBtn = document.getElementById('MotorXToggleBtn') as HTMLButtonElement;
         this.motorYToggleBtn = document.getElementById('MotorYToggleBtn') as HTMLButtonElement;
+
+        this.homeZBtn = document.getElementById('HomeZBtn') as HTMLButtonElement;
+        this.homeXBtn = document.getElementById('HomeXBtn') as HTMLButtonElement;
+        this.homeYBtn = document.getElementById('HomeYBtn') as HTMLButtonElement;
+        this.centreBtn = document.getElementById('CentreBtn') as HTMLButtonElement;
 
         this.sender = Sender.getInstance();
         this.sender.addStatusChangeListener(() => this.handleStatusChange(), SenderClient.GCODE);
@@ -382,6 +391,42 @@ export class GCode {
             }
             const command = isEnabled ? 'M18 Y' : 'M17 Y';
             this.sender.sendCommand(command, SenderClient.GCODE);
+        });
+
+        this.homeZBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G28 Z', SenderClient.GCODE);
+        });
+
+        this.homeXBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G28 X', SenderClient.GCODE);
+        });
+
+        this.homeYBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G28 Y', SenderClient.GCODE);
+        });
+
+        this.centreBtn.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G90 G0 X0', SenderClient.GCODE);
         });
 
         this.editTools = document.getElementById('editToolsButton') as HTMLButtonElement;

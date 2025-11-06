@@ -601,7 +601,7 @@ input[type="file"]::file-selector-button:hover {
     background-color: #6c5ce7;
 }
 
-#latheControls .zero-btn {
+#latheControls .zero-btn, #latheControls .home-btn, #latheControls .centre-btn {
     /* existing styles */
     width: 50px;
     height: 50px;
@@ -616,6 +616,11 @@ input[type="file"]::file-selector-button:hover {
     padding: 0px;
 }
 
+.centre-btn {
+    background-color: #ff6f61;
+    font-size: 18px !important;
+}
+
 #latheControls .zero-btn:hover {
     background-color: #6c5ce7;
 }
@@ -628,7 +633,7 @@ input[type="file"]::file-selector-button:hover {
     background-color: #915b26;
 }
 
-.zero-btn {
+.zero-btn, .home-btn, .centre-btn {
     grid-column: var(--col);
     grid-row: var(--row);
 }
