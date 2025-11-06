@@ -222,10 +222,10 @@ export class Sender {
         }
     }
 
-    private lastLoggedStatus?: {
+    /*private lastLoggedStatus?: {
         state: string; x: number; y: number; z: number;
         feed: number; rpm: number; steppers: string;
-    };
+    }; */
 
     // Parses one complete payload like "Idle|WPos:...|Steppers:...|FS:...|Id:..."
     private parseStatusPayload(payload: string) {
@@ -661,7 +661,7 @@ export class Sender {
         formatted += 'Tool | Z Offset | X Offset | W Comp   | U Comp\n';
         formatted += '─'.repeat(60) + '\n';
 
-        tools.forEach((tool, index) => {
+        tools.forEach((tool) => {
             if (!tool.trim()) return;
 
             // Parse the tool data (format: T0:Z=0.000,X=0.000,W=0.000,U=0.000)
