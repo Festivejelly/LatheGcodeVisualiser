@@ -270,23 +270,6 @@ export class Sender {
         }
 
         this.notifyStatusChange();
-
-        // ---- log only on *meaningful* change ----
-        const steppersKey = `${this.xEna},${this.yEna},${this.zEna}`;
-
-        const changed =
-            !this.lastLoggedStatus ||
-            this.lastLoggedStatus.state !== state;
-
-        if (changed) {
-            const printable = `<${payload}>`;
-            appendLineToResponseEditor(`response: ${printable}`);
-            this.log(`response: "${printable}"`);
-            this.lastLoggedStatus = {
-                state, x: this.x, y: this.y, z: this.z,
-                feed: this.feed, rpm: this.rpm, steppers: steppersKey
-            };
-        }
     }
 
     async resume() {
