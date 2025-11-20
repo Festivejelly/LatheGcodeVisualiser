@@ -199,6 +199,7 @@ export class CanvasDrawer {
 
         // Determine tool type based on keywords
         if (lowerLine.includes('drill') ||
+            lowerLine.includes('endmill') ||
             lowerLine.includes('boring') ||
             lowerLine.includes('internal') ||
             lowerLine.includes('grooving tool')) {
