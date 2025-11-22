@@ -236,6 +236,8 @@ export class Sender {
         this.statusReceived = true;
         this.isOn = state !== 'Idle';
 
+        this.log(`Status received: <${payload}>`);
+
         for (let i = 1; i < parts.length; i++) {
             const p = parts[i];
 
