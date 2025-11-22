@@ -276,6 +276,8 @@ export class Sender {
         if (this.port && this.writer) {
             await this.write('~');
             this.heldByHost = false;
+            this.m0Waiting = false;
+            this.pauseReason = undefined;
         }
     }
 
@@ -501,6 +503,7 @@ export class Sender {
 
     async unhold() {
         if (this.port && this.writer) {
+            await this.write('~');
             this.heldByHost = false;
             this.m0Waiting = false;
             this.pauseReason = undefined;
