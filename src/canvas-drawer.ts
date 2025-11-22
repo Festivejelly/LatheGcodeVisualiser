@@ -90,6 +90,7 @@ export class CanvasDrawer {
                 const diameterPatterns = [
                     /stock\s+d(?:iameter)?\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i,
                     /stock\s+(?:diameter|dia|diam)?\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i,
+                    /STOCK\s*D?\s*(\d+\.?\d*)(?:mm)?/i,
                     /diameter\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i,
                     /dia\s*[=:]?\s*(\d+\.?\d*)(?:mm)?/i
                 ];
@@ -103,7 +104,28 @@ export class CanvasDrawer {
                         break;
                     }
                 }
-            }
+
+            } else if (!hasFoundAbsoluteX && line.trim().startsWith('(') && line.trim().endsWith(')')) {
+                    // Handle parenthetical comments like (STOCK D16.)
+                    const commentPart = line.trim();
+                    
+                    // Look for patterns like "STOCK D20", "STOCK 16mm", "STOCK DIAMETER 25", etc.
+                    const diameterPatterns = [
+                        /STOCK\s*D?\s*(\d+\.?\d*)(?:mm)?/i
+                    ];
+
+                    for (const pattern of diameterPatterns) {
+                        const match = commentPart.match(pattern);
+                        if (match && match[1]) {
+                            stockDiameterInMM = parseFloat(match[1]);
+                            hasFoundAbsoluteX = true;
+                            this.stockDiameterInMM = stockDiameterInMM;
+                            break;
+                        }
+                    }
+                }
+
+
 
             // Skip if there's no actual code (empty line or comment-only line)
             if (!codePart) {
