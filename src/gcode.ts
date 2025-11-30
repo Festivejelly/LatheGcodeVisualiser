@@ -47,6 +47,7 @@ export class GCode {
     private homeXBtn: HTMLButtonElement;
     private homeYBtn: HTMLButtonElement;
     private centreBtn: HTMLButtonElement;
+    private centreBtnVert: HTMLButtonElement;
 
 
     constructor() {
@@ -121,6 +122,7 @@ export class GCode {
         this.homeXBtn = document.getElementById('HomeXBtn') as HTMLButtonElement;
         this.homeYBtn = document.getElementById('HomeYBtn') as HTMLButtonElement;
         this.centreBtn = document.getElementById('CentreBtn') as HTMLButtonElement;
+        this.centreBtnVert = document.getElementById('CentreBtnVert') as HTMLButtonElement;
 
         this.sender = Sender.getInstance();
         this.sender.addStatusChangeListener(() => this.handleStatusChange(), SenderClient.GCODE);
@@ -427,6 +429,15 @@ export class GCode {
             }
 
             this.sender.sendCommand('G90 G0 X0', SenderClient.GCODE);
+        });
+
+        this.centreBtnVert.addEventListener('click', () => {
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+
+            this.sender.sendCommand('G90 G0 Y0', SenderClient.GCODE);
         });
 
         this.editTools = document.getElementById('editToolsButton') as HTMLButtonElement;
