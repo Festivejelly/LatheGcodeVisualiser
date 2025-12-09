@@ -160,6 +160,7 @@ const quickTaskToolOffsetsOffsetX = document.getElementById('quickTaskToolOffset
 const quickTaskToolOffsetsOffsetZ = document.getElementById('quickTaskToolOffsetsOffsetZ') as HTMLInputElement;
 const quickTaskToolOffsetGetXPosButton = document.getElementById('quickTaskToolOffsetGetXPosButton') as HTMLButtonElement;
 const quickTaskToolOffsetGetZPosButton = document.getElementById('quickTaskToolOffsetGetZPosButton') as HTMLButtonElement;
+const quickTaskToolOffsetsRunTestCutButton = document.getElementById('quickTaskToolOffsetsRunTestCut') as HTMLButtonElement;
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -760,6 +761,52 @@ document.addEventListener("DOMContentLoaded", () => {
     const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
     const currentPosZ = latestStatus?.z!;
     quickTaskToolOffsetsOffsetZ.value = currentPosZ.toFixed(3);
+  });
+
+  quickTaskToolOffsetsRunTestCutButton.addEventListener('click', async () => {
+    //if not connected, show an alert
+    if (!sender?.isConnected()) {
+      alert('Please connect to the machine first');
+      return;
+    }
+
+    const isInternal = quickTaskToolOffsetsToolType.value.startsWith('Internal');
+
+    const message = isInternal 
+        ? "Ready to run calibration cut?\n\n⚠️ Checklist:\n• Spindle running IN REVERSE\n• Test piece faced and work tool on rear\n• Tool positioned at Z0\n• Clearance confirmed"
+        : "Ready to run calibration cut?\n\n⚠️ Checklist:\n• Spindle running FORWARD\n• Test piece faced and work tool on front\n• Tool positioned at Z0\n• Clearance confirmed";
+    
+    if (!confirm(message)) {
+        return;
+    }
+
+    taskInProgress = true;
+
+    const commands: string[] = [];
+
+    // Set initial position
+    commands.push('G91'); // Set to relative positioning
+
+    if (isInternal) {
+      commands.push(`G1 X-0.1 F100 ; move in for skim`);
+      commands.push(`G1 Z10 F100 ; cut take a skim cut`);
+      commands.push(`G1 X0.2 F100 ; retract`);
+      commands.push(`G1 Z-10 F400 ; retract to start position`);
+      commands.push(`G1 X-0.2 F100 ; unretract`);
+    } else {
+      commands.push(`G1 X0.1 F100 ; move in for skim`);
+      commands.push(`G1 Z10 F100 ; cut take a skim cut`);
+      commands.push(`G1 X-0.2 F100 ; retract`);
+      commands.push(`G1 Z-10 F400 ; retract to start position`);
+      commands.push(`G1 X0.2 F100 ; unretract`);
+    }
+
+    commands.push('G90'); // Set to absolute positioning
+
+    sender?.sendCommands(commands, SenderClient.QUICKTASKS);
+
+    taskInProgress = false;
+
   });
 
   //<---- Populate default retract values from local storage ---->
@@ -1635,21 +1682,29 @@ async function toolOffsetsTask() {
   //save the probe diameter to local storage
   localStorage.setItem('probeDiameter', quickTaskToolOffsetsProbeDiameter.value);
 
-
   let commands: string[] = [];
 
   const probeRadius = parseFloat(quickTaskToolOffsetsProbeDiameter.value) / 2;
 
+  let offsets: ToolOffset = {
+    x: 0,
+    z: 0,
+    radius: probeRadius,
+    toolType: 'External'
+  };
+
+  let calculatedOffsets: CalculatedOffset = { x: 0, z: 0 };
+
   if (quickTaskToolOffsetsToolType.value.startsWith('External')) { //Turning tools
 
-    const offsets: ToolOffset = {
+    offsets = {
       x: parseFloat(quickTaskToolOffsetsOffsetX.value),
       z: parseFloat(quickTaskToolOffsetsOffsetZ.value),
       radius: probeRadius,
       toolType: 'External'
     };
 
-    const calculatedOffsets = calculateToolOffsets(offsets);
+    calculatedOffsets = calculateToolOffsets(offsets);
 
     //if only X value is provided omit Z value
     if (valuesProvided === 'X') {
@@ -1662,14 +1717,14 @@ async function toolOffsetsTask() {
 
   } else if (quickTaskToolOffsetsToolType.value.startsWith('Internal')) { //Boring tools
 
-    const offsets: ToolOffset = {
+    offsets = {
       x: parseFloat(quickTaskToolOffsetsOffsetX.value),
       z: parseFloat(quickTaskToolOffsetsOffsetZ.value),
       radius: probeRadius,
       toolType: 'Internal'
     };
 
-    const calculatedOffsets = calculateToolOffsets(offsets);
+    calculatedOffsets = calculateToolOffsets(offsets);
 
     //if only X value is provided omit Z value
     if (valuesProvided === 'X') {
@@ -1682,14 +1737,14 @@ async function toolOffsetsTask() {
 
   } else { //Drill tools
 
-    const offsets: ToolOffset = {
+    offsets = {
       x: parseFloat(quickTaskToolOffsetsOffsetX.value),
       z: parseFloat(quickTaskToolOffsetsOffsetZ.value),
       radius: probeRadius,
       toolType: 'Drill'
     };
 
-    const calculatedOffsets = calculateToolOffsets(offsets);
+    calculatedOffsets = calculateToolOffsets(offsets);
 
     //if only X value is provided omit Z value
     if (valuesProvided === 'X') {
@@ -1699,6 +1754,21 @@ async function toolOffsetsTask() {
     } else {
       commands.push(`G10 P${toolNumberValue} X${calculatedOffsets.x} Z${calculatedOffsets.z}`);
     }
+  }
+
+  const toolType = quickTaskToolOffsetsToolType.value;
+  const diameter = parseFloat(quickTaskToolOffsetsProbeDiameter.value);
+  const confirmMessage = `Confirm tool offset for T${toolNumberValue} (${toolType}):\n\n` +
+  `Measured Diameter: ${diameter.toFixed(3)}mm\n` +
+  `X Position: ${offsets.x.toFixed(3)}mm\n` +
+  (valuesProvided !== 'X' ? `Z Position: ${offsets.z.toFixed(3)}mm\n` : '') +
+  `\nCalculated Offsets:\n` +
+  (valuesProvided !== 'Z' ? `  X: ${calculatedOffsets.x.toFixed(3)}mm\n` : '') +
+  (valuesProvided !== 'X' ? `  Z: ${calculatedOffsets.z.toFixed(3)}mm\n` : '') +
+  `\nSave this offset?`;
+
+  if (!confirm(confirmMessage)) {
+    return; // User cancelled
   }
 
   //send commands
