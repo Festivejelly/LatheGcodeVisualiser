@@ -807,6 +807,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     taskInProgress = false;
 
+    //update the X position input
+    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const currentPosX = latestStatus?.x!;
+    quickTaskToolOffsetsOffsetX.value = currentPosX.toFixed(3);
   });
 
   //<---- Populate default retract values from local storage ---->
