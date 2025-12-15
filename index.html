@@ -86,177 +86,6 @@
                     <button id="connectButton" title="Connect to Nano ELS H4">Connect</button>
                 </div>
             </div>
-            <div id="controlsContainer" class="main-container" style="display: none;">
-                <div id="controlsContent" class="controls-container">
-
-                    <div id="latheControls">
-                        <div id="jogControls">
-
-                            <span id="toolText" class="tool-label" style="--col: 1; --row: 1">Current Tool</span>
-
-                            <!-- Tools -->
-                            <select class="tool-select" style="--col: 1; --row: 2" id="toolSelector">
-                                <option value="T0">T0</option>
-                                <option value="T1">T1</option>
-                                <option value="T2">T2</option>
-                                <option value="T3">T3</option>
-                                <option value="T4">T4</option>
-                                <option value="T5">T5</option>
-                                <option value="T6">T6</option>
-                                <option value="T7">T7</option>
-                                <option value="T8">T8</option>
-                                <option value="T9">T9</option>
-                                <option value="T10">T10</option>
-                                <option value="T11">T11</option>
-                                <option value="T12">T12</option>
-                                <option value="T13">T13</option>
-                                <option value="T14">T14</option>
-                                <option value="T15">T15</option>
-                                <option value="T16">T16</option>
-                                <option value="T17">T17</option>
-                                <option value="T18">T18</option>
-                                <option value="T19">T19</option>
-                                <option value="T20">T20</option>
-                                <option value="T21">T21</option>
-                                <option value="T22">T22</option>
-                                <option value="T23">T23</option>
-                                <option value="T24">T24</option>
-                                <option value="T25">T25</option>
-                                <option value="T26">T26</option>
-                                <option value="T27">T27</option>
-                                <option value="T28">T28</option>
-                                <option value="T29">T29</option>
-                            </select>
-
-                            <button class="tool-edit" style="--col: 1; --row: 3;" id="editToolsButton">Edit
-                                Tools</button>
-
-                            <button class="tool-btn change-tool" style="--col: 3; --row: 2;" id="toolChange">Change
-                                Tool</button>
-
-                            <span id="jogText" class="jog-labels" style="--col: 7; --row: 1">X</span>
-                            <span id="fastText" class="jog-labels" style="--col: 6; --row: 2">Fast</span>
-                            <span id="slowText" class="jog-labels" style="--col: 6; --row: 3">Slow</span>
-                            <button class="arrow fast jog-btn" style="--col: 7; --row: 2" id="fastForward">
-                                <i class="fas fa-arrow-up"></i></button>
-                            <button class="arrow fast jog-btn" style="--col: 7; --row: 6" id="fastBackward">
-                                <i class="fas fa-arrow-down"></i></button>
-                            <span id="jogText" class="jog-labels" style="--col: 4; --row: 4">Z</span>
-                            <button class="arrow fast jog-btn" style="--col: 5; --row: 4" id="fastLeft">
-                                <i class="fas fa-arrow-left"></i></button>
-                            <button class="arrow fast jog-btn" style="--col: 9; --row: 4" id="fastRight">
-                                <i class="fas fa-arrow-right"></i></button>
-                            <button class="arrow slow jog-btn" style="--col: 7; --row: 3" id="slowForward">
-                                <i class="fas fa-arrow-up"></i></button>
-                            <button class="arrow slow jog-btn" style="--col: 7; --row: 5" id="slowBackward">
-                                <i class="fas fa-arrow-down"></i></button>
-                            <button class="arrow slow jog-btn" style="--col: 6; --row: 4" id="slowLeft">
-                                <i class="fas fa-arrow-left"></i></button>
-                            <button class="arrow slow jog-btn" style="--col: 8; --row: 4" id="slowRight">
-                                <i class="fas fa-arrow-right"></i></button>
-                            <span id="jogText" class="jog-labels" style="--col: 11; --row: 1">Y</span>
-                            <button class="arrow fast jog-btn" style="--col: 11; --row: 2" id="fastUp">
-                                <i class="fas fa-arrow-up"></i></button>
-                            <button class="arrow fast jog-btn" style="--col: 11; --row: 6" id="fastDown">
-                                <i class="fas fa-arrow-down"></i></button>
-                            <button class="arrow slow jog-btn" style="--col: 11; --row: 3" id="slowUp">
-                                <i class="fas fa-arrow-up"></i></button>
-                            <button class="arrow slow jog-btn" style="--col: 11; --row: 5" id="slowDown">
-                                <i class="fas fa-arrow-down"></i></button>
-
-                            <!-- Zeroing -->
-                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 5" id="WposZeroZ">Zero Z</button>
-                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 6" id="WposZeroX">Zero X</button>
-                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 7" id="WposZeroY">Zero Y</button>
-
-                            <!-- homing -->
-                            <button class="home-btn" style="--col: 3; --row: 5" id="HomeZBtn" title="Home Z"><i class="fas fa-home">&nbsp;</i><span>Z</span></button>
-                            <button class="home-btn" style="--col: 3; --row: 6" id="HomeXBtn" title="Home X"><i class="fas fa-home">&nbsp;</i><span>X</span></button>
-                            <button class="home-btn" style="--col: 3; --row: 7" id="HomeYBtn" title="Home Y"><i class="fas fa-home">&nbsp;</i><span>Y</span></button>
-
-                            <!-- go to centre line-->
-                            <button class="centre-btn" style="--col: 7; --row: 4" id="CentreBtn" title="Go to Centreline"><i class="fas fa-crosshairs"></i></button>
-                            <button class="centre-btn" style="--col: 11; --row: 4" id="CentreBtnVert" title="Go to Centreline"><i class="fas fa-crosshairs"></i></button>
-                            
-                            <!-- Stepper motor status-->
-                            <button class="motor-btn motor-enable" style="--col: 2; --row: 5" id="MotorZToggleBtn" title="Click to disable Z axis"><i class="fas fa-power-off">&nbsp;</i><span>Z</span></button>
-                            <button class="motor-btn motor-enable" style="--col: 2; --row: 6" id="MotorXToggleBtn" title="Click to disable X axis"><i class="fas fa-power-off">&nbsp;</i><span>X</span></button>
-                            <button class="motor-btn motor-disable" style="--col: 2; --row: 7" id="MotorYToggleBtn" title="Click to enable Y axis"><i class="fas fa-power-off">&nbsp;</i><span>Y</span></button>
-
-                        </div>
-                        <div>
-                            <hr>
-                        </div>
-                        <div class="positionLocation">
-                            <div class="position-displays">
-                                <div id="wposLocation">
-                                    <span id="wposCurrentPosition">WPOS:</span>
-                                    <input id="wposCurrentPositionValue" readonly value="X0 Y0 Z0"></input>
-                                </div>
-                            </div>
-                            <div id="positionButtonContainer">
-                                <button id="getPositionButton" title="Get current position from controller">Get Position</button>
-                            </div>
-                        </div>
-                        <div id="incrementControls">
-                            <button class="increment-btn" data-increment="0.001">0.001</button>
-                            <button class="increment-btn" data-increment="0.01">0.01</button>
-                            <button class="increment-btn" data-increment="0.1">0.1</button>
-                            <button class="increment-btn active" data-increment="1">1</button>
-                            <button class="increment-btn" data-increment="10">10</button>
-                        </div>
-                        <div id="feedrateControls" class="innerContentCentre control-inputs">
-                            <label for="fastFeedrate">Fast Feedrate:</label>
-                            <input type="text" id="fastFeedrate" name="fastFeedrate" value="200">
-                            <label for="slowFeedrate">Slow Feedrate:</label>
-                            <input type="text" id="slowFeedrate" name="slowFeedrate" value="50">
-                        </div>
-                        <div id="distanceControl" class="innerContentCentre control-inputs">
-                            <label for="moveDistance">Move Distance (mm):</label>
-                            <input type="text" id="moveDistance" name="moveDistance" value="1">
-                        </div>
-                    </div>
-
-                    <div id="gcodeResponseContainer">
-                        <div id="gcodeResponseHeader">GCode Responses</div>
-                        <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
-                        <div class="senderError" style="display: none;"></div>
-                        <div id="senderProgressContainer">
-                            <span id="senderProgressLabel" style="display: none;">Progress...</span>
-                            <progress id="senderProgress" max="1" style="display: none;"></progress>
-                        </div>
-                        <div class="innerContainer">
-                            <button id="resumeButton">Resume</button>
-                            <button id="clearConsoleButton">Clear Console</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="controls-container">
-                    <div class="innerContainer control-inputs">
-                        <div class="innerContentCentre control-inputs">
-                            <span>Send single command</span>
-                        </div>
-                        <div class="innerContentCentre sender-inputs">
-                            <input id="singleCommandSender" type="text" name="singleCommandSender" autocomplete="off"></input>
-                            <div class="innerContentCentre control-inputs">
-                                <button id="gcodeSendSingleCommandButton" title="Send GCode to CNC">Send</button>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-                <div class="controls-container">
-                    <div id="gcodeSenderContainer" style="position: relative;">
-                        <span>Send multi line commands</span>
-                        <div id="gcodeSenderEditor" style="height: 200px; width: 100%;"></div>
-                    </div>
-                    <div class="innerContainer">
-                        <button id="gcodeSenderButton" title="Send GCode to CNC">Send</button>
-                        <button id="stopButton" style="display: none;">Stop</button>
-                    </div>
-                </div>
-                <script type="module" src="/src/main.ts"></script>
-            </div>
             <div id="quickTasksContainer" class="main-container" style="display: none;">
                 <div id="quickTasksContent" class="controls-container">
                     <div class="innerContainer">
@@ -533,7 +362,192 @@
                     </div>
                 </div>
             </div>
+            <div id="controlsContainer" class="main-container" style="display: none;">
+                <div id="controlsContent" class="controls-container">
 
+                    <div id="latheControls">
+                        <div id="jogControls">
+
+                            <span id="toolText" class="tool-label" style="--col: 1; --row: 1">Current Tool</span>
+
+                            <!-- Tools -->
+                            <select class="tool-select" style="--col: 1; --row: 2" id="toolSelector">
+                                <option value="T0">T0</option>
+                                <option value="T1">T1</option>
+                                <option value="T2">T2</option>
+                                <option value="T3">T3</option>
+                                <option value="T4">T4</option>
+                                <option value="T5">T5</option>
+                                <option value="T6">T6</option>
+                                <option value="T7">T7</option>
+                                <option value="T8">T8</option>
+                                <option value="T9">T9</option>
+                                <option value="T10">T10</option>
+                                <option value="T11">T11</option>
+                                <option value="T12">T12</option>
+                                <option value="T13">T13</option>
+                                <option value="T14">T14</option>
+                                <option value="T15">T15</option>
+                                <option value="T16">T16</option>
+                                <option value="T17">T17</option>
+                                <option value="T18">T18</option>
+                                <option value="T19">T19</option>
+                                <option value="T20">T20</option>
+                                <option value="T21">T21</option>
+                                <option value="T22">T22</option>
+                                <option value="T23">T23</option>
+                                <option value="T24">T24</option>
+                                <option value="T25">T25</option>
+                                <option value="T26">T26</option>
+                                <option value="T27">T27</option>
+                                <option value="T28">T28</option>
+                                <option value="T29">T29</option>
+                            </select>
+
+                            <button class="tool-edit" style="--col: 1; --row: 3;" id="editToolsButton">Edit
+                                Tools</button>
+
+                            <button class="tool-btn change-tool" style="--col: 3; --row: 2;" id="toolChange">Change
+                                Tool</button>
+
+                            <span id="jogText" class="jog-labels" style="--col: 7; --row: 1">X</span>
+                            <span id="fastText" class="jog-labels" style="--col: 6; --row: 2">Fast</span>
+                            <span id="slowText" class="jog-labels" style="--col: 6; --row: 3">Slow</span>
+                            <button class="arrow fast jog-btn" style="--col: 7; --row: 2" id="fastForward">
+                                <i class="fas fa-arrow-up"></i></button>
+                            <button class="arrow fast jog-btn" style="--col: 7; --row: 6" id="fastBackward">
+                                <i class="fas fa-arrow-down"></i></button>
+                            <span id="jogText" class="jog-labels" style="--col: 4; --row: 4">Z</span>
+                            <button class="arrow fast jog-btn" style="--col: 5; --row: 4" id="fastLeft">
+                                <i class="fas fa-arrow-left"></i></button>
+                            <button class="arrow fast jog-btn" style="--col: 9; --row: 4" id="fastRight">
+                                <i class="fas fa-arrow-right"></i></button>
+                            <button class="arrow slow jog-btn" style="--col: 7; --row: 3" id="slowForward">
+                                <i class="fas fa-arrow-up"></i></button>
+                            <button class="arrow slow jog-btn" style="--col: 7; --row: 5" id="slowBackward">
+                                <i class="fas fa-arrow-down"></i></button>
+                            <button class="arrow slow jog-btn" style="--col: 6; --row: 4" id="slowLeft">
+                                <i class="fas fa-arrow-left"></i></button>
+                            <button class="arrow slow jog-btn" style="--col: 8; --row: 4" id="slowRight">
+                                <i class="fas fa-arrow-right"></i></button>
+                            <span id="jogText" class="jog-labels" style="--col: 11; --row: 1">Y</span>
+                            <button class="arrow fast jog-btn" style="--col: 11; --row: 2" id="fastUp">
+                                <i class="fas fa-arrow-up"></i></button>
+                            <button class="arrow fast jog-btn" style="--col: 11; --row: 6" id="fastDown">
+                                <i class="fas fa-arrow-down"></i></button>
+                            <button class="arrow slow jog-btn" style="--col: 11; --row: 3" id="slowUp">
+                                <i class="fas fa-arrow-up"></i></button>
+                            <button class="arrow slow jog-btn" style="--col: 11; --row: 5" id="slowDown">
+                                <i class="fas fa-arrow-down"></i></button>
+
+                            <!-- Zeroing -->
+                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 5" id="WposZeroZ">Zero Z</button>
+                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 6" id="WposZeroX">Zero X</button>
+                            <button class="zero-btn wpos-btn" style="--col: 1; --row: 7" id="WposZeroY">Zero Y</button>
+
+                            <!-- homing -->
+                            <button class="home-btn" style="--col: 3; --row: 5" id="HomeZBtn" title="Home Z"><i class="fas fa-home">&nbsp;</i><span>Z</span></button>
+                            <button class="home-btn" style="--col: 3; --row: 6" id="HomeXBtn" title="Home X"><i class="fas fa-home">&nbsp;</i><span>X</span></button>
+                            <button class="home-btn" style="--col: 3; --row: 7" id="HomeYBtn" title="Home Y"><i class="fas fa-home">&nbsp;</i><span>Y</span></button>
+
+                            <!-- go to centre line-->
+                            <button class="centre-btn" style="--col: 7; --row: 4" id="CentreBtn" title="Go to Centreline"><i class="fas fa-crosshairs"></i></button>
+                            <button class="centre-btn" style="--col: 11; --row: 4" id="CentreBtnVert" title="Go to Centreline"><i class="fas fa-crosshairs"></i></button>
+                            
+                            <!-- Stepper motor status-->
+                            <button class="motor-btn motor-enable" style="--col: 2; --row: 5" id="MotorZToggleBtn" title="Click to disable Z axis"><i class="fas fa-power-off">&nbsp;</i><span>Z</span></button>
+                            <button class="motor-btn motor-enable" style="--col: 2; --row: 6" id="MotorXToggleBtn" title="Click to disable X axis"><i class="fas fa-power-off">&nbsp;</i><span>X</span></button>
+                            <button class="motor-btn motor-disable" style="--col: 2; --row: 7" id="MotorYToggleBtn" title="Click to enable Y axis"><i class="fas fa-power-off">&nbsp;</i><span>Y</span></button>
+
+                        </div>
+                        <div id="incrementControls">
+                            <button class="increment-btn" data-increment="0.001">0.001</button>
+                            <button class="increment-btn" data-increment="0.01">0.01</button>
+                            <button class="increment-btn" data-increment="0.1">0.1</button>
+                            <button class="increment-btn active" data-increment="1">1</button>
+                            <button class="increment-btn" data-increment="10">10</button>
+                        </div>
+                        <div id="feedrateControls" class="innerContentCentre control-inputs">
+                            <label for="fastFeedrate">Fast Feedrate:</label>
+                            <input type="text" id="fastFeedrate" name="fastFeedrate" value="200">
+                            <label for="slowFeedrate">Slow Feedrate:</label>
+                            <input type="text" id="slowFeedrate" name="slowFeedrate" value="50">
+                        </div>
+                        <div id="distanceControl" class="innerContentCentre control-inputs">
+                            <label for="moveDistance">Move Distance (mm):</label>
+                            <input type="text" id="moveDistance" name="moveDistance" value="1">
+                        </div>
+                        <div>
+                            <hr>
+                        </div>
+                        <div class="positionLocation">
+                            <div class="position-displays">
+                                <div id="wposLocation">
+                                    <span id="wposCurrentPosition">WPOS:</span>
+                                    <input id="wposCurrentPositionValue" readonly value="X0 Y0 Z0"></input>
+                                </div>
+                            </div>
+                            <div id="positionButtonContainer">
+                                <button id="getPositionButton" title="Get current position from controller">Get Position</button>
+                            </div>
+                        </div>
+                        <div>
+                            <hr>
+                        </div>
+                        <div class="positionLocation">
+                            <div class="position-displays">
+                                <div id="measuredDiameter">
+                                    <span id="measuredDiameterLabel">Measured Diameter:</span>
+                                    <input id="measuredDiameterValue" value=""></input>
+                                </div>
+                            </div>
+                            <div id="positionButtonContainer">
+                                <button id="zeroOnDiameterButton" title="Get current position from controller">Zero on Diameter</button>
+                            </div>
+                        </div>
+                        
+                    </div>
+
+                    <div id="gcodeResponseContainer">
+                        <div id="gcodeResponseHeader">GCode Responses</div>
+                        <div id="gcodeResponseEditor" style="height: 200px; width: 100%;"></div>
+                        <div class="senderError" style="display: none;"></div>
+                        <div id="senderProgressContainer">
+                            <span id="senderProgressLabel" style="display: none;">Progress...</span>
+                            <progress id="senderProgress" max="1" style="display: none;"></progress>
+                        </div>
+                        <div class="innerContainer">
+                            <button id="resumeButton">Resume</button>
+                            <button id="clearConsoleButton">Clear Console</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="controls-container">
+                    <div class="innerContainer control-inputs">
+                        <div class="innerContentCentre control-inputs">
+                            <span>Send single command</span>
+                        </div>
+                        <div class="innerContentCentre sender-inputs">
+                            <input id="singleCommandSender" type="text" name="singleCommandSender" autocomplete="off"></input>
+                            <div class="innerContentCentre control-inputs">
+                                <button id="gcodeSendSingleCommandButton" title="Send GCode to CNC">Send</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="controls-container">
+                    <div id="gcodeSenderContainer" style="position: relative;">
+                        <span>Send multi line commands</span>
+                        <div id="gcodeSenderEditor" style="height: 200px; width: 100%;"></div>
+                    </div>
+                    <div class="innerContainer">
+                        <button id="gcodeSenderButton" title="Send GCode to CNC">Send</button>
+                        <button id="stopButton" style="display: none;">Stop</button>
+                    </div>
+                </div>
+                <script type="module" src="/src/main.ts"></script>
+            </div>
             <div id="helpContainer" class="main-container" style="display: none;">
                 <div id="helpContent" class="controls-container">
                     <div class="innerContainer">

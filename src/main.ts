@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   quickTasksTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
-    controlContent.style.display = 'none';
+    controlContent.style.display = 'flex';
     quickTasksContent.style.display = 'flex';
     plannerContent.style.display = 'none';
     connectionContainer.style.display = 'block';
@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   plannerTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
-    controlContent.style.display = 'none';
+    controlContent.style.display = 'flex';
     quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'flex';
     connectionContainer.style.display = 'block';

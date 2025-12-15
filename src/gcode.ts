@@ -40,6 +40,8 @@ export class GCode {
     private moveDistanceInput: HTMLInputElement;
     private wposCurrentPositionValue: HTMLInputElement;
     private getPositionButton: HTMLButtonElement;
+    private zeroOnDiameterButton: HTMLButtonElement;
+    private measuredDiameterValue: HTMLInputElement;
     private motorZToggleBtn: HTMLButtonElement;
     private motorXToggleBtn: HTMLButtonElement;
     private motorYToggleBtn: HTMLButtonElement;
@@ -112,6 +114,8 @@ export class GCode {
         this.sendSingleCommandButton = document.getElementById('gcodeSendSingleCommandButton') as HTMLButtonElement;
         this.singleCommandSender = document.getElementById('singleCommandSender') as HTMLInputElement;
         this.getPositionButton = document.getElementById('getPositionButton') as HTMLButtonElement;
+        this.zeroOnDiameterButton = document.getElementById('zeroOnDiameterButton') as HTMLButtonElement;
+        this.measuredDiameterValue = document.getElementById('measuredDiameterValue') as HTMLInputElement;
         this.wposCurrentPositionValue = document.getElementById('wposCurrentPositionValue') as HTMLInputElement;
 
         this.motorZToggleBtn = document.getElementById('MotorZToggleBtn') as HTMLButtonElement;
@@ -155,6 +159,24 @@ export class GCode {
                 //update the steppers enabled status
                 this.updateMotorStatus(status);
             }
+        });
+
+        this.zeroOnDiameterButton.addEventListener('click', async () => {
+
+            if (!this.sender?.isConnected()) {
+                alert("Please connect to the controller first.");
+                return;
+            }
+            const measuredDiameter = parseFloat(this.measuredDiameterValue.value);
+            if (isNaN(measuredDiameter)) {
+                alert("Please enter a valid measured diameter.");
+                return;
+            }
+
+            //send X position via G92 command
+            const xPosition = measuredDiameter / 2;
+            const command = `G92 X-${xPosition.toFixed(3)}`;
+            this.sender.sendCommand(command, SenderClient.GCODE);
         });
 
         //get feedrate from local storage
