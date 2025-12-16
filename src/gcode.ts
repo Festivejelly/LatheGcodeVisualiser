@@ -9,6 +9,9 @@ const gcodeCommands = [
     { command: '~', description: 'Continue running Gcode' },
     { command: 'M17 Y', description: 'Enable Y axis' },
     { command: 'M18 Y', description: 'Disable Y axis' },
+    { command: 'M206 X', description: 'Calibrate X endstop' },
+    { command: 'M220 RX300', description: 'Set X axis rapid feedrate' },
+    { command: 'M220 RZ800', description: 'Set Z axis rapid feedrate' },
     { command: 'G90', description: 'Set to absolute positioning' },
     { command: 'G91', description: 'Set to relative positioning' },
     { command: 'G92 X0 Z0', description: 'Sets X and Z axis to 0 at current position' },
@@ -82,6 +85,7 @@ export class GCode {
 
                 // Position dropdown below input
                 const rect = commandInput.getBoundingClientRect();
+                dropdown.style.position = 'fixed';
                 dropdown.style.left = rect.left + 'px';
                 dropdown.style.top = (rect.bottom + 2) + 'px';
                 dropdown.style.width = rect.width + 'px';
