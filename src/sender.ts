@@ -30,6 +30,8 @@ export class SenderStatus {
         readonly yEna: number,
         readonly feed: number,
         readonly rpm: number,
+        readonly tool: number,
+        readonly angle: number,
         readonly version: string,
         readonly lastResponse: string,
         readonly isStreaming: boolean) { }
@@ -70,6 +72,8 @@ export class Sender {
     private yEna = 0;
     private feed = 0;
     private rpm = 0;
+    private tool = 0;
+    private angle = 0;
     private isDisconnecting = false;
     private lastStatus: SenderStatus | null = null;
     private version = '';
@@ -147,6 +151,8 @@ export class Sender {
             this.yEna,
             this.feed,
             this.rpm,
+            this.tool,
+            this.angle,
             this.version,
             this.lastResponse,
             streaming
@@ -261,6 +267,13 @@ export class Sender {
                 const f = p.slice(3).split(',');
                 if (f[0] !== undefined && f[0] !== '') this.feed = Number(f[0]);
                 if (f[1] !== undefined && f[1] !== '') this.rpm = Number(f[1]);
+                if (f[2] !== undefined && f[2] !== '') this.angle = Number(f[2]);
+                continue;
+            }
+
+            if (p.startsWith('Tool:')) {
+                const toolNum = p.slice(5).trim();
+                if (toolNum !== '') this.tool = Number(toolNum);
                 continue;
             }
 

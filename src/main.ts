@@ -200,6 +200,15 @@ document.addEventListener("DOMContentLoaded", () => {
     gcodeEditorTextarea.setAttribute('role', 'textbox');
   }
 
+  // Add ResizeObserver to make ace editor resize with container
+  const gcodeEditorElement = document.getElementById('gcodeEditor');
+  if (gcodeEditorElement) {
+    const resizeObserver = new ResizeObserver(() => {
+      editor.resize();
+    });
+    resizeObserver.observe(gcodeEditorElement);
+  }
+
   gcodeSenderEditor.setTheme("ace/theme/github_dark");
   gcodeSenderEditor.session.setMode("ace/mode/plain_text");
   gcodeSenderEditor.setShowPrintMargin(false);

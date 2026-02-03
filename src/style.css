@@ -363,6 +363,12 @@ input.quick-task-summary {
     width: 100%;
 }
 
+#gcodeEditor {
+    resize: vertical;
+    overflow: auto;
+    min-height: 100px;
+}
+
 #gcodeSenderContainer {
     display: block;
 }
