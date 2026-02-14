@@ -486,9 +486,10 @@
                                     <span id="wposCurrentPosition">WPOS:</span>
                                     <input id="wposCurrentPositionValue" readonly value="X0 Y0 Z0"></input>
                                 </div>
-                            </div>
-                            <div id="positionButtonContainer">
-                                <button id="getPositionButton" title="Get current position from controller">Get Position</button>
+                                <div id="rpm">
+                                    <span id="rpmLabel">RPM:</span>
+                                    <input id="rpmValue" readonly value="0"></input>
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -1274,7 +1275,7 @@
                     <span>Gcode:</span>
                 </div>
                 <div class="modal-pad">
-                    <textarea id="cncTaskGcode" name="cncTaskGcode" class="full-width-textarea" rows="12" cols="50" disabled></textarea>
+                    <div id="cncTaskGcode" class="full-width-textarea gcode-line-container"></div>
                 </div>
                 <div class="modal-pad">
                     <button id="cancelCncTask">Cancel</button>
@@ -1298,6 +1299,10 @@
                 <div id="cncTaskSenderProgressContainer" class="modal-pad">
                     <span id="cncTaskSenderProgressLabel">Execution in progress...</span>
                     <progress id="cncTaskSenderProgress" max="1"></progress>
+                </div>
+                <div id="jobElapsedTimeContainer" class="modal-pad">
+                    <span>Elapsed Time:</span>
+                    <span id="jobElapsedTime">00:00:00</span>
                 </div>
             </div>
         </div>
@@ -1347,6 +1352,10 @@
         <div id="completeTaskModal" class="task-modal">
             <div class="task-modal-content center-modal">
                 <h2>All Tasks Complete</h2>
+                <div class="modal-pad">
+                    <span>Total Time:</span>
+                    <span id="jobTotalTime">00:00:00</span>
+                </div>
                 <div class="modal-pad">
                     <button id="completeTaskCloseButton">Close</button>
                 </div>

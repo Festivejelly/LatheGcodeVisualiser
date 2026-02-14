@@ -235,7 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
           quickTaskProfilingCurrentPosition.value = `X: 0.000 Z: 0.000`;
           quickTaskProfilingXStartPosition.value = `0.000`;
         } else {
-          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const latestStatus = await sender?.getPosition();
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -251,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
           quickTaskFacingXStartPosition.value = `0.000`;
           quickTaskFacingZStartPosition.value = `0.000`;
         } else {
-          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const latestStatus = await sender?.getPosition();
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskFacingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -266,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
           quickTaskBoringCurrentPosition.value = `X: 0.000 Z: 0.000`;
           quickTaskBoringXStartPosition.value = `0.000`;
         } else {
-          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const latestStatus = await sender?.getPosition();
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -280,7 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
           quickTaskDrillingCurrentPosition.value = `X: 0.000 Z: 0.000`;
           quickTaskDrillingZStartPosition.value = `0.000`;
         } else {
-          const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+          const latestStatus = await sender?.getPosition();
           const currentPosX = latestStatus?.x!;
           const currentPosZ = latestStatus?.z!;
           quickTaskDrillingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -375,7 +375,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('Please connect to the machine first');
       return;
     }
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const latestStatus = await sender?.getPosition();
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
     quickTaskProfilingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -450,7 +450,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('Please connect to the machine first');
       return;
     }
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const latestStatus = await sender?.getPosition();
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
     quickTaskFacingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -549,7 +549,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('Please connect to the machine first');
       return;
     }
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const latestStatus = await sender?.getPosition();
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
     quickTaskBoringCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -635,7 +635,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('Please connect to the machine first');
       return;
     }
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const latestStatus = await sender?.getPosition();
     const currentPosX = latestStatus?.x!;
     const currentPosZ = latestStatus?.z!;
     quickTaskDrillingCurrentPosition.value = `X: ${currentPosX.toFixed(3)} Z: ${currentPosZ.toFixed(3)}`;
@@ -748,7 +748,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('Please connect to the machine first');
       return;
     }
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const latestStatus = await sender?.getPosition();
     const currentPosX = latestStatus?.x!;
     quickTaskToolOffsetsOffsetX.value = currentPosX.toFixed(3);
   });
@@ -758,7 +758,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('Please connect to the machine first');
       return;
     }
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const latestStatus = await sender?.getPosition();
     const currentPosZ = latestStatus?.z!;
     quickTaskToolOffsetsOffsetZ.value = currentPosZ.toFixed(3);
   });
@@ -808,7 +808,7 @@ document.addEventListener("DOMContentLoaded", () => {
     taskInProgress = false;
 
     //update the X position input
-    const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+    const latestStatus = await sender?.getPosition();
     const currentPosX = latestStatus?.x!;
     quickTaskToolOffsetsOffsetX.value = currentPosX.toFixed(3);
   });
@@ -866,6 +866,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const isRun = status.condition === 'run';
     const isStreaming = sender.isStreaming();
     const busy = isRun || isStreaming;
+
+    if (!activeQuickTaskConfig) return;
 
     if (!busy && !taskInProgress) {
 
@@ -1054,7 +1056,7 @@ async function profilingTask(copyToClipboard = false) {
 
 // Calculate passes based on depth per pass for profiling
 async function updateProfilingPassesFromDepthPerPass() {
-  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const latestStatus = await sender?.getPosition();
   const startPosX = latestStatus?.x!;
   let depthPerPass = 0;
 
@@ -1096,7 +1098,7 @@ async function updateProfilingPassesFromDepthPerPass() {
 
 // Calculate depth per pass based on passes for profiling
 async function updateProfilingDepthPerPassFromPasses() {
-  const latestStatus = await sender?.getPosition(SenderClient.QUICKTASKS);
+  const latestStatus = await sender?.getPosition();
   const startPosX = latestStatus?.x!;
 
   // Calculate total depth required with high precision

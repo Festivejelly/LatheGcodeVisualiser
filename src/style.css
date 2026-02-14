@@ -1486,6 +1486,26 @@ input[type="file"]::file-selector-button:hover {
     resize: vertical;
 }
 
+.gcode-line-container {
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 13px;
+    background: #1e1e1e;
+    border: 1px solid #555;
+    padding: 4px 0;
+}
+
+.gcode-line {
+    padding: 1px 8px;
+    white-space: pre;
+}
+
+.gcode-line-active {
+    background: #264f78;
+    color: #fff;
+}
+
 .center-modal {
     text-align: center;
 }

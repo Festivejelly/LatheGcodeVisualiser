@@ -88,7 +88,7 @@ const completeManualTaskButton = document.getElementById('completeManualTask') a
 const manualTaskDescription = document.getElementById('manualTaskDescription') as HTMLTextAreaElement;
 const cncTaskDescription = document.getElementById('cncTaskDescription') as HTMLTextAreaElement;
 const toolChangeTaskDescription = document.getElementById('toolChangeTaskDescription') as HTMLTextAreaElement;
-const cncTaskGcode = document.getElementById('cncTaskGcode') as HTMLTextAreaElement;
+const cncTaskGcode = document.getElementById('cncTaskGcode') as HTMLDivElement;
 const cancelCncTaskButton = document.getElementById('cancelCncTask') as HTMLButtonElement;
 const executeGcodeButton = document.getElementById('executeGcode') as HTMLButtonElement;
 const completeCncTaskButton = document.getElementById('completeCncTask') as HTMLButtonElement;
@@ -129,6 +129,13 @@ const currentGcodeLine = document.getElementById('currentGcodeLine') as HTMLSpan
 
 const currentFeedrateContainer = document.getElementById('currentFeedrateContainer') as HTMLDivElement;
 const currentFeedrate = document.getElementById('currentFeedrate') as HTMLSpanElement;
+
+//elapsed time elements
+const jobElapsedTime = document.getElementById('jobElapsedTime') as HTMLSpanElement;
+const jobTotalTime = document.getElementById('jobTotalTime') as HTMLSpanElement;
+
+let jobStartTime: number | null = null;
+let jobTimerInterval: ReturnType<typeof setInterval> | null = null;
 
 
 //create type to represent job which is an array of tasks: {"name": "","tasks": [{"id": "","collectionName": ""}]}
@@ -176,6 +183,32 @@ document.addEventListener('DOMContentLoaded', () => {
   sender = Sender.getInstance();
   sender.addStatusChangeListener(() => handleStatusChange(), SenderClient.PLANNER);
   sender.addCurrentCommandListener(handleCurrentCommand);
+
+  function formatElapsedTime(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function startJobTimer() {
+    stopJobTimer();
+    jobStartTime = Date.now();
+    jobElapsedTime.innerText = '00:00:00';
+    jobTimerInterval = setInterval(() => {
+      if (jobStartTime !== null) {
+        jobElapsedTime.innerText = formatElapsedTime(Date.now() - jobStartTime);
+      }
+    }, 1000);
+  }
+
+  function stopJobTimer() {
+    if (jobTimerInterval !== null) {
+      clearInterval(jobTimerInterval);
+      jobTimerInterval = null;
+    }
+  }
 
   plannerContainer.addEventListener('containerVisible', async () => {
 
@@ -427,13 +460,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  var hasResumed = false;
+  var lastShownPauseGeneration = -1;
 
   gcodePausedResumeTaskButton.onclick = async function () {
     // Resume the GCode task
     modalOpen = false;
     gcodePausedModal.style.display = 'none';
-    hasResumed = true;
     sender?.resume();
   }
 
@@ -441,8 +473,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cancel the GCode task
     modalOpen = false;
     gcodePausedModal.style.display = 'none';
-    hasResumed = false;
     jobInProgress = false;
+    stopJobTimer();
 
     cncTaskModal.style.display = 'none';
     jobQueue.length = 0;
@@ -580,6 +612,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       currentFeedrateContainer.style.display = 'block';
       currentGcodeLineContainer.style.display = 'block';
+
+      // Highlight the current line in the gcode container
+      const lineIndex = sender.getLineIndex();
+      const lineElements = cncTaskGcode.children;
+      if (lineIndex >= 0 && lineIndex < lineElements.length) {
+        const prev = cncTaskGcode.querySelector('.gcode-line-active');
+        if (prev) prev.classList.remove('gcode-line-active');
+        lineElements[lineIndex].classList.add('gcode-line-active');
+        lineElements[lineIndex].scrollIntoView({ block: 'nearest' });
+      }
     }
   }
 
@@ -603,36 +645,39 @@ document.addEventListener('DOMContentLoaded', () => {
       connectButton.style.backgroundColor = 'green';
     }
 
-    const isRun = status.condition === 'run';   // controller
-    const streaming = sender.isStreaming();     // host-batch (waiting || lines left)
-    const canResume = sender.canResume();       // explicit pause (M0 or feed-hold)
+    const isRun = status.condition === 'run';
+    const isHold = status.condition === 'hold';
+    const streaming = sender.isStreaming();
+    const canResume = sender.canResume();
     const reason = sender.getPauseReason();
-    const busy = isRun || streaming || canResume;
+    const busy = isRun || isHold || streaming || canResume;
 
     const completed = !busy && !streaming;      // truly idle/no job
 
-    //Show modal if paused by M0 (canResume)
-    //display modal with the reason, if its already open just ignore
-    if (canResume && !modalOpen && !hasResumed && jobInProgress) {
+    // Stop timer as soon as sender finishes streaming (all lines sent and acknowledged)
+    if (!streaming && jobTimerInterval !== null) {
+      stopJobTimer();
+    }
+
+    // Show modal if paused by M0 (hold state or canResume)
+    const currentPauseGen = sender?.getPauseGeneration() ?? -1;
+    if ((isHold || canResume) && !modalOpen && jobInProgress && currentPauseGen !== lastShownPauseGeneration) {
       gcodePausedMessage.innerText = reason || 'Please complete the required action, then click Resume.';
       gcodePausedModal.style.display = 'block';
       modalOpen = true;
-    } else if (hasResumed && !canResume) {
-      // Reset hasResumed when the pause condition is cleared
-      gcodePausedModal.style.display = 'none';
-      modalOpen = false;
-      hasResumed = false;
+      lastShownPauseGeneration = currentPauseGen;
     }
 
-    // Progress shows during streaming or run (label tweaks optional)
+    // Progress shows during streaming, run, or hold
     cncTaskSenderProgress.value = status.progress;
-    const showProgress = isRun || streaming;
+    const showProgress = isRun || isHold || streaming;
     cncTaskSenderProgress.style.display = showProgress ? 'block' : 'none';
     cncTaskSenderProgressLabel.style.display = showProgress ? 'block' : 'none';
-    cncTaskSenderProgressLabel.innerText = canResume ? 'Paused' : (isRun ? 'Task in progress' : '');
+    cncTaskSenderProgressLabel.innerText = (isHold || canResume) ? 'Paused' : (isRun ? 'Task in progress' : '');
 
     // Completed / idle (no job pending)
     if (completed && !streaming && jobInProgress) {
+      stopJobTimer();
       completeCncTaskButton.style.display = 'block';
       completeCncTaskButton.disabled = false;
       completeCncTaskButton.classList.add('interaction-ready-button');
@@ -651,6 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } else if (!busy) {
       // Idle (no job pending) → hide “complete”, enable execute/tool-change
+      stopJobTimer();
       completeCncTaskButton.style.display = 'none';
       completeCncTaskButton.classList.remove('interaction-ready-button');
       completeToolChangeTaskButton.style.display = 'none';
@@ -665,19 +711,18 @@ document.addEventListener('DOMContentLoaded', () => {
       executeToolChangeButton.classList.remove('disabled-button');
       executeToolChangeButton.classList.add('interaction-ready-button');
 
-    } else {
-      // Running or paused → hide “complete”, disable execute/tool-change
+    } else if (jobInProgress) {
+      // Running or paused with an active job → hide "complete", disable execute/tool-change
       completeCncTaskButton.style.display = 'none';
       completeCncTaskButton.classList.remove('interaction-ready-button');
       completeToolChangeTaskButton.style.display = 'none';
       completeToolChangeTaskButton.classList.remove('interaction-ready-button');
 
-      const disableActions = true;
-      executeGcodeButton.disabled = disableActions;
+      executeGcodeButton.disabled = true;
       executeGcodeButton.classList.add('disabled-button');
       executeGcodeButton.classList.remove('interaction-ready-button');
 
-      executeToolChangeButton.disabled = disableActions;
+      executeToolChangeButton.disabled = true;
       executeToolChangeButton.classList.add('disabled-button');
       executeToolChangeButton.classList.remove('interaction-ready-button');
     }
@@ -706,11 +751,22 @@ document.addEventListener('DOMContentLoaded', () => {
     removeOnSpill: false,
   });
 
+  // Prevent touch scrolling while dragging
+  const preventScrollOnDrag = (e: TouchEvent) => e.preventDefault();
+  drake.on('drag', () => {
+    document.addEventListener('touchmove', preventScrollOnDrag, { passive: false });
+  });
+
   // Listen for the 'dragend' event to update task numbers
   drake.on('dragend', () => {
+    document.removeEventListener('touchmove', preventScrollOnDrag);
     updateTaskNumbers();
     rebuildTaskElements();
     saveJob('currentJob');
+  });
+
+  drake.on('cancel', () => {
+    document.removeEventListener('touchmove', preventScrollOnDrag);
   });
 
   async function saveJob(name: string, group: string = '', project: string = '') {
@@ -1252,13 +1308,13 @@ document.addEventListener('DOMContentLoaded', () => {
   completeTaskCloseButton.onclick = function () {
     completeTaskModal.style.display = 'none';
     jobInProgress = false; // Ensure it's reset when closing completion modal
-    hasResumed = false;
     modalOpen = false;
   }
 
   function executeNextTask() {
     if (jobQueue.length === 0) {
       jobInProgress = false; // Reset when job completes
+      jobTotalTime.innerText = jobElapsedTime.innerText;
       completeTaskModal.style.display = 'block';
       return;
     }
@@ -1291,7 +1347,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       cncTaskName.textContent = `Task ${task.order}: ${task.name}`;
-      cncTaskGcode.value = task.gcode ?? '';
+      const gcode = task.gcode ?? '';
+      cncTaskGcode.innerHTML = '';
+      gcode.split('\n').forEach(line => {
+        const div = document.createElement('div');
+        div.className = 'gcode-line';
+        div.textContent = line || '\u00A0';
+        cncTaskGcode.appendChild(div);
+      });
       cncTaskModal.style.display = 'block';
 
       if (jobQueue.length === 0) {
@@ -1333,15 +1396,16 @@ document.addEventListener('DOMContentLoaded', () => {
   cancelManualTaskButton.onclick = function () {
     manualTaskModal.style.display = 'none';
     jobQueue.length = 0;
+    stopJobTimer();
     jobCancelledModal.style.display = 'block';
   }
 
   cancelCncTaskButton.onclick = function () {
     cncTaskModal.style.display = 'none';
     jobQueue.length = 0;
+    stopJobTimer();
     jobCancelledModal.style.display = 'block';
     jobInProgress = false;
-    hasResumed = false;
     modalOpen = false;
     sender?.stop();
     sender?.unhold();
@@ -1350,9 +1414,9 @@ document.addEventListener('DOMContentLoaded', () => {
   cancelToolChangeButton.onclick = function () {
     toolChangeTaskModal.style.display = 'none';
     jobQueue.length = 0;
+    stopJobTimer();
     jobCancelledModal.style.display = 'block';
     jobInProgress = false;
-    hasResumed = false;
     modalOpen = false;
     sender?.stop();
     sender?.unhold();
@@ -1400,19 +1464,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   executeGcodeButton.onclick = function () {
-    hasResumed = false;
     modalOpen = false;
     jobInProgress = true;
+    startJobTimer();
     if (sender) {
       sender?.unhold();
-      sender.start(cncTaskGcode.value, SenderClient.PLANNER);
+      const gcodeText = Array.from(cncTaskGcode.children).map(el => el.textContent === '\u00A0' ? '' : el.textContent).join('\n');
+      sender.start(gcodeText, SenderClient.PLANNER);
     }
   }
 
   executeToolChangeButton.onclick = function () {
-    hasResumed = false;
     modalOpen = false;
     jobInProgress = true;
+    startJobTimer();
     if (sender) {
       sender?.unhold();
       sender.start(toolChangeNewTool.value, SenderClient.PLANNER);
@@ -1422,7 +1487,6 @@ document.addEventListener('DOMContentLoaded', () => {
   jobCancelledCloseButton.onclick = function () {
     jobCancelledModal.style.display = 'none';
     jobInProgress = false;
-    hasResumed = false;
     modalOpen = false;
   }
 
@@ -1433,9 +1497,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     sender?.unhold();
 
-    hasResumed = false;
     modalOpen = false;
-
 
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
 

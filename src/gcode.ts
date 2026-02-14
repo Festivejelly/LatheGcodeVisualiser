@@ -7,11 +7,16 @@ const gcodeCommands = [
     { command: '#', description: 'Display tool offsets' },
     { command: '!', description: 'Stop running Gcode' },
     { command: '~', description: 'Continue running Gcode' },
+    { command: '^', description: 'Print debug diagnostic info' },
     { command: 'M17 Y', description: 'Enable Y axis' },
     { command: 'M18 Y', description: 'Disable Y axis' },
-    { command: 'M206 X', description: 'Calibrate X endstop' },
-    { command: 'M220 RX300', description: 'Set X axis rapid feedrate' },
-    { command: 'M220 RZ800', description: 'Set Z axis rapid feedrate' },
+    { command: 'M206 X', description: 'Auto calibrate X homing offset' },
+    { command: 'M206 S X', description: 'Save calibrated X homing offset' },
+    { command: 'M206 S X-80', description: 'Set X homing offset' },
+    { command: 'M206 R', description: 'Print homing offsets' },
+    { command: 'M220 X300', description: 'Set X axis rapid feedrate' },
+    { command: 'M220 Z800', description: 'Set Z axis rapid feedrate' },
+    { command: 'M220', description: 'Show rapid feedrates' },
     { command: 'G90', description: 'Set to absolute positioning' },
     { command: 'G91', description: 'Set to relative positioning' },
     { command: 'G92 X0 Z0', description: 'Sets X and Z axis to 0 at current position' },
@@ -42,7 +47,7 @@ export class GCode {
     private slowFeedrateInput: HTMLInputElement;
     private moveDistanceInput: HTMLInputElement;
     private wposCurrentPositionValue: HTMLInputElement;
-    private getPositionButton: HTMLButtonElement;
+    private rpmValue: HTMLInputElement;
     private zeroOnDiameterButton: HTMLButtonElement;
     private measuredDiameterValue: HTMLInputElement;
     private motorZToggleBtn: HTMLButtonElement;
@@ -53,6 +58,7 @@ export class GCode {
     private homeYBtn: HTMLButtonElement;
     private centreBtn: HTMLButtonElement;
     private centreBtnVert: HTMLButtonElement;
+    private statusPollingInterval: number | null = null;
 
 
     constructor() {
@@ -117,10 +123,10 @@ export class GCode {
         this.sendButton = document.getElementById('gcodeSenderButton') as HTMLButtonElement;
         this.sendSingleCommandButton = document.getElementById('gcodeSendSingleCommandButton') as HTMLButtonElement;
         this.singleCommandSender = document.getElementById('singleCommandSender') as HTMLInputElement;
-        this.getPositionButton = document.getElementById('getPositionButton') as HTMLButtonElement;
         this.zeroOnDiameterButton = document.getElementById('zeroOnDiameterButton') as HTMLButtonElement;
         this.measuredDiameterValue = document.getElementById('measuredDiameterValue') as HTMLInputElement;
         this.wposCurrentPositionValue = document.getElementById('wposCurrentPositionValue') as HTMLInputElement;
+        this.rpmValue = document.getElementById('rpmValue') as HTMLInputElement;
 
         this.motorZToggleBtn = document.getElementById('MotorZToggleBtn') as HTMLButtonElement;
         this.motorXToggleBtn = document.getElementById('MotorXToggleBtn') as HTMLButtonElement;
@@ -147,22 +153,6 @@ export class GCode {
         this.clearConsoleButton = document.getElementById('clearConsoleButton') as HTMLButtonElement;
         this.clearConsoleButton.addEventListener('click', () => {
             gcodeResponseEditor.setValue('');
-        });
-
-        this.getPositionButton.addEventListener('click', async () => {
-
-            if (!this.sender?.isConnected()) {
-                alert("Please connect to the controller first.");
-                return;
-            }
-
-            const status = await this.sender!.getPosition(SenderClient.GCODE);
-            if (status) {
-                this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
-
-                //update the steppers enabled status
-                this.updateMotorStatus(status);
-            }
         });
 
         this.zeroOnDiameterButton.addEventListener('click', async () => {
@@ -574,13 +564,8 @@ export class GCode {
                 await this.sender.connect();
             }
 
-            const status = await this.sender!.getPosition(SenderClient.GCODE);
-            if (status) {
-                this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
-
-                //update the steppers enabled status
-                this.updateMotorStatus(status);
-            }
+            await this.updatePositionAndStatus();
+            this.startStatusPolling();
         });
 
 
@@ -610,35 +595,69 @@ export class GCode {
             }
         });
 
-        this.sendSingleCommandButton.addEventListener('click', () => {
-
-            //if sender is not connected show alert and return
+        const sendSingleCommand = () => {
             if (!this.sender?.isConnected()) {
                 alert("Please connect to the controller first.");
                 return;
             }
-
             if (this.sender) {
                 this.sendButton.disabled = true;
                 this.sendSingleCommandButton.disabled = true;
-
-                //disable jogging controlls
                 this.jogButtons.forEach((btn) => {
                     btn.disabled = true;
                 });
-
-                //disable tool change buttons
                 this.toolButtons.forEach((btn) => {
                     btn.disabled = true;
                 });
-
                 this.sender.sendCommand(this.singleCommandSender.value, SenderClient.GCODE);
+            }
+        };
+
+        this.sendSingleCommandButton.addEventListener('click', sendSingleCommand);
+
+        this.singleCommandSender.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendSingleCommand();
             }
         });
 
         this.stopButton = document.getElementById('stopButton') as HTMLButtonElement;
         this.stopButton.addEventListener('click', () => this.sender!.stop());
         this.stopButton.style.display = 'none';
+    }
+
+    startStatusPolling() {
+        // Clear any existing interval
+        this.stopStatusPolling();
+        
+        // Poll every 500ms (adjust as needed)
+        this.statusPollingInterval = window.setInterval(async () => {
+            if (this.sender?.isConnected()) {
+                await this.updatePositionAndStatus();
+            } else {
+                this.stopStatusPolling();
+            }
+        }, 500);
+    }
+
+    stopStatusPolling() {
+        if (this.statusPollingInterval !== null) {
+            clearInterval(this.statusPollingInterval);
+            this.statusPollingInterval = null;
+        }
+    }
+
+    async updatePositionAndStatus() {
+        if (!this.sender?.isConnected()) {
+            return;
+        }
+
+        const status = await this.sender!.getPosition();
+        if (status) {
+            this.wposCurrentPositionValue.value = `X${status.x.toFixed(3)} Y${status.y.toFixed(3)} Z${status.z.toFixed(3)}`;
+            this.updateMotorStatus(status);
+            this.rpmValue.value = status.rpm?.toString() || "0";
+        }
     }
 
     updateMotorStatus(status: SenderStatus) {
@@ -766,6 +785,7 @@ export class GCode {
         const status = this.sender.getStatus();
 
         if (status.isConnected === false) {
+            this.stopStatusPolling();
             this.connectButton.innerText = 'Connect';
             this.connectButton.disabled = false;
             //clear the button colour
@@ -778,9 +798,8 @@ export class GCode {
             this.connectButton.style.backgroundColor = 'green';
         }
 
-        const isRun = status.condition === 'run';
         const isStreaming = this.sender.isStreaming();
-        const busy = isRun || isStreaming;
+        const busy = isStreaming;
 
         this.runProgress.value = status.progress;
         this.runProgress.style.display = isStreaming ? 'block' : 'none';

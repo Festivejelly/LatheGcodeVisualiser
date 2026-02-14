@@ -14,7 +14,7 @@ export enum StatusType {
 export class SenderStatus {
     constructor(
         readonly isConnected: boolean,
-        readonly condition: 'disconnected' | 'idle' | 'run',
+        readonly condition: 'disconnected' | 'idle' | 'run' | 'hold' | 'alarm',
         readonly error: string,
         readonly progress: number,
         readonly currentLine: string,
@@ -52,8 +52,9 @@ export class Sender {
     private readTimeout = 0;
     private reader: ReadableStreamDefaultReader<string> | null = null;
     private writer: WritableStreamDefaultWriter<string> | null = null;
-    private isOn = false;
+    private controllerState: 'idle' | 'run' | 'hold' | 'alarm' = 'idle';
     private waitForOkOrError = false;
+    private inSession = false;
     private lines: string[] = [];
     private lineIndex = 0;
     private remainingResponse = '';
@@ -78,6 +79,7 @@ export class Sender {
     private lastStatus: SenderStatus | null = null;
     private version = '';
     private lastResponse = '';
+    private showNextStatus = false;
 
     private statusPollInterval: number | null = null;
 
@@ -100,8 +102,8 @@ export class Sender {
     }
 
     //getters for debugging
-    public getIsOn(): boolean {
-        return this.isOn;
+    public getControllerState(): string {
+        return this.controllerState;
     }
 
     public getLineIndex(): number {
@@ -135,7 +137,7 @@ export class Sender {
 
         this.lastStatus = new SenderStatus(
             this.port !== null,
-            this.isOn ? 'run' : 'idle',
+            this.controllerState,
             this.error,
             progress,
             this.currentLine,
@@ -165,7 +167,7 @@ export class Sender {
     }
 
     public shouldShowResume(): boolean {
-        return !this.isOn &&                      // Controller is paused/idle
+        return this.controllerState !== 'run' &&    // Controller is paused/idle
             this.lineIndex < this.lines.length && // Still have lines to send
             this.lines.length > 0;                // There is actually a job loaded
     }
@@ -176,12 +178,8 @@ export class Sender {
 
     private notifyStatusChange() {
         this.listeners.forEach(listener => {
-            if (listener.client === this.activeClient) {
-                this.log(`Notifying ${listener.client} listener`);
-                listener.callback();
-            } else {
-                this.log(`Skipping ${listener.client} listener (not active)`);
-            }
+            try { listener.callback(); }
+            catch (e) { console.error(`Listener ${listener.client} error:`, e); }
         });
     }
 
@@ -240,7 +238,8 @@ export class Sender {
 
         const state = (parts[0] ?? '').trim();        // "Idle" or "Run"
         this.statusReceived = true;
-        this.isOn = state !== 'Idle';
+        const lower = state.toLowerCase().split(':')[0]; // "Hold:0" -> "hold"
+        this.controllerState = (lower === 'run' || lower === 'hold' || lower === 'alarm') ? lower : 'idle';
 
         this.log(`Status received: <${payload}>`);
 
@@ -284,6 +283,11 @@ export class Sender {
             // ignore unknowns
         }
 
+        if (this.showNextStatus) {
+            this.showNextStatus = false;
+            appendLineToResponseEditor(`response: <${payload}>`);
+        }
+
         this.notifyStatusChange();
     }
 
@@ -293,6 +297,8 @@ export class Sender {
             this.heldByHost = false;
             this.m0Waiting = false;
             this.pauseReason = undefined;
+            this.notifyStatusChange();
+            await this.writeCurrentLine();
         }
     }
 
@@ -385,9 +391,14 @@ export class Sender {
     private m0Waiting = false;   // true while an M0 is pending resume
     private heldByHost = false;  // true after we send '!' (feed hold)
     private pauseReason: string | undefined;
+    private pauseGeneration = 0; // increments each time an M0 pause occurs
 
     public getPauseReason(): string | undefined {
         return this.pauseReason;
+    }
+
+    public getPauseGeneration(): number {
+        return this.pauseGeneration;
     }
 
     private extractPauseReasonFromM0(raw: string): string | undefined {
@@ -440,6 +451,7 @@ export class Sender {
         if (!text) return;
         this.setActiveClient(client);
 
+        this.inSession = true;
         this.lines = text.split('\n');
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -452,10 +464,19 @@ export class Sender {
     async sendCommand(command: string, client: SenderClient) {
         this.setActiveClient(client);
 
+        // '?' is a realtime command that returns a status packet, not ok/error
+        if (command.trim() === '?') {
+            this.showNextStatus = true;
+            appendLineToResponseEditor(`command: ?`);
+            await this.write('?');
+            this.notifyStatusChange();
+            return;
+        }
+
+        this.inSession = false;
         this.lines = [command];
         this.lineIndex = 0;
         this.waitForOkOrError = false;
-        await this.write('~');
         await this.writeCurrentLine();
         this.notifyStatusChange();
     }
@@ -463,6 +484,7 @@ export class Sender {
     async sendCommands(commands: string[], client: SenderClient) {
         this.setActiveClient(client);
 
+        this.inSession = true;
         this.lines = commands;
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -471,8 +493,7 @@ export class Sender {
         this.notifyStatusChange();
     }
 
-    async getPosition(client: SenderClient) {
-        this.setActiveClient(client);
+    async getPosition() {
         return this.getStatus();
     }
 
@@ -499,10 +520,14 @@ export class Sender {
     private async done() {
         this.waitForOkOrError = false;
 
-        // Clear batch/bookkeeping so “streaming” logic won’t stick true
+        // Clear batch/bookkeeping so "streaming" logic won't stick true
         this.lines = [];
         this.lineIndex = 0;
         this.currentLine = '';
+        if (this.inSession) {
+            await this.write('!'); // End gcode session, return to Idle
+            this.inSession = false;
+        }
         this.notifyStatusChange();
     }
 
@@ -564,13 +589,13 @@ export class Sender {
         }
 
         this.m0Waiting = /^\s*M0\b/i.test(line);
+        if (this.m0Waiting) this.pauseGeneration++;
         this.pauseReason = this.m0Waiting ? this.extractPauseReasonFromM0(raw) : undefined;
 
         this.currentLine = line;
         this.notifyCurrentCommand(this.currentLine);
 
         this.waitForOkOrError = true;
-        //this.log(`command: "${line}"`);
         appendLineToResponseEditor(`command: ${line}`);
         await this.write(line + '\n');
     };
@@ -643,8 +668,8 @@ export class Sender {
                 this.notifyStatusChange();
 
                 if (this.m0Waiting) {
-                    this.m0Waiting = false;
-                    this.pauseReason = undefined;
+                    // M0 pause: stay paused until resume() is called
+                    continue;
                 }
 
                 // optional: immediate status ping (guarded)
@@ -652,7 +677,7 @@ export class Sender {
                     void this.write('?');
                 }
 
-                // send next line (don’t gate on this.isOn anymore)
+                // send next line (don't gate on this.isOn anymore)
                 await this.writeCurrentLine();
                 continue;
             }
@@ -763,36 +788,6 @@ export class Sender {
             await this.write('?');
         } catch (e) {
             this.setError(`Device disconnected? ${e}`);
-            this.closePort();
-        }
-    }
-
-    private readSoon() {
-        clearTimeout(this.readTimeout);
-        this.readTimeout = window.setTimeout(() => this.readFromPort(), 200);
-    }
-
-    private async readFromPort() {
-        if (!this.port) return;
-        try {
-            if (!this.port.readable) {
-                this.readSoon();
-                return;
-            }
-            if (!this.reader) {
-                const textDecoder = new TextDecoderStream();
-                this.port.readable.pipeTo(textDecoder.writable);
-                this.reader = textDecoder.readable.getReader();
-            }
-            const { value } = await this.reader.read();
-            if (!value) {
-                this.readSoon();
-                return;
-            }
-            await this.processResponse(value);
-            this.readSoon();
-        } catch (e: any) {
-            this.setError(e.message || String(e));
             this.closePort();
         }
     }
