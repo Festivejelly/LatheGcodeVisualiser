@@ -610,6 +610,7 @@ export class GCode {
                     btn.disabled = true;
                 });
                 this.sender.sendCommand(this.singleCommandSender.value, SenderClient.GCODE);
+                this.singleCommandSender.value = '';
             }
         };
 
