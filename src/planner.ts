@@ -99,6 +99,8 @@ const cncTaskSenderProgress = document.getElementById('cncTaskSenderProgress') a
 const skipCncTaskButton = document.getElementById('skipCncTask') as HTMLButtonElement;
 const skipManualTaskButton = document.getElementById('skipManualTask') as HTMLButtonElement;
 const skipToolChangeTaskButton = document.getElementById('skipToolChangeTask') as HTMLButtonElement;
+const cncFeedHoldButton = document.getElementById('cncFeedHold') as HTMLButtonElement;
+const cncFeedResumeButton = document.getElementById('cncFeedResume') as HTMLButtonElement;
 
 //tool change elements
 
@@ -462,6 +464,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   var lastShownPauseGeneration = -1;
 
+  cncFeedHoldButton.onclick = async function () {
+    await sender?.sendCommand('!', SenderClient.PLANNER);
+  }
+
+  cncFeedResumeButton.onclick = async function () {
+    await sender?.sendCommand('~', SenderClient.PLANNER);
+  }
+
   gcodePausedResumeTaskButton.onclick = async function () {
     // Resume the GCode task
     modalOpen = false;
@@ -751,22 +761,23 @@ document.addEventListener('DOMContentLoaded', () => {
     removeOnSpill: false,
   });
 
-  // Prevent touch scrolling while dragging
-  const preventScrollOnDrag = (e: TouchEvent) => e.preventDefault();
+  // Prevent touch scrolling while dragging by disabling touch-action on the body.
+  // Uses touch-action CSS instead of touchmove preventDefault because Windows
+  // touchscreens use Pointer Events, not Touch Events.
   drake.on('drag', () => {
-    document.addEventListener('touchmove', preventScrollOnDrag, { passive: false });
+    document.body.style.touchAction = 'none';
   });
 
   // Listen for the 'dragend' event to update task numbers
   drake.on('dragend', () => {
-    document.removeEventListener('touchmove', preventScrollOnDrag);
+    document.body.style.touchAction = '';
     updateTaskNumbers();
     rebuildTaskElements();
     saveJob('currentJob');
   });
 
   drake.on('cancel', () => {
-    document.removeEventListener('touchmove', preventScrollOnDrag);
+    document.body.style.touchAction = '';
   });
 
   async function saveJob(name: string, group: string = '', project: string = '') {
@@ -1434,7 +1445,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     jobInProgress = false;
 
-    sender?.unhold();
     executeNextTask();
   }
 
@@ -1459,7 +1469,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     jobInProgress = false;
 
-    sender?.unhold();
     executeNextTask();
   }
 

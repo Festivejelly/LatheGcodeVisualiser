@@ -14,7 +14,7 @@ export enum StatusType {
 export class SenderStatus {
     constructor(
         readonly isConnected: boolean,
-        readonly condition: 'disconnected' | 'idle' | 'run' | 'hold' | 'alarm',
+        readonly condition: 'disconnected' | 'idle' | 'run' | 'hold' | 'alarm' | 'waiting',
         readonly error: string,
         readonly progress: number,
         readonly currentLine: string,
@@ -52,9 +52,9 @@ export class Sender {
     private readTimeout = 0;
     private reader: ReadableStreamDefaultReader<string> | null = null;
     private writer: WritableStreamDefaultWriter<string> | null = null;
-    private controllerState: 'idle' | 'run' | 'hold' | 'alarm' = 'idle';
+    private controllerState: 'idle' | 'run' | 'hold' | 'alarm' | 'waiting' = 'idle';
     private waitForOkOrError = false;
-    private inSession = false;
+
     private lines: string[] = [];
     private lineIndex = 0;
     private remainingResponse = '';
@@ -239,7 +239,8 @@ export class Sender {
         const state = (parts[0] ?? '').trim();        // "Idle" or "Run"
         this.statusReceived = true;
         const lower = state.toLowerCase().split(':')[0]; // "Hold:0" -> "hold"
-        this.controllerState = (lower === 'run' || lower === 'hold' || lower === 'alarm') ? lower : 'idle';
+        const wasWaiting = this.controllerState === 'waiting';
+        this.controllerState = (lower === 'run' || lower === 'hold' || lower === 'alarm' || lower === 'waiting') ? lower : 'idle';
 
         this.log(`Status received: <${payload}>`);
 
@@ -289,6 +290,15 @@ export class Sender {
         }
 
         this.notifyStatusChange();
+
+        // Resume after M204: confirmed not in Waiting state (handles both instant and slow cases)
+        if (this.m204Waiting && this.controllerState !== 'waiting' && !this.waitForOkOrError) {
+            this.m204Waiting = false;
+            void this.writeCurrentLine();
+        } else if (wasWaiting && this.controllerState !== 'waiting' && !this.waitForOkOrError) {
+            // Fallback: any other transition out of Waiting
+            void this.writeCurrentLine();
+        }
     }
 
     async resume() {
@@ -389,6 +399,7 @@ export class Sender {
     }
 
     private m0Waiting = false;   // true while an M0 is pending resume
+    private m204Waiting = false; // true after M204 sent; blocks next line until state confirmed
     private heldByHost = false;  // true after we send '!' (feed hold)
     private pauseReason: string | undefined;
     private pauseGeneration = 0; // increments each time an M0 pause occurs
@@ -451,7 +462,6 @@ export class Sender {
         if (!text) return;
         this.setActiveClient(client);
 
-        this.inSession = true;
         this.lines = text.split('\n');
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -464,16 +474,22 @@ export class Sender {
     async sendCommand(command: string, client: SenderClient) {
         this.setActiveClient(client);
 
-        // '?' is a realtime command that returns a status packet, not ok/error
-        if (command.trim() === '?') {
+        // Realtime commands: sent directly, never generate an ok/error response
+        const rt = command.trim();
+        if (rt === '?') {
             this.showNextStatus = true;
             appendLineToResponseEditor(`command: ?`);
             await this.write('?');
             this.notifyStatusChange();
             return;
         }
+        if (rt === '!' || rt === '~') {
+            appendLineToResponseEditor(`command: ${rt}`);
+            await this.write(rt);
+            this.notifyStatusChange();
+            return;
+        }
 
-        this.inSession = false;
         this.lines = [command];
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -484,7 +500,6 @@ export class Sender {
     async sendCommands(commands: string[], client: SenderClient) {
         this.setActiveClient(client);
 
-        this.inSession = true;
         this.lines = commands;
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -524,10 +539,6 @@ export class Sender {
         this.lines = [];
         this.lineIndex = 0;
         this.currentLine = '';
-        if (this.inSession) {
-            await this.write('!'); // End gcode session, return to Idle
-            this.inSession = false;
-        }
         this.notifyStatusChange();
     }
 
@@ -575,6 +586,7 @@ export class Sender {
 
     private async writeCurrentLine() {
         if (this.waitForOkOrError) return;
+        if (this.controllerState === 'waiting') return;
         if (this.lineIndex >= this.lines.length) {
             this.done();
             return;
@@ -591,6 +603,7 @@ export class Sender {
         this.m0Waiting = /^\s*M0\b/i.test(line);
         if (this.m0Waiting) this.pauseGeneration++;
         this.pauseReason = this.m0Waiting ? this.extractPauseReasonFromM0(raw) : undefined;
+        if (/^\s*M204\b/i.test(line)) this.m204Waiting = true;
 
         this.currentLine = line;
         this.notifyCurrentCommand(this.currentLine);
@@ -662,6 +675,13 @@ export class Sender {
                 this.log(`response: "${this.remainingResponse}"`);
                 this.remainingResponse = "";
 
+                // While m204Waiting and we weren't expecting an ok, this is an unsolicited
+                // informational message from the controller (e.g. "RPM condition met").
+                // Log it (done above) but do NOT advance the line index.
+                if (this.m204Waiting && !this.waitForOkOrError) {
+                    continue;
+                }
+
                 this.waitForOkOrError = false;
                 this.lineIndex++;
 
@@ -669,6 +689,12 @@ export class Sender {
 
                 if (this.m0Waiting) {
                     // M0 pause: stay paused until resume() is called
+                    continue;
+                }
+
+                if (this.m204Waiting) {
+                    // Force a fresh status request; parseStatusPayload will resume when confirmed not-waiting
+                    void this.write('?');
                     continue;
                 }
 
@@ -682,8 +708,13 @@ export class Sender {
                 continue;
             }
 
-            // Not ok/error: accumulate/log if you want
-            this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
+            // Not ok/error: if a command is in flight, accumulate until its ok arrives;
+            // otherwise log immediately (unsolicited message, e.g. M204 progress updates).
+            if (this.waitForOkOrError) {
+                this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
+            } else {
+                appendLineToResponseEditor(`response: ${raw}`);
+            }
         }
     }
 

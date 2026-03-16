@@ -514,6 +514,7 @@ export class GCode {
 
             if (this.sender) {
                 this.sender.sendCommands(commands, SenderClient.GCODE);
+                this.sender.sendCommand("M500", SenderClient.GCODE);
             }
         });
 
@@ -771,6 +772,7 @@ export class GCode {
             const command = `G10 P${toolNumber} Z${z} X${x} W${w} U${u}`;
             if (this.sender) {
                 this.sender.sendCommand(command, SenderClient.GCODE);
+                this.sender.sendCommand("M500", SenderClient.GCODE);
             }
         });
 
