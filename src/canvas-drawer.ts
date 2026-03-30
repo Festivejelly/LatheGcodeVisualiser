@@ -17,8 +17,15 @@ export type GCodeCommand = {
     movementType?: MovementType;
     toolType?: ToolType;
     toolWidth?: number;
+    toolTaperAngle?: number; // Full included angle of the tool tip cone (degrees), 0 = flat
     lineNumber?: number; // Line number in the original G-code file
     originalLine?: string; // Original line text from the G-code file
+};
+
+type ToolDefinition = {
+    diameter: number;
+    taperAngle: number;
+    toolType: ToolType;
 };
 
 export type AbsolutePosition = { z: number, x: number };
@@ -44,6 +51,8 @@ export class CanvasDrawer {
     private stockDiameterInMM: number = 0; // Store the stock diameter for later use
     private currentToolType: ToolType = ToolType.External; // Default to external
     private currentToolWidth: number = 2; // Default tool width
+    private currentToolTaperAngle: number = 0; // Full included angle of tool tip cone (degrees), 0 = flat
+    private toolDefinitions: Map<number, ToolDefinition> = new Map();
     private actualNegativeZOffset: number = 0; // Store the actual negative Z offset used for this drawing
 
     constructor() { }
@@ -57,9 +66,13 @@ export class CanvasDrawer {
         let stockDiameterInMM = 0;
         let hasFoundAbsoluteX = false;
 
+        // Parse tool definitions from header comments (e.g. "(T18 D=3.7 CR=0. TAPER=118DEG - DRILL)")
+        this.parseToolDefinitions(data);
+
         // Track current tool type and width through the parsing
         let currentToolType = ToolType.External; // Default to external
         let currentToolWidth = 2; // Default width
+        let currentToolTaperAngle = 0; // Degrees, 0 = flat
 
         const lines = data.split('\n');
         lines.forEach((line, index) => {
@@ -70,13 +83,15 @@ export class CanvasDrawer {
             if (toolInfo) {
                 currentToolType = toolInfo.toolType;
                 currentToolWidth = toolInfo.toolWidth;
+                currentToolTaperAngle = toolInfo.taperAngle;
             }
 
             const command: GCodeCommand = {
                 isRelative: isRelative,
                 movementType,
                 toolType: currentToolType,
-                toolWidth: currentToolWidth
+                toolWidth: currentToolWidth,
+                toolTaperAngle: currentToolTaperAngle
             };
 
             // Extract the G-code part (before any comment)
@@ -134,6 +149,7 @@ export class CanvasDrawer {
                     movementType,
                     toolType: currentToolType,
                     toolWidth: currentToolWidth,
+                    toolTaperAngle: currentToolTaperAngle,
                     lineNumber: index + 1,
                     originalLine: line,
                     absolutePosition: { ...absolutePosition }
@@ -208,28 +224,76 @@ export class CanvasDrawer {
         return drawableCommands;
     }
 
-    parseToolChange(line: string): { toolType: ToolType, toolWidth: number } | null {
-        // Check for M0 tool change comment
-        const m0Match = line.match(/M0\s*\(CHANGE TO .+?\)/i);
-        if (!m0Match) return null;
+    parseToolDefinitions(data: string): void {
+        this.toolDefinitions.clear();
+        for (const line of data.split('\n')) {
+            const trimmed = line.trim();
+            // Only process parenthetical comment lines that start with a tool number definition
+            if (!trimmed.match(/^\(T\d+\s+D=/i)) continue;
 
-        const lowerLine = line.toLowerCase();
+            const toolNumMatch = trimmed.match(/^\(T(\d+)/i);
+            const diameterMatch = trimmed.match(/\bD=(\d+\.?\d*)/i);
+            const taperMatch = trimmed.match(/\bTAPER=(\d+\.?\d*)DEG/i);
+            const typeMatch = trimmed.match(/[-–]\s*(DRILL|SPOT DRILL|FLAT END MILL|BORING|GROOVE TURNING|GROOVING|TURNING)\s*[)]/i);
 
-        // Extract tool width if present (e.g., "1.5mm", "2.5mm", "4mm")
-        const widthMatch = line.match(/(\d+(?:\.\d+)?)\s*mm/i);
-        const toolWidth = widthMatch ? parseFloat(widthMatch[1]) : 2; // Default to 2mm
+            if (!toolNumMatch || !diameterMatch) continue;
 
-        // Determine tool type based on keywords
-        if (lowerLine.includes('drill') ||
-            lowerLine.includes('endmill') ||
-            lowerLine.includes('boring') ||
-            lowerLine.includes('internal') ||
-            lowerLine.includes('grooving tool')) {
-            return { toolType: ToolType.Internal, toolWidth };
+            const toolNum = parseInt(toolNumMatch[1]);
+            const diameter = parseFloat(diameterMatch[1]);
+            const taperAngle = taperMatch ? parseFloat(taperMatch[1]) : 0;
+
+            let toolType = ToolType.External;
+            if (typeMatch) {
+                const label = typeMatch[1].toUpperCase();
+                if (label.includes('DRILL') || label.includes('END MILL') || label.includes('BORING')) {
+                    toolType = ToolType.Internal;
+                }
+            }
+
+            this.toolDefinitions.set(toolNum, { diameter, taperAngle, toolType });
+        }
+    }
+
+    parseToolChange(line: string): { toolType: ToolType, toolWidth: number, taperAngle: number } | null {
+        // Check for T+M6 tool change (e.g. "T18 M6" or "M6 T18")
+        const tM6Match = line.match(/T(\d+)\s*M6|M6\s*T(\d+)/i);
+        if (tM6Match) {
+            const toolNum = parseInt(tM6Match[1] ?? tM6Match[2]);
+            return this.lookupToolOrDefault(toolNum, line);
         }
 
-        // Default to external tools
-        return { toolType: ToolType.External, toolWidth };
+        // Check for M0 tool change comment
+        const m0Match = line.match(/M0\s*\(CHANGE TO .+?\)/i);
+        if (m0Match) {
+            const tNumMatch = line.match(/T(\d+)/i);
+            if (tNumMatch) {
+                return this.lookupToolOrDefault(parseInt(tNumMatch[1]), line);
+            }
+            return this.detectToolFromKeywords(line);
+        }
+
+        return null;
+    }
+
+    private lookupToolOrDefault(toolNum: number, line: string): { toolType: ToolType, toolWidth: number, taperAngle: number } {
+        const def = this.toolDefinitions.get(toolNum);
+        if (def) {
+            return { toolType: def.toolType, toolWidth: def.diameter, taperAngle: def.taperAngle };
+        }
+        return this.detectToolFromKeywords(line);
+    }
+
+    private detectToolFromKeywords(line: string): { toolType: ToolType, toolWidth: number, taperAngle: number } {
+        const lowerLine = line.toLowerCase();
+        const widthMatch = line.match(/(\d+(?:\.\d+)?)\s*mm/i);
+        const toolWidth = widthMatch ? parseFloat(widthMatch[1]) : 2;
+
+        if (lowerLine.includes('drill') || lowerLine.includes('endmill') ||
+            lowerLine.includes('boring') || lowerLine.includes('internal') ||
+            lowerLine.includes('grooving tool')) {
+            return { toolType: ToolType.Internal, toolWidth, taperAngle: 0 };
+        }
+        return { toolType: ToolType.External, toolWidth, taperAngle: 0 };
     }
 
     determineMovementType(line: string): MovementType {
@@ -362,9 +426,10 @@ export class CanvasDrawer {
         for (let i = 0; i < maxCount; i++) {
             const cmd = drawableCommands[i];
 
-            // Update current tool type and width from the command
-            this.currentToolType = cmd.toolType ?? ToolType.External; // Default to external
+            // Update current tool type, width and taper from the command
+            this.currentToolType = cmd.toolType ?? ToolType.External;
             this.currentToolWidth = cmd.toolWidth ?? 2;
+            this.currentToolTaperAngle = cmd.toolTaperAngle ?? 0;
 
             // Setup for this command (whether it's a cut or not)
             if (cmd.isRelative) {
@@ -477,6 +542,41 @@ export class CanvasDrawer {
         const doActualCut = () => {
             if (isInternalCut) {
                 // Internal cutting logic (boring, drilling, internal grooving)
+                const centerY = stockCanvas.height / 2;
+                const isOnCenterline = Math.abs(this.currentX) < 0.001 &&
+                    Math.abs(this.previousCanvasX - centerY) < 2;
+                const taperAngleDeg = this.currentToolTaperAngle;
+
+                if (taperAngleDeg > 0 && taperAngleDeg < 180 && isOnCenterline) {
+                    // Tapered drill: draw the full drill profile at the current depth.
+                    // Each plunge draws cone-tip + full cylinder to the stock surface.
+                    // destination-out is idempotent, so the union across all steps gives:
+                    // one clean cone at the deepest point + full cylinder back to surface.
+                    const moveZ = this.previousCanvasZ - this.canvasZ; // positive = moved deeper
+                    if (moveZ > 0.001) {
+                        const halfAngleRad = (taperAngleDeg / 2) * (Math.PI / 180);
+                        const radiusPixels = (toolWidthMM / 2) * scaleFactor;
+                        const coneLengthPixels = radiusPixels / Math.tan(halfAngleRad);
+                        const coneBaseZ = this.canvasZ + coneLengthPixels;
+
+                        ctx.globalCompositeOperation = "destination-out";
+                        ctx.fillStyle = 'black';
+
+                        // Draw upper half: cone from tip to cone base, then full cylinder
+                        // to the stock surface. The vertical flip in doActualCut handles
+                        // the lower half automatically.
+                        ctx.beginPath();
+                        ctx.moveTo(this.canvasZ, centerY);                       // tip
+                        ctx.lineTo(coneBaseZ, centerY - radiusPixels);            // top of cone base
+                        ctx.lineTo(stockCanvas.width, centerY - radiusPixels);    // top of cylinder at surface
+                        ctx.lineTo(stockCanvas.width, centerY);                   // center at surface
+                        ctx.closePath();
+                        ctx.fill();
+
+                        ctx.globalCompositeOperation = "source-over";
+                    }
+                } else {
+                // Flat internal tool (boring bar, grooving, or non-centerline drill)
                 const dirZ = this.canvasZ - this.previousCanvasZ;
                 const dirX = this.canvasX - this.previousCanvasX;
                 const moveLength = Math.sqrt(dirZ * dirZ + dirX * dirX);
@@ -484,10 +584,9 @@ export class CanvasDrawer {
                 ctx.globalCompositeOperation = "destination-out";
                 ctx.fillStyle = 'black';
 
-                const centerY = stockCanvas.height / 2;
                 const currentRadiusGcode = Math.abs(this.currentX);
                 const currentRadiusPixels = currentRadiusGcode * scaleFactor;
-                
+
                 // For drilling on centerline (X=0), use half the tool diameter instead
                 const effectiveCurrentRadius = currentRadiusGcode === 0 ? (toolWidthMM / 2) * scaleFactor : currentRadiusPixels;
                 const currentToolEdgeY = centerY - effectiveCurrentRadius;
@@ -500,7 +599,7 @@ export class CanvasDrawer {
                 } else {
                     previousRadiusPixels = effectiveCurrentRadius;
                 }
-                
+
                 // For drilling on centerline at previous position, use half the tool diameter
                 const effectivePreviousRadius = previousRadiusPixels === 0 ? (toolWidthMM / 2) * scaleFactor : previousRadiusPixels;
                 const previousToolEdgeY = centerY - effectivePreviousRadius;
@@ -541,6 +640,7 @@ export class CanvasDrawer {
                 }
 
                 ctx.globalCompositeOperation = "source-over";
+                }
             } else {
                 // External cutting logic (turning, profiling, facing)
                 // Only remove material if the tool is inside the stock envelope
