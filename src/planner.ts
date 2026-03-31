@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const project = JSON.parse(projectData) as Project;
 
-    project.groups.forEach(group => {
+    project.groups.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(group => {
       const option = document.createElement('option');
       option.value = group.name;
       option.textContent = group.name;
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const group = project.groups.find(g => g.name === selectedGroup);
     if (!group) return;
 
-    group.jobs.forEach(job => {
+    group.jobs.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(job => {
       const option = document.createElement('option');
       option.value = job.name;
       option.textContent = job.name;
