@@ -5,6 +5,7 @@ import { gcodeSenderEditor } from './main';
 const gcodeCommands = [
     { command: '?', description: 'Get position and version info' },
     { command: '#', description: 'Display tool offsets' },
+    { command: '$', description: 'Print backlash values' },
     { command: '!', description: 'Stop running Gcode' },
     { command: '~', description: 'Continue running Gcode' },
     { command: '^', description: 'Print debug diagnostic info' },
@@ -283,7 +284,7 @@ export class GCode {
                 }
 
                 let positiveModifier = positive === true ? '' : '-';
-                let command = `G0 ${axis}${positiveModifier}${distance} F${feedrate}`;
+                let command = `G1 ${axis}${positiveModifier}${distance} F${feedrate}`;
                 if (this.sender) {
                     let commands = new Array(3);
                     commands[0] = 'G91'; //set to relative positioning
