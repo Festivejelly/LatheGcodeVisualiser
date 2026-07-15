@@ -1110,6 +1110,81 @@ input[type="file"]::file-selector-button:hover {
     cursor: help;
 }
 
+.color-select {
+    position: relative;
+    width: 220px;
+    max-width: 100%;
+}
+
+.color-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    background-color: #2a2a2d;
+    color: inherit;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.color-select-trigger:hover {
+    border-color: #888;
+}
+
+.color-select-trigger::after {
+    content: "\25BC";
+    margin-left: auto;
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.color-select-options {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background-color: #2a2a2d;
+    border: 1px solid #555;
+    border-radius: 4px;
+    z-index: 30;
+}
+
+.color-select-options.open {
+    display: block;
+}
+
+.color-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.color-option:hover,
+.color-option.selected {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.color-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.color-swatch.default-swatch {
+    background: repeating-linear-gradient(45deg, #555, #555 3px, #888 3px, #888 6px);
+}
+
 .task-manual {
     background-color: #4c956c;
 }

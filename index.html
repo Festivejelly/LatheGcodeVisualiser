@@ -1497,6 +1497,29 @@
                             <option value="TOOL_CHANGE">Tool Change</option>
                         </select>
                     </div>
+                    <div class="modal-pad">Task Colour:</div>
+                    <div>
+                        <div class="color-select" id="newTaskColorSelect">
+                            <button type="button" class="color-select-trigger" id="newTaskColorTrigger">
+                                <span class="color-swatch default-swatch" id="newTaskColorSwatch"></span>
+                                <span id="newTaskColorLabel">Default (by task type)</span>
+                            </button>
+                            <div class="color-select-options" id="newTaskColorOptions"></div>
+                        </div>
+                        <select id="newTaskColor" name="newTaskColor" style="display:none">
+                            <option value="">Default (by task type)</option>
+                            <option value="#f1c40f">Yellow</option>
+                            <option value="#95a5a6">Grey</option>
+                            <option value="#e74c3c">Red</option>
+                            <option value="#e67e22">Orange</option>
+                            <option value="#4c956c">Green</option>
+                            <option value="#386e97">Blue</option>
+                            <option value="#8e44ad">Purple</option>
+                            <option value="#d63384">Pink</option>
+                            <option value="#17a2b8">Teal</option>
+                            <option value="#6b4226">Brown</option>
+                        </select>
+                    </div>
                     <div class="modal-pad">Task Description:</div>
                     <div>
                         <textarea id="newTaskDescription" name="newTaskDescription" class="full-width-textarea" rows="8" cols="50" placeholder="Enter Description..."></textarea>

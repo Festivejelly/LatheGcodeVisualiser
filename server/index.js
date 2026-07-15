@@ -27,7 +27,7 @@ app.use(cors({
 
 // Explicitly handle preflight requests
 app.options('*', cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Initialize SQLite database
 const db = new sqlite3.Database(path.join(__dirname, 'lathe_data.db'));

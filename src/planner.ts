@@ -11,6 +11,11 @@ const addNewTask = document.getElementById('addNewTaskButton') as HTMLButtonElem
 const newTaskModal = document.getElementById('newTaskModal') as HTMLDivElement;
 const closeTaskModal = document.getElementById('closeNewTaskModal') as HTMLSpanElement;
 const newTaskType = document.getElementById('newTaskType') as HTMLSelectElement;
+const newTaskColor = document.getElementById('newTaskColor') as HTMLSelectElement;
+const newTaskColorTrigger = document.getElementById('newTaskColorTrigger') as HTMLButtonElement;
+const newTaskColorOptions = document.getElementById('newTaskColorOptions') as HTMLDivElement;
+const newTaskColorSwatch = document.getElementById('newTaskColorSwatch') as HTMLSpanElement;
+const newTaskColorLabel = document.getElementById('newTaskColorLabel') as HTMLSpanElement;
 const gcodeTaskContainer = document.getElementById('gcodeTaskContainer') as HTMLDivElement;
 const newTaskGcode = document.getElementById('newTaskGcode') as HTMLTextAreaElement;
 const saveNewTaskButton = document.getElementById('saveNewTaskButton') as HTMLButtonElement;
@@ -163,6 +168,7 @@ type TaskData = {
   toolName?: string; // For TOOL_CHANGE tasks
   isRepeatable?: boolean;
   order?: number;
+  color?: string; // Optional hex colour override for the task, chosen from a static preset list
 };
 
 type TaskCollection = {
@@ -179,12 +185,92 @@ type Project = {
   }[];
 };
 
+function getContrastingTextColor(hex: string): string {
+  const r = parseInt(hex.substring(1, 3), 16);
+  const g = parseInt(hex.substring(3, 5), 16);
+  const b = parseInt(hex.substring(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#000000' : '#ffffff';
+}
+
+// Applies a task's custom colour if it has one, otherwise falls back to the
+// type-based colour supplied by the task-manual/task-gcode/task-tool-change CSS classes.
+function applyTaskColor(element: HTMLElement, color?: string) {
+  if (color) {
+    element.style.backgroundColor = color;
+    element.style.color = getContrastingTextColor(color);
+  } else {
+    element.style.backgroundColor = '';
+    element.style.color = '';
+  }
+}
+
+// Builds the custom swatch-preview dropdown rows from the (hidden) native
+// newTaskColor <select>, which stays the single source of truth for the option list.
+function buildTaskColorOptions() {
+  newTaskColorOptions.innerHTML = '';
+  Array.from(newTaskColor.options).forEach(option => {
+    const row = document.createElement('div');
+    row.classList.add('color-option');
+    row.setAttribute('data-value', option.value);
+
+    const swatch = document.createElement('span');
+    swatch.classList.add('color-swatch');
+    if (option.value) {
+      swatch.style.backgroundColor = option.value;
+    } else {
+      swatch.classList.add('default-swatch');
+    }
+
+    const label = document.createElement('span');
+    label.textContent = option.textContent || '';
+
+    row.appendChild(swatch);
+    row.appendChild(label);
+
+    row.addEventListener('click', () => {
+      newTaskColor.value = option.value;
+      refreshTaskColorTrigger();
+      newTaskColorOptions.classList.remove('open');
+    });
+
+    newTaskColorOptions.appendChild(row);
+  });
+}
+
+// Syncs the trigger button's swatch/label and the highlighted row with newTaskColor.value.
+// Must be called after anything sets newTaskColor.value directly (bypassing the dropdown UI).
+function refreshTaskColorTrigger() {
+  const hex = newTaskColor.value;
+  const label = newTaskColor.options[newTaskColor.selectedIndex]?.textContent || '';
+
+  newTaskColorSwatch.style.backgroundColor = hex || '';
+  newTaskColorSwatch.classList.toggle('default-swatch', !hex);
+  newTaskColorLabel.textContent = label;
+
+  newTaskColorOptions.querySelectorAll('.color-option').forEach(row => {
+    row.classList.toggle('selected', row.getAttribute('data-value') === hex);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
 
   sender = Sender.getInstance();
   sender.addStatusChangeListener(() => handleStatusChange(), SenderClient.PLANNER);
   sender.addCurrentCommandListener(handleCurrentCommand);
+
+  buildTaskColorOptions();
+  refreshTaskColorTrigger();
+
+  newTaskColorTrigger.addEventListener('click', event => {
+    event.stopPropagation();
+    newTaskColorOptions.classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => {
+    newTaskColorOptions.classList.remove('open');
+  });
 
   function formatElapsedTime(ms: number): string {
     const totalSeconds = Math.floor(ms / 1000);
@@ -877,6 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
           newTask.setAttribute('data-task-name', taskData.name);
           newTask.setAttribute('data-collection-name', task.collectionName);
           newTask.textContent = taskData.name;
+          applyTaskColor(newTask, taskData.color);
           tasksToExecute.appendChild(newTask);
         }
       }
@@ -1019,6 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newTask.setAttribute('data-task-name', task.name);
         newTask.setAttribute('data-collection-name', taskCollectionName || '');
         newTask.textContent = task.name;
+        applyTaskColor(newTask, task.color);
         const infoButton = document.createElement('i');
         infoButton.classList.add('fas', 'fa-info-circle', 'fa-fw', 'show-info', 'icon-tooltip');
         infoButton.setAttribute('data-tooltip', 'Click for more info...');
@@ -1067,6 +1155,8 @@ document.addEventListener('DOMContentLoaded', () => {
     newTaskDescription.value = '';
     newTaskGcode.value = '';
     newCollectionName.value = '';
+    newTaskColor.value = '';
+    refreshTaskColorTrigger();
     newTaskModal.removeAttribute('data-task-id')
 
     collectionToSaveTo.value = '';
@@ -1114,6 +1204,7 @@ document.addEventListener('DOMContentLoaded', () => {
     newTask.setAttribute('data-task-id', taskId.toString());
     newTask.setAttribute('data-task-name', taskName);
     newTask.textContent = taskName;
+    applyTaskColor(newTask, newTaskColor.value || undefined);
 
     const infoButton = document.createElement('i');
     infoButton.classList.add('fas', 'fa-info-circle', 'fa-fw', 'show-info', 'icon-tooltip');
@@ -1133,7 +1224,8 @@ document.addEventListener('DOMContentLoaded', () => {
       id: taskId,
       name: taskName,
       type: newTaskType.value as TaskType,
-      description: newTaskDescription.value
+      description: newTaskDescription.value,
+      color: newTaskColor.value || undefined
     };
 
     if (newTaskType.value === TaskType.GCODE) {
@@ -1232,6 +1324,8 @@ document.addEventListener('DOMContentLoaded', () => {
         newTaskName.value = taskData.name;
         newTaskType.value = taskData.type.toString();
         newTaskDescription.value = taskData.description;
+        newTaskColor.value = taskData.color || '';
+        refreshTaskColorTrigger();
         collectionToSaveTo.value = currentCollectionName || 'default';
         taskTextTitle.textContent = 'Edit Task';
 
@@ -1284,6 +1378,8 @@ document.addEventListener('DOMContentLoaded', () => {
         newTaskName.value = taskData.name;
         newTaskType.value = taskData.type.toString();
         newTaskDescription.value = taskData.description;
+        newTaskColor.value = taskData.color || '';
+        refreshTaskColorTrigger();
         collectionToSaveTo.value = collectionName || 'default';
         taskTextTitle.textContent = 'Edit Task';
 

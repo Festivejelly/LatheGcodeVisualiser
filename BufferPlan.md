@@ -158,7 +158,265 @@ Based on existing code:
 ---
 ---
 
-# Plan B — Sender: Protocol-Aware Command Streaming
+# Plan B (revised) — Sender: `src/sender.ts` Buffering Refactor
+
+*This supersedes the original "Plan B" sketch further below where they disagree — that sketch was written against a hypothetical API (`peekNextLine`/`consumeLine`/`sendRaw`) that doesn't exist in the real sender. This revision is adapted directly to the actual `Sender` class in `src/sender.ts`, after reading it in full.*
+
+## Context
+
+The controller currently executes gcode strictly one line at a time: the sender writes a line, blocks until `ok`, writes the next. Plan A above describes the firmware side of a fix — a 16-slot motion ring buffer where `G0`/`G1`/bare-axis lines get an immediate `ok` on enqueue and run asynchronously, while non-motion ("sync") commands like `M0`, `G28`, `T1`, standalone `F`/`S` wait for the buffer to drain before executing, and real-time chars (`!`/`~`/`?`) bypass everything. This removes the stop-start stutter on runs of small fast moves.
+
+This plan covers only the sender (`src/sender.ts`), which today is a single-in-flight-command state machine shared by `gcode.ts`, `planner.ts`, and `quicktasks.ts`. It needs to become pipeline-aware: send ahead up to 16 motion lines, track how many are unacknowledged, and keep gating sync commands on full drain — mirroring the firmware's own classifier so the two sides agree on what's a motion command vs. a sync command.
+
+Decision already made with the user: line-highlighting in `planner.ts` (`getLineIndex()` / `notifyCurrentCommand`) will keep firing at **send time**, not at physical-completion time. Under pipelining this means the highlighted line can run up to 16 lines ahead of what the machine is actually cutting — accepted tradeoff, no new tracking needed for this.
+
+## Design
+
+### Field changes in `Sender` (`src/sender.ts:47-84`)
+
+Today's single `lineIndex` conflates two things that pipelining pulls apart: "next line to send" and "lines fully acknowledged." Replace it with:
+
+```ts
+private static readonly MAX_BUFFER = 16; // matches firmware ring buffer size
+
+private sendCursor = 0;       // next index in `this.lines` to consider sending
+private ackedCount = 0;       // count of lines whose 'ok' has been received — drives progress/completion
+private currentLineIndex = 0; // index of the most recently *sent* line — feeds getLineIndex() for planner's highlight
+private inFlight = 0;         // pipelined motion lines sent, ok not yet received
+private pumping = false;      // re-entrancy guard for pumpQueue()
+```
+
+`waitForOkOrError` stays, but narrows in meaning: it's now only set while a **sync** line (or a legacy single ad-hoc command) is in flight — motion lines pipeline via `inFlight` instead. `m0Waiting`, `m204Waiting`, `heldByHost`, `pauseReason`, `pauseGeneration` (`sender.ts:401-405`) are unchanged.
+
+Invariant maintained throughout: `sendCursor - ackedCount === inFlight + (waitForOkOrError ? 1 : 0)`. Blank/comment-only lines advance `sendCursor` and `ackedCount` together (nothing sent, nothing to ack), which keeps the invariant true and makes completion detection (`ackedCount >= lines.length`) correct.
+
+### Classifier (new private method, mirrors firmware's)
+
+```ts
+private classifyLine(line: string): 'motion' | 'sync' {
+    const gMatch = line.match(/^(?:N\d+\s*)?G(\d+)/i);
+    if (gMatch) {
+        const n = parseInt(gMatch[1], 10);
+        return (n === 0 || n === 1) ? 'motion' : 'sync';
+    }
+    if (/^[XZY]/i.test(line)) return 'motion'; // bare axis move, no G-word
+    return 'sync'; // M-codes, T, G28/G92, standalone F/S, everything else
+}
+```
+
+Only called on already comment-stripped, trimmed, non-empty lines (empty and true real-time chars `?`/`!`/`~` are handled elsewhere, unchanged).
+
+### `pumpQueue()` replaces `writeCurrentLine()` (`sender.ts:587-614`)
+
+Renamed because a single call can now send several motion lines in a burst. Update all 4 internal call sites (`resume()`, the two spots in `parseStatusPayload()`, and the ok-branch in `processResponse()`).
+
+```ts
+private async pumpQueue() {
+    if (this.pumping) return;
+    this.pumping = true;
+    try {
+        while (true) {
+            if (this.waitForOkOrError) return;
+            if (this.controllerState === 'waiting') return;
+
+            if (this.sendCursor >= this.lines.length) {
+                if (this.ackedCount >= this.lines.length) await this.done();
+                return;
+            }
+
+            const raw = this.lines[this.sendCursor];
+            const line = raw.split(';')[0].trim();
+            if (!line) {
+                this.sendCursor++;
+                this.ackedCount++;
+                continue;
+            }
+
+            const cls = this.classifyLine(line);
+
+            if (cls === 'motion') {
+                if (this.inFlight >= Sender.MAX_BUFFER) return; // buffer full, wait for an ok
+                this.sendCursor++;
+                this.inFlight++;
+            } else {
+                if (this.inFlight > 0) return; // sync: drain motion buffer first
+
+                this.m0Waiting = /^\s*M0\b/i.test(line);
+                if (this.m0Waiting) this.pauseGeneration++;
+                this.pauseReason = this.m0Waiting ? this.extractPauseReasonFromM0(raw) : undefined;
+                if (/^\s*M204\b/i.test(line)) this.m204Waiting = true;
+
+                this.sendCursor++;
+                this.waitForOkOrError = true;
+            }
+
+            this.currentLineIndex = this.sendCursor - 1;
+            this.currentLine = line;
+            this.notifyCurrentCommand(this.currentLine);
+
+            appendLineToResponseEditor(`command: ${line}`);
+            await this.write(line + '\n');
+
+            if (cls !== 'motion') return; // sync: must wait for its own ok
+            // motion: loop again, keep pipelining while buffer has room
+        }
+    } finally {
+        this.pumping = false;
+    }
+}
+```
+
+The `m0Waiting`/`m204Waiting`/`pauseReason`/`pauseGeneration` block is moved verbatim into the sync branch — since M-codes always classify as sync, and sync only ever sends once `inFlight === 0`, the existing "pause only happens with nothing else pending" guarantee still holds.
+
+### `processResponse()` ok-branch (`sender.ts:666-709`)
+
+```ts
+if (/^\s*ok\b/i.test(raw) || /\bok\b/i.test(raw)) {
+    // ... existing formatting/logging unchanged ...
+    if (this.m204Waiting && !this.waitForOkOrError) continue; // unchanged
+
+    const wasSyncInFlight = this.waitForOkOrError;
+    this.waitForOkOrError = false;
+    this.ackedCount++;
+    if (!wasSyncInFlight && this.inFlight > 0) this.inFlight--;
+
+    this.notifyStatusChange();
+
+    if (this.m0Waiting) continue;                     // unchanged
+    if (this.m204Waiting) { void this.write('?'); continue; } // unchanged
+    if (this.port && this.writer && !this.isDisconnecting && !this.waitForOkOrError) void this.write('?'); // unchanged
+
+    await this.pumpQueue(); // may send 0, 1, or many queued motion lines
+    continue;
+}
+```
+
+`error:` handling (`sender.ts:656-664`) needs no change — it already calls `this.stop()` unconditionally, and `stop()` is updated below to reset `inFlight`.
+
+### `stop()` / `resume()` / `done()` — reset `inFlight` too
+
+```ts
+private async done() {
+    this.waitForOkOrError = false;
+    this.lines = [];
+    this.sendCursor = 0;
+    this.ackedCount = 0;
+    this.inFlight = 0;
+    this.currentLineIndex = 0;
+    this.currentLine = '';
+    this.notifyStatusChange();
+}
+
+async stop() {
+    this.error = '';
+    await this.write('!');
+    this.heldByHost = true;
+    this.lines = [];
+    this.sendCursor = 0;
+    this.ackedCount = 0;
+    this.inFlight = 0;
+    this.currentLineIndex = 0;
+    this.currentLine = '';
+    this.notifyStatusChange();
+}
+```
+
+`resume()`'s trailing `await this.writeCurrentLine();` becomes `await this.pumpQueue();`.
+
+**Feed-hold path also needs the `inFlight` reset.** `sendCommand()`'s realtime branch (`sender.ts:486-491`) sends `!` directly and is used by `planner.ts`'s dedicated Feed Hold button, bypassing `stop()` entirely. Since firmware discards its ring buffer unconditionally on `!`, the sender must zero `inFlight` there too, or `ackedCount` will never catch up to `lines.length` again after a feed-hold (hanging `isStreaming()`/progress forever):
+
+```ts
+if (rt === '!' || rt === '~') {
+    appendLineToResponseEditor(`command: ${rt}`);
+    await this.write(rt);
+    if (rt === '!') this.inFlight = 0;
+    this.notifyStatusChange();
+    return;
+}
+```
+
+Note this deliberately does **not** clear `lines`/`sendCursor`/`ackedCount` here (unlike `stop()`) — this is the resumable feed-hold path used by planner's pause/resume UX, not an abort.
+
+### `start()` / `sendCommands()` — priming the pipeline
+
+Because `pumpQueue()`'s own loop already sends as many motion lines as fit, no separate "priming" logic is needed — reset state, then one `pumpQueue()` call:
+
+```ts
+async start(text: string, client: SenderClient) {
+    if (!text) return;
+    this.setActiveClient(client);
+    this.lines = text.split('\n');
+    this.sendCursor = 0;
+    this.ackedCount = 0;
+    this.inFlight = 0;
+    this.currentLineIndex = 0;
+    this.waitForOkOrError = false;
+    await this.write('~');
+    await this.pumpQueue();
+    this.notifyStatusChange();
+}
+```
+
+Same pattern for `sendCommands(commands, client)`.
+
+### `sendCommand()` (single ad-hoc line — jog, MDI dropdown)
+
+Route it through the same `pumpQueue()` path for consistency (one send-implementation instead of two that can drift). For a lone command with nothing queued behind it, motion-vs-sync classification is a no-op in practice — busy-until-ok holds either way. Leave the true real-time bypasses (`?`, `!`, `~`) untouched (plus the `inFlight = 0` addition above):
+
+```ts
+async sendCommand(command: string, client: SenderClient) {
+    this.setActiveClient(client);
+    const rt = command.trim();
+    if (rt === '?') { /* unchanged */ }
+    if (rt === '!' || rt === '~') { /* unchanged, + inFlight = 0 for '!' */ }
+
+    this.lines = [command];
+    this.sendCursor = 0;
+    this.ackedCount = 0;
+    this.inFlight = 0;
+    this.currentLineIndex = 0;
+    this.waitForOkOrError = false;
+    await this.pumpQueue();
+    this.notifyStatusChange();
+}
+```
+
+### Accessors — exact post-refactor semantics
+
+- `getLineIndex()` (`sender.ts:109-111`, read by `planner.ts:627` for the DOM highlight) → `return this.currentLineIndex;`
+- `hasPendingLines()` (`sender.ts:318-321`) → `this.ackedCount < (this.lines?.length ?? 0)`
+- `isStreaming()` (`sender.ts:395-399`) → `const total = this.lines?.length ?? 0; const acked = Math.min(this.ackedCount, total); return total > 0 && acked < total;` (the old `waitForOkOrError ||` prefix is subsumed — a sync line in flight always implies `ackedCount < total`)
+- `shouldShowResume()` (`sender.ts:169-173`) → same shape, swap `lineIndex` for `ackedCount`
+- `canResume()` (`sender.ts:435-438`) → unchanged
+- `getStatus()` (`sender.ts:127-163`) → `progress = ackedCount / total` (same meaning as before, just correctly tracks acknowledgment instead of send-cursor). No new `SenderStatus` fields — nothing consumes buffer depth today, don't add it speculatively.
+
+No changes needed in `planner.ts`, `gcode.ts`, or `quicktasks.ts` — they only consume the accessors above, whose contracts are preserved.
+
+## Integration risk to flag: `#` (tool offsets query)
+
+The Plan A command table above classifies `#` as **real-time** (handled immediately, no `ok`). But the sender's existing `getToolOffsets()` (`sender.ts:515-533`) sends `#` via `sendCommand()` and waits for a response containing **both** `toolOffsets:` and `ok` — meaning the *current* firmware does send `ok` after `#`. If Plan A is implemented exactly as tabled, this sender feature breaks (the wait will time out). This needs a decision on the firmware side: either keep `#` responding with `ok` (treat it as sync, not real-time, despite the table), or have the sender stop expecting `ok` for `#` and rely purely on the `toolOffsets:` payload. Worth resolving before/alongside implementing Plan A. (`^` and `$` from the same real-time row aren't used anywhere in the sender today, so no risk there.)
+
+## Critical files (revised plan)
+
+- `src/sender.ts` — all changes above
+- `src/planner.ts` — verify-only (lines ~607-751), no edits expected
+- `src/gcode.ts` — verify-only (lines ~142-175, 786-840), no edits expected
+- `src/quicktasks.ts` — verify-only (lines ~850-875), no edits expected
+
+## Verification (revised plan)
+
+1. Load a file with 50+ consecutive `G1` moves, hit send — confirm (via response editor / console logging) that up to 16 `ok`s can be in flight and lines stream continuously rather than one-at-a-time.
+2. Mixed file: several `G1`s, then `G28`, then more `G1`s — confirm `G28` only sends after the preceding motions are all acked, then motion resumes after `G28`'s own `ok`.
+3. `M0` mid-file — confirm pause still triggers correctly (planner's paused modal appears) only once prior motion has drained, and `resume()` continues streaming afterward.
+4. Hit Stop mid-run (both the main stop button calling `stop()` and planner's separate Feed Hold button calling `sendCommand('!', ...)`) — confirm `inFlight` and queue state reset so the UI doesn't get stuck thinking a job is still in progress.
+5. Single jog button clicks and MDI dropdown commands still work one at a time as before.
+6. Watch planner's line-highlight during a run of `G1`s — confirm it visibly advances ahead of physical motion (expected/accepted), and doesn't error or go out of range.
+7. Confirm `getToolOffsets()` still resolves once firmware-side `#` behavior is settled (see integration risk above) — test against actual hardware once Plan A lands.
+
+---
+---
+
+# Plan B (original sketch) — Sender: Protocol-Aware Command Streaming
 
 ## Context
 
