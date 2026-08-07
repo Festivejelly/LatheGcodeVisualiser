@@ -369,6 +369,17 @@ input.quick-task-summary {
     min-height: 100px;
 }
 
+.editor-hint {
+    font-size: 0.75em;
+    opacity: 0.6;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.editor-hint a {
+    color: inherit;
+}
+
 #gcodeSenderContainer {
     display: block;
 }

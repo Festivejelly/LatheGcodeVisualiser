@@ -6,6 +6,7 @@
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
     <link rel="stylesheet" href="/src/style.css">
     <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
+    <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ext-searchbox.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
@@ -27,6 +28,7 @@
             <div id="simulationContent" class="controls-container">
                 <div id="gcodeContainer" style="position: relative;">
                     <div id="gcodeEditor" style="height: 200px; width: 100%;"></div>
+                    <div class="editor-hint">Ctrl+F to find, Ctrl+H to find &amp; replace &mdash; <a href="https://github.com/ajaxorg/ace/wiki/default-keyboard-shortcuts" target="_blank" rel="noopener noreferrer">more editor shortcuts</a></div>
                 </div>
                 <div class="innerContainer">
                     <input type="file" id="fileInput" accept=".txt,.gcode">
