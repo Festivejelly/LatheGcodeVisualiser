@@ -139,6 +139,15 @@ input[readonly] {
     background-color: red;
 }
 
+.warning-notice {
+    background-color: rgba(255, 193, 7, 0.15);
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-weight: 600;
+    color: #ffc107;
+}
+
 .icon-container {
     width: 60px;
     height: 50px;

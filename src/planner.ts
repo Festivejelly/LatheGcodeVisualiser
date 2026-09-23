@@ -741,6 +741,23 @@ document.addEventListener('DOMContentLoaded', () => {
       connectButton.style.backgroundColor = 'green';
     }
 
+    // Controller entered hold/alarm on its own mid-job (e.g. pendant stop) - the sender has
+    // already abandoned the queued lines; terminate the task instead of treating it as a
+    // resumable M0-style pause.
+    if (jobInProgress && sender.consumeExternalStop()) {
+      gcodePausedModal.style.display = 'none';
+      cncTaskModal.style.display = 'none';
+      toolChangeTaskModal.style.display = 'none';
+      manualTaskModal.style.display = 'none';
+      modalOpen = false;
+      jobQueue.length = 0;
+      stopJobTimer();
+      jobCancelledModal.style.display = 'block';
+      jobInProgress = false;
+      sender.acknowledgeExternalStop();
+      return;
+    }
+
     const isRun = status.condition === 'run';
     const isHold = status.condition === 'hold';
     const streaming = sender.isStreaming();
@@ -764,12 +781,14 @@ document.addEventListener('DOMContentLoaded', () => {
       lastShownPauseGeneration = currentPauseGen;
     }
 
-    // Progress shows during streaming, run, or hold
+    // Progress shows during streaming, run, or hold - but only once this task has actually
+    // been started (jobInProgress). Without that gate, a newly-opened task dialog could show
+    // "Task in progress" from the previous task's motion still settling, before Execute is clicked.
     cncTaskSenderProgress.value = status.progress;
-    const showProgress = isRun || isHold || streaming;
+    const showProgress = jobInProgress && (isRun || isHold || streaming);
     cncTaskSenderProgress.style.display = showProgress ? 'block' : 'none';
     cncTaskSenderProgressLabel.style.display = showProgress ? 'block' : 'none';
-    cncTaskSenderProgressLabel.innerText = (isHold || canResume) ? 'Paused' : (isRun ? 'Task in progress' : '');
+    cncTaskSenderProgressLabel.innerText = showProgress ? ((isHold || canResume) ? 'Paused' : (isRun ? 'Task in progress' : '')) : '';
 
     // Completed / idle (no job pending)
     if (completed && !streaming && jobInProgress) {
@@ -1600,7 +1619,6 @@ document.addEventListener('DOMContentLoaded', () => {
       notConnectedModal.style.display = 'block';
       return;
     }
-    sender?.unhold();
 
     modalOpen = false;
 

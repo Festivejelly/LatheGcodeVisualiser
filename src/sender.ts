@@ -242,6 +242,21 @@ export class Sender {
         const wasWaiting = this.controllerState === 'waiting';
         this.controllerState = (lower === 'run' || lower === 'hold' || lower === 'alarm' || lower === 'waiting') ? lower : 'idle';
 
+        // While a job is streaming, the only states the controller should ever report are
+        // 'run' and 'hold' (hold covers both an M0 we sent and a feed hold we requested - both
+        // tracked separately via m0Waiting/heldByHost). 'idle' or 'alarm' mid-job is therefore
+        // unambiguous: the controller terminated the program on its own (e.g. pendant stop, or
+        // a fault) - abandon the queued lines instead of continuing to pump them at it.
+        const isActiveJob = this.lineIndex < this.lines.length || this.waitForOkOrError;
+        const isUnexpectedStop = (this.controllerState === 'idle' || this.controllerState === 'alarm') && isActiveJob;
+        if (isUnexpectedStop) {
+            this.externalStop = true;
+            this.lines = [];
+            this.lineIndex = 0;
+            this.waitForOkOrError = false;
+            this.currentLine = '';
+        }
+
         this.log(`Status received: <${payload}>`);
 
         for (let i = 1; i < parts.length; i++) {
@@ -303,6 +318,7 @@ export class Sender {
 
     async resume() {
         if (this.port && this.writer) {
+            appendLineToResponseEditor(`command: ~`);
             await this.write('~');
             this.heldByHost = false;
             this.m0Waiting = false;
@@ -403,6 +419,7 @@ export class Sender {
     private heldByHost = false;  // true after we send '!' (feed hold)
     private pauseReason: string | undefined;
     private pauseGeneration = 0; // increments each time an M0 pause occurs
+    private externalStop = false; // true when controller entered hold/alarm without us requesting it (e.g. pendant stop)
 
     public getPauseReason(): string | undefined {
         return this.pauseReason;
@@ -410,6 +427,25 @@ export class Sender {
 
     public getPauseGeneration(): number {
         return this.pauseGeneration;
+    }
+
+    // Returns true (and clears the flag) if the controller entered hold/alarm
+    // on its own - e.g. a pendant-initiated stop - while a job was streaming.
+    public consumeExternalStop(): boolean {
+        const v = this.externalStop;
+        this.externalStop = false;
+        return v;
+    }
+
+    // Clears any leftover pause bookkeeping after an external stop has been consumed.
+    // Unlike stop()/unhold(), this does NOT write to the controller: an external stop already
+    // returns the controller to idle on its own, so sending '!'/'~' afterwards is unnecessary
+    // and shows up as a confusing "resume received" line in the controller's own log.
+    public acknowledgeExternalStop() {
+        this.heldByHost = false;
+        this.m0Waiting = false;
+        this.pauseReason = undefined;
+        this.notifyStatusChange();
     }
 
     private extractPauseReasonFromM0(raw: string): string | undefined {
@@ -462,6 +498,7 @@ export class Sender {
         if (!text) return;
         this.setActiveClient(client);
 
+        this.externalStop = false;
         this.lines = text.split('\n');
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -500,6 +537,7 @@ export class Sender {
     async sendCommands(commands: string[], client: SenderClient) {
         this.setActiveClient(client);
 
+        this.externalStop = false;
         this.lines = commands;
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -544,6 +582,7 @@ export class Sender {
 
     async stop() {
         this.error = '';
+        appendLineToResponseEditor(`command: !`);
         await this.write('!');
         this.heldByHost = true;
         this.lines = [];
@@ -554,6 +593,7 @@ export class Sender {
 
     async unhold() {
         if (this.port && this.writer) {
+            appendLineToResponseEditor(`command: ~`);
             await this.write('~');
             this.heldByHost = false;
             this.m0Waiting = false;
