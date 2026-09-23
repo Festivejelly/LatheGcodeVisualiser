@@ -11,6 +11,11 @@ const addNewTask = document.getElementById('addNewTaskButton') as HTMLButtonElem
 const newTaskModal = document.getElementById('newTaskModal') as HTMLDivElement;
 const closeTaskModal = document.getElementById('closeNewTaskModal') as HTMLSpanElement;
 const newTaskType = document.getElementById('newTaskType') as HTMLSelectElement;
+const newTaskColor = document.getElementById('newTaskColor') as HTMLSelectElement;
+const newTaskColorTrigger = document.getElementById('newTaskColorTrigger') as HTMLButtonElement;
+const newTaskColorOptions = document.getElementById('newTaskColorOptions') as HTMLDivElement;
+const newTaskColorSwatch = document.getElementById('newTaskColorSwatch') as HTMLSpanElement;
+const newTaskColorLabel = document.getElementById('newTaskColorLabel') as HTMLSpanElement;
 const gcodeTaskContainer = document.getElementById('gcodeTaskContainer') as HTMLDivElement;
 const newTaskGcode = document.getElementById('newTaskGcode') as HTMLTextAreaElement;
 const saveNewTaskButton = document.getElementById('saveNewTaskButton') as HTMLButtonElement;
@@ -88,7 +93,7 @@ const completeManualTaskButton = document.getElementById('completeManualTask') a
 const manualTaskDescription = document.getElementById('manualTaskDescription') as HTMLTextAreaElement;
 const cncTaskDescription = document.getElementById('cncTaskDescription') as HTMLTextAreaElement;
 const toolChangeTaskDescription = document.getElementById('toolChangeTaskDescription') as HTMLTextAreaElement;
-const cncTaskGcode = document.getElementById('cncTaskGcode') as HTMLTextAreaElement;
+const cncTaskGcode = document.getElementById('cncTaskGcode') as HTMLDivElement;
 const cancelCncTaskButton = document.getElementById('cancelCncTask') as HTMLButtonElement;
 const executeGcodeButton = document.getElementById('executeGcode') as HTMLButtonElement;
 const completeCncTaskButton = document.getElementById('completeCncTask') as HTMLButtonElement;
@@ -99,6 +104,8 @@ const cncTaskSenderProgress = document.getElementById('cncTaskSenderProgress') a
 const skipCncTaskButton = document.getElementById('skipCncTask') as HTMLButtonElement;
 const skipManualTaskButton = document.getElementById('skipManualTask') as HTMLButtonElement;
 const skipToolChangeTaskButton = document.getElementById('skipToolChangeTask') as HTMLButtonElement;
+const cncFeedHoldButton = document.getElementById('cncFeedHold') as HTMLButtonElement;
+const cncFeedResumeButton = document.getElementById('cncFeedResume') as HTMLButtonElement;
 
 //tool change elements
 
@@ -130,6 +137,13 @@ const currentGcodeLine = document.getElementById('currentGcodeLine') as HTMLSpan
 const currentFeedrateContainer = document.getElementById('currentFeedrateContainer') as HTMLDivElement;
 const currentFeedrate = document.getElementById('currentFeedrate') as HTMLSpanElement;
 
+//elapsed time elements
+const jobElapsedTime = document.getElementById('jobElapsedTime') as HTMLSpanElement;
+const jobTotalTime = document.getElementById('jobTotalTime') as HTMLSpanElement;
+
+let jobStartTime: number | null = null;
+let jobTimerInterval: ReturnType<typeof setInterval> | null = null;
+
 
 //create type to represent job which is an array of tasks: {"name": "","tasks": [{"id": "","collectionName": ""}]}
 type Job = {
@@ -154,6 +168,7 @@ type TaskData = {
   toolName?: string; // For TOOL_CHANGE tasks
   isRepeatable?: boolean;
   order?: number;
+  color?: string; // Optional hex colour override for the task, chosen from a static preset list
 };
 
 type TaskCollection = {
@@ -170,12 +185,118 @@ type Project = {
   }[];
 };
 
+function getContrastingTextColor(hex: string): string {
+  const r = parseInt(hex.substring(1, 3), 16);
+  const g = parseInt(hex.substring(3, 5), 16);
+  const b = parseInt(hex.substring(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#000000' : '#ffffff';
+}
+
+// Applies a task's custom colour if it has one, otherwise falls back to the
+// type-based colour supplied by the task-manual/task-gcode/task-tool-change CSS classes.
+function applyTaskColor(element: HTMLElement, color?: string) {
+  if (color) {
+    element.style.backgroundColor = color;
+    element.style.color = getContrastingTextColor(color);
+  } else {
+    element.style.backgroundColor = '';
+    element.style.color = '';
+  }
+}
+
+// Builds the custom swatch-preview dropdown rows from the (hidden) native
+// newTaskColor <select>, which stays the single source of truth for the option list.
+function buildTaskColorOptions() {
+  newTaskColorOptions.innerHTML = '';
+  Array.from(newTaskColor.options).forEach(option => {
+    const row = document.createElement('div');
+    row.classList.add('color-option');
+    row.setAttribute('data-value', option.value);
+
+    const swatch = document.createElement('span');
+    swatch.classList.add('color-swatch');
+    if (option.value) {
+      swatch.style.backgroundColor = option.value;
+    } else {
+      swatch.classList.add('default-swatch');
+    }
+
+    const label = document.createElement('span');
+    label.textContent = option.textContent || '';
+
+    row.appendChild(swatch);
+    row.appendChild(label);
+
+    row.addEventListener('click', () => {
+      newTaskColor.value = option.value;
+      refreshTaskColorTrigger();
+      newTaskColorOptions.classList.remove('open');
+    });
+
+    newTaskColorOptions.appendChild(row);
+  });
+}
+
+// Syncs the trigger button's swatch/label and the highlighted row with newTaskColor.value.
+// Must be called after anything sets newTaskColor.value directly (bypassing the dropdown UI).
+function refreshTaskColorTrigger() {
+  const hex = newTaskColor.value;
+  const label = newTaskColor.options[newTaskColor.selectedIndex]?.textContent || '';
+
+  newTaskColorSwatch.style.backgroundColor = hex || '';
+  newTaskColorSwatch.classList.toggle('default-swatch', !hex);
+  newTaskColorLabel.textContent = label;
+
+  newTaskColorOptions.querySelectorAll('.color-option').forEach(row => {
+    row.classList.toggle('selected', row.getAttribute('data-value') === hex);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
 
   sender = Sender.getInstance();
   sender.addStatusChangeListener(() => handleStatusChange(), SenderClient.PLANNER);
   sender.addCurrentCommandListener(handleCurrentCommand);
+
+  buildTaskColorOptions();
+  refreshTaskColorTrigger();
+
+  newTaskColorTrigger.addEventListener('click', event => {
+    event.stopPropagation();
+    newTaskColorOptions.classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => {
+    newTaskColorOptions.classList.remove('open');
+  });
+
+  function formatElapsedTime(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function startJobTimer() {
+    stopJobTimer();
+    jobStartTime = Date.now();
+    jobElapsedTime.innerText = '00:00:00';
+    jobTimerInterval = setInterval(() => {
+      if (jobStartTime !== null) {
+        jobElapsedTime.innerText = formatElapsedTime(Date.now() - jobStartTime);
+      }
+    }, 1000);
+  }
+
+  function stopJobTimer() {
+    if (jobTimerInterval !== null) {
+      clearInterval(jobTimerInterval);
+      jobTimerInterval = null;
+    }
+  }
 
   plannerContainer.addEventListener('containerVisible', async () => {
 
@@ -401,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const project = JSON.parse(projectData) as Project;
 
-    project.groups.forEach(group => {
+    project.groups.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(group => {
       const option = document.createElement('option');
       option.value = group.name;
       option.textContent = group.name;
@@ -427,13 +548,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  var hasResumed = false;
+  var lastShownPauseGeneration = -1;
+
+  cncFeedHoldButton.onclick = async function () {
+    await sender?.sendCommand('!', SenderClient.PLANNER);
+  }
+
+  cncFeedResumeButton.onclick = async function () {
+    await sender?.sendCommand('~', SenderClient.PLANNER);
+  }
 
   gcodePausedResumeTaskButton.onclick = async function () {
     // Resume the GCode task
     modalOpen = false;
     gcodePausedModal.style.display = 'none';
-    hasResumed = true;
     sender?.resume();
   }
 
@@ -441,8 +569,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cancel the GCode task
     modalOpen = false;
     gcodePausedModal.style.display = 'none';
-    hasResumed = false;
     jobInProgress = false;
+    stopJobTimer();
 
     cncTaskModal.style.display = 'none';
     jobQueue.length = 0;
@@ -492,7 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const group = project.groups.find(g => g.name === selectedGroup);
     if (!group) return;
 
-    group.jobs.forEach(job => {
+    group.jobs.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(job => {
       const option = document.createElement('option');
       option.value = job.name;
       option.textContent = job.name;
@@ -580,6 +708,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       currentFeedrateContainer.style.display = 'block';
       currentGcodeLineContainer.style.display = 'block';
+
+      // Highlight the current line in the gcode container
+      const lineIndex = sender.getLineIndex();
+      const lineElements = cncTaskGcode.children;
+      if (lineIndex >= 0 && lineIndex < lineElements.length) {
+        const prev = cncTaskGcode.querySelector('.gcode-line-active');
+        if (prev) prev.classList.remove('gcode-line-active');
+        lineElements[lineIndex].classList.add('gcode-line-active');
+        lineElements[lineIndex].scrollIntoView({ block: 'nearest' });
+      }
     }
   }
 
@@ -603,36 +741,58 @@ document.addEventListener('DOMContentLoaded', () => {
       connectButton.style.backgroundColor = 'green';
     }
 
-    const isRun = status.condition === 'run';   // controller
-    const streaming = sender.isStreaming();     // host-batch (waiting || lines left)
-    const canResume = sender.canResume();       // explicit pause (M0 or feed-hold)
+    // Controller entered hold/alarm on its own mid-job (e.g. pendant stop) - the sender has
+    // already abandoned the queued lines; terminate the task instead of treating it as a
+    // resumable M0-style pause.
+    if (jobInProgress && sender.consumeExternalStop()) {
+      gcodePausedModal.style.display = 'none';
+      cncTaskModal.style.display = 'none';
+      toolChangeTaskModal.style.display = 'none';
+      manualTaskModal.style.display = 'none';
+      modalOpen = false;
+      jobQueue.length = 0;
+      stopJobTimer();
+      jobCancelledModal.style.display = 'block';
+      jobInProgress = false;
+      sender.acknowledgeExternalStop();
+      return;
+    }
+
+    const isRun = status.condition === 'run';
+    const isHold = status.condition === 'hold';
+    const streaming = sender.isStreaming();
+    const canResume = sender.canResume();
     const reason = sender.getPauseReason();
-    const busy = isRun || streaming || canResume;
+    const busy = isRun || isHold || streaming || canResume;
 
     const completed = !busy && !streaming;      // truly idle/no job
 
-    //Show modal if paused by M0 (canResume)
-    //display modal with the reason, if its already open just ignore
-    if (canResume && !modalOpen && !hasResumed && jobInProgress) {
+    // Stop timer as soon as sender finishes streaming (all lines sent and acknowledged)
+    if (!streaming && jobTimerInterval !== null) {
+      stopJobTimer();
+    }
+
+    // Show modal if paused by M0 (hold state or canResume)
+    const currentPauseGen = sender?.getPauseGeneration() ?? -1;
+    if ((isHold || canResume) && !modalOpen && jobInProgress && currentPauseGen !== lastShownPauseGeneration) {
       gcodePausedMessage.innerText = reason || 'Please complete the required action, then click Resume.';
       gcodePausedModal.style.display = 'block';
       modalOpen = true;
-    } else if (hasResumed && !canResume) {
-      // Reset hasResumed when the pause condition is cleared
-      gcodePausedModal.style.display = 'none';
-      modalOpen = false;
-      hasResumed = false;
+      lastShownPauseGeneration = currentPauseGen;
     }
 
-    // Progress shows during streaming or run (label tweaks optional)
+    // Progress shows during streaming, run, or hold - but only once this task has actually
+    // been started (jobInProgress). Without that gate, a newly-opened task dialog could show
+    // "Task in progress" from the previous task's motion still settling, before Execute is clicked.
     cncTaskSenderProgress.value = status.progress;
-    const showProgress = isRun || streaming;
+    const showProgress = jobInProgress && (isRun || isHold || streaming);
     cncTaskSenderProgress.style.display = showProgress ? 'block' : 'none';
     cncTaskSenderProgressLabel.style.display = showProgress ? 'block' : 'none';
-    cncTaskSenderProgressLabel.innerText = canResume ? 'Paused' : (isRun ? 'Task in progress' : '');
+    cncTaskSenderProgressLabel.innerText = showProgress ? ((isHold || canResume) ? 'Paused' : (isRun ? 'Task in progress' : '')) : '';
 
     // Completed / idle (no job pending)
     if (completed && !streaming && jobInProgress) {
+      stopJobTimer();
       completeCncTaskButton.style.display = 'block';
       completeCncTaskButton.disabled = false;
       completeCncTaskButton.classList.add('interaction-ready-button');
@@ -651,6 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } else if (!busy) {
       // Idle (no job pending) → hide “complete”, enable execute/tool-change
+      stopJobTimer();
       completeCncTaskButton.style.display = 'none';
       completeCncTaskButton.classList.remove('interaction-ready-button');
       completeToolChangeTaskButton.style.display = 'none';
@@ -665,19 +826,18 @@ document.addEventListener('DOMContentLoaded', () => {
       executeToolChangeButton.classList.remove('disabled-button');
       executeToolChangeButton.classList.add('interaction-ready-button');
 
-    } else {
-      // Running or paused → hide “complete”, disable execute/tool-change
+    } else if (jobInProgress) {
+      // Running or paused with an active job → hide "complete", disable execute/tool-change
       completeCncTaskButton.style.display = 'none';
       completeCncTaskButton.classList.remove('interaction-ready-button');
       completeToolChangeTaskButton.style.display = 'none';
       completeToolChangeTaskButton.classList.remove('interaction-ready-button');
 
-      const disableActions = true;
-      executeGcodeButton.disabled = disableActions;
+      executeGcodeButton.disabled = true;
       executeGcodeButton.classList.add('disabled-button');
       executeGcodeButton.classList.remove('interaction-ready-button');
 
-      executeToolChangeButton.disabled = disableActions;
+      executeToolChangeButton.disabled = true;
       executeToolChangeButton.classList.add('disabled-button');
       executeToolChangeButton.classList.remove('interaction-ready-button');
     }
@@ -706,11 +866,23 @@ document.addEventListener('DOMContentLoaded', () => {
     removeOnSpill: false,
   });
 
+  // Prevent touch scrolling while dragging by disabling touch-action on the body.
+  // Uses touch-action CSS instead of touchmove preventDefault because Windows
+  // touchscreens use Pointer Events, not Touch Events.
+  drake.on('drag', () => {
+    document.body.style.touchAction = 'none';
+  });
+
   // Listen for the 'dragend' event to update task numbers
   drake.on('dragend', () => {
+    document.body.style.touchAction = '';
     updateTaskNumbers();
     rebuildTaskElements();
     saveJob('currentJob');
+  });
+
+  drake.on('cancel', () => {
+    document.body.style.touchAction = '';
   });
 
   async function saveJob(name: string, group: string = '', project: string = '') {
@@ -810,6 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
           newTask.setAttribute('data-task-name', taskData.name);
           newTask.setAttribute('data-collection-name', task.collectionName);
           newTask.textContent = taskData.name;
+          applyTaskColor(newTask, taskData.color);
           tasksToExecute.appendChild(newTask);
         }
       }
@@ -952,6 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newTask.setAttribute('data-task-name', task.name);
         newTask.setAttribute('data-collection-name', taskCollectionName || '');
         newTask.textContent = task.name;
+        applyTaskColor(newTask, task.color);
         const infoButton = document.createElement('i');
         infoButton.classList.add('fas', 'fa-info-circle', 'fa-fw', 'show-info', 'icon-tooltip');
         infoButton.setAttribute('data-tooltip', 'Click for more info...');
@@ -1000,6 +1174,8 @@ document.addEventListener('DOMContentLoaded', () => {
     newTaskDescription.value = '';
     newTaskGcode.value = '';
     newCollectionName.value = '';
+    newTaskColor.value = '';
+    refreshTaskColorTrigger();
     newTaskModal.removeAttribute('data-task-id')
 
     collectionToSaveTo.value = '';
@@ -1047,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     newTask.setAttribute('data-task-id', taskId.toString());
     newTask.setAttribute('data-task-name', taskName);
     newTask.textContent = taskName;
+    applyTaskColor(newTask, newTaskColor.value || undefined);
 
     const infoButton = document.createElement('i');
     infoButton.classList.add('fas', 'fa-info-circle', 'fa-fw', 'show-info', 'icon-tooltip');
@@ -1066,7 +1243,8 @@ document.addEventListener('DOMContentLoaded', () => {
       id: taskId,
       name: taskName,
       type: newTaskType.value as TaskType,
-      description: newTaskDescription.value
+      description: newTaskDescription.value,
+      color: newTaskColor.value || undefined
     };
 
     if (newTaskType.value === TaskType.GCODE) {
@@ -1165,6 +1343,8 @@ document.addEventListener('DOMContentLoaded', () => {
         newTaskName.value = taskData.name;
         newTaskType.value = taskData.type.toString();
         newTaskDescription.value = taskData.description;
+        newTaskColor.value = taskData.color || '';
+        refreshTaskColorTrigger();
         collectionToSaveTo.value = currentCollectionName || 'default';
         taskTextTitle.textContent = 'Edit Task';
 
@@ -1217,6 +1397,8 @@ document.addEventListener('DOMContentLoaded', () => {
         newTaskName.value = taskData.name;
         newTaskType.value = taskData.type.toString();
         newTaskDescription.value = taskData.description;
+        newTaskColor.value = taskData.color || '';
+        refreshTaskColorTrigger();
         collectionToSaveTo.value = collectionName || 'default';
         taskTextTitle.textContent = 'Edit Task';
 
@@ -1252,13 +1434,13 @@ document.addEventListener('DOMContentLoaded', () => {
   completeTaskCloseButton.onclick = function () {
     completeTaskModal.style.display = 'none';
     jobInProgress = false; // Ensure it's reset when closing completion modal
-    hasResumed = false;
     modalOpen = false;
   }
 
   function executeNextTask() {
     if (jobQueue.length === 0) {
       jobInProgress = false; // Reset when job completes
+      jobTotalTime.innerText = jobElapsedTime.innerText;
       completeTaskModal.style.display = 'block';
       return;
     }
@@ -1291,7 +1473,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       cncTaskName.textContent = `Task ${task.order}: ${task.name}`;
-      cncTaskGcode.value = task.gcode ?? '';
+      const gcode = task.gcode ?? '';
+      cncTaskGcode.innerHTML = '';
+      gcode.split('\n').forEach(line => {
+        const div = document.createElement('div');
+        div.className = 'gcode-line';
+        div.textContent = line || '\u00A0';
+        cncTaskGcode.appendChild(div);
+      });
       cncTaskModal.style.display = 'block';
 
       if (jobQueue.length === 0) {
@@ -1333,15 +1522,16 @@ document.addEventListener('DOMContentLoaded', () => {
   cancelManualTaskButton.onclick = function () {
     manualTaskModal.style.display = 'none';
     jobQueue.length = 0;
+    stopJobTimer();
     jobCancelledModal.style.display = 'block';
   }
 
   cancelCncTaskButton.onclick = function () {
     cncTaskModal.style.display = 'none';
     jobQueue.length = 0;
+    stopJobTimer();
     jobCancelledModal.style.display = 'block';
     jobInProgress = false;
-    hasResumed = false;
     modalOpen = false;
     sender?.stop();
     sender?.unhold();
@@ -1350,9 +1540,9 @@ document.addEventListener('DOMContentLoaded', () => {
   cancelToolChangeButton.onclick = function () {
     toolChangeTaskModal.style.display = 'none';
     jobQueue.length = 0;
+    stopJobTimer();
     jobCancelledModal.style.display = 'block';
     jobInProgress = false;
-    hasResumed = false;
     modalOpen = false;
     sender?.stop();
     sender?.unhold();
@@ -1370,7 +1560,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     jobInProgress = false;
 
-    sender?.unhold();
     executeNextTask();
   }
 
@@ -1395,24 +1584,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     jobInProgress = false;
 
-    sender?.unhold();
     executeNextTask();
   }
 
   executeGcodeButton.onclick = function () {
-    hasResumed = false;
     modalOpen = false;
     jobInProgress = true;
+    startJobTimer();
     if (sender) {
       sender?.unhold();
-      sender.start(cncTaskGcode.value, SenderClient.PLANNER);
+      const gcodeText = Array.from(cncTaskGcode.children).map(el => el.textContent === '\u00A0' ? '' : el.textContent).join('\n');
+      sender.start(gcodeText, SenderClient.PLANNER);
     }
   }
 
   executeToolChangeButton.onclick = function () {
-    hasResumed = false;
     modalOpen = false;
     jobInProgress = true;
+    startJobTimer();
     if (sender) {
       sender?.unhold();
       sender.start(toolChangeNewTool.value, SenderClient.PLANNER);
@@ -1422,7 +1611,6 @@ document.addEventListener('DOMContentLoaded', () => {
   jobCancelledCloseButton.onclick = function () {
     jobCancelledModal.style.display = 'none';
     jobInProgress = false;
-    hasResumed = false;
     modalOpen = false;
   }
 
@@ -1431,11 +1619,8 @@ document.addEventListener('DOMContentLoaded', () => {
       notConnectedModal.style.display = 'block';
       return;
     }
-    sender?.unhold();
 
-    hasResumed = false;
     modalOpen = false;
-
 
     const tasks = tasksToExecute.querySelectorAll('.task-to-execute');
 

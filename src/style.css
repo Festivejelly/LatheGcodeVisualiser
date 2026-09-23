@@ -139,6 +139,15 @@ input[readonly] {
     background-color: red;
 }
 
+.warning-notice {
+    background-color: rgba(255, 193, 7, 0.15);
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-weight: 600;
+    color: #ffc107;
+}
+
 .icon-container {
     width: 60px;
     height: 50px;
@@ -361,6 +370,23 @@ input.quick-task-summary {
 #gcodeContainer {
     position: relative;
     width: 100%;
+}
+
+#gcodeEditor {
+    resize: vertical;
+    overflow: auto;
+    min-height: 100px;
+}
+
+.editor-hint {
+    font-size: 0.75em;
+    opacity: 0.6;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.editor-hint a {
+    color: inherit;
 }
 
 #gcodeSenderContainer {
@@ -601,7 +627,7 @@ input[type="file"]::file-selector-button:hover {
     background-color: #6c5ce7;
 }
 
-#latheControls .zero-btn {
+#latheControls .zero-btn, #latheControls .home-btn, #latheControls .centre-btn {
     /* existing styles */
     width: 50px;
     height: 50px;
@@ -616,6 +642,11 @@ input[type="file"]::file-selector-button:hover {
     padding: 0px;
 }
 
+.centre-btn {
+    background-color: #ff6f61;
+    font-size: 18px !important;
+}
+
 #latheControls .zero-btn:hover {
     background-color: #6c5ce7;
 }
@@ -628,7 +659,7 @@ input[type="file"]::file-selector-button:hover {
     background-color: #915b26;
 }
 
-.zero-btn {
+.zero-btn, .home-btn, .centre-btn {
     grid-column: var(--col);
     grid-row: var(--row);
 }
@@ -1063,6 +1094,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #availableTasks div {
+    touch-action: none;
     box-sizing: border-box;
     padding: 5px;
 }
@@ -1074,6 +1106,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #tasksToExecute div {
+    touch-action: none;
     margin: 5px;
 }
 
@@ -1095,6 +1128,81 @@ input[type="file"]::file-selector-button:hover {
 .available-task i {
     margin-left: 5px;
     cursor: help;
+}
+
+.color-select {
+    position: relative;
+    width: 220px;
+    max-width: 100%;
+}
+
+.color-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    background-color: #2a2a2d;
+    color: inherit;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.color-select-trigger:hover {
+    border-color: #888;
+}
+
+.color-select-trigger::after {
+    content: "\25BC";
+    margin-left: auto;
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.color-select-options {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background-color: #2a2a2d;
+    border: 1px solid #555;
+    border-radius: 4px;
+    z-index: 30;
+}
+
+.color-select-options.open {
+    display: block;
+}
+
+.color-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.color-option:hover,
+.color-option.selected {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.color-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.color-swatch.default-swatch {
+    background: repeating-linear-gradient(45deg, #555, #555 3px, #888 3px, #888 6px);
 }
 
 .task-manual {
@@ -1473,6 +1581,26 @@ input[type="file"]::file-selector-button:hover {
     width: 100%;
     box-sizing: border-box;
     resize: vertical;
+}
+
+.gcode-line-container {
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 13px;
+    background: #1e1e1e;
+    border: 1px solid #555;
+    padding: 4px 0;
+}
+
+.gcode-line {
+    padding: 1px 8px;
+    white-space: pre;
+}
+
+.gcode-line-active {
+    background: #264f78;
+    color: #fff;
 }
 
 .center-modal {

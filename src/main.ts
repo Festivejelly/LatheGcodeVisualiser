@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   quickTasksTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
-    controlContent.style.display = 'none';
+    controlContent.style.display = 'flex';
     quickTasksContent.style.display = 'flex';
     plannerContent.style.display = 'none';
     connectionContainer.style.display = 'block';
@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   plannerTab.addEventListener('click', () => {
     simulationContent.style.display = 'none';
-    controlContent.style.display = 'none';
+    controlContent.style.display = 'flex';
     quickTasksContent.style.display = 'none';
     plannerContent.style.display = 'flex';
     connectionContainer.style.display = 'block';
@@ -198,6 +198,15 @@ document.addEventListener("DOMContentLoaded", () => {
     gcodeEditorTextarea.setAttribute('id', 'gcodeEditor-textarea');
     gcodeEditorTextarea.setAttribute('aria-label', 'G-Code Editor - Enter your G-code here');
     gcodeEditorTextarea.setAttribute('role', 'textbox');
+  }
+
+  // Add ResizeObserver to make ace editor resize with container
+  const gcodeEditorElement = document.getElementById('gcodeEditor');
+  if (gcodeEditorElement) {
+    const resizeObserver = new ResizeObserver(() => {
+      editor.resize();
+    });
+    resizeObserver.observe(gcodeEditorElement);
   }
 
   gcodeSenderEditor.setTheme("ace/theme/github_dark");

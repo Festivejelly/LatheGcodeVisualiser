@@ -14,7 +14,7 @@ export enum StatusType {
 export class SenderStatus {
     constructor(
         readonly isConnected: boolean,
-        readonly condition: 'disconnected' | 'idle' | 'run',
+        readonly condition: 'disconnected' | 'idle' | 'run' | 'hold' | 'alarm' | 'waiting',
         readonly error: string,
         readonly progress: number,
         readonly currentLine: string,
@@ -30,6 +30,8 @@ export class SenderStatus {
         readonly yEna: number,
         readonly feed: number,
         readonly rpm: number,
+        readonly tool: number,
+        readonly angle: number,
         readonly version: string,
         readonly lastResponse: string,
         readonly isStreaming: boolean) { }
@@ -50,8 +52,9 @@ export class Sender {
     private readTimeout = 0;
     private reader: ReadableStreamDefaultReader<string> | null = null;
     private writer: WritableStreamDefaultWriter<string> | null = null;
-    private isOn = false;
+    private controllerState: 'idle' | 'run' | 'hold' | 'alarm' | 'waiting' = 'idle';
     private waitForOkOrError = false;
+
     private lines: string[] = [];
     private lineIndex = 0;
     private remainingResponse = '';
@@ -70,10 +73,13 @@ export class Sender {
     private yEna = 0;
     private feed = 0;
     private rpm = 0;
+    private tool = 0;
+    private angle = 0;
     private isDisconnecting = false;
     private lastStatus: SenderStatus | null = null;
     private version = '';
     private lastResponse = '';
+    private showNextStatus = false;
 
     private statusPollInterval: number | null = null;
 
@@ -96,8 +102,8 @@ export class Sender {
     }
 
     //getters for debugging
-    public getIsOn(): boolean {
-        return this.isOn;
+    public getControllerState(): string {
+        return this.controllerState;
     }
 
     public getLineIndex(): number {
@@ -131,7 +137,7 @@ export class Sender {
 
         this.lastStatus = new SenderStatus(
             this.port !== null,
-            this.isOn ? 'run' : 'idle',
+            this.controllerState,
             this.error,
             progress,
             this.currentLine,
@@ -147,6 +153,8 @@ export class Sender {
             this.yEna,
             this.feed,
             this.rpm,
+            this.tool,
+            this.angle,
             this.version,
             this.lastResponse,
             streaming
@@ -159,7 +167,7 @@ export class Sender {
     }
 
     public shouldShowResume(): boolean {
-        return !this.isOn &&                      // Controller is paused/idle
+        return this.controllerState !== 'run' &&    // Controller is paused/idle
             this.lineIndex < this.lines.length && // Still have lines to send
             this.lines.length > 0;                // There is actually a job loaded
     }
@@ -170,12 +178,8 @@ export class Sender {
 
     private notifyStatusChange() {
         this.listeners.forEach(listener => {
-            if (listener.client === this.activeClient) {
-                this.log(`Notifying ${listener.client} listener`);
-                listener.callback();
-            } else {
-                this.log(`Skipping ${listener.client} listener (not active)`);
-            }
+            try { listener.callback(); }
+            catch (e) { console.error(`Listener ${listener.client} error:`, e); }
         });
     }
 
@@ -222,10 +226,10 @@ export class Sender {
         }
     }
 
-    private lastLoggedStatus?: {
+    /*private lastLoggedStatus?: {
         state: string; x: number; y: number; z: number;
         feed: number; rpm: number; steppers: string;
-    };
+    }; */
 
     // Parses one complete payload like "Idle|WPos:...|Steppers:...|FS:...|Id:..."
     private parseStatusPayload(payload: string) {
@@ -234,7 +238,26 @@ export class Sender {
 
         const state = (parts[0] ?? '').trim();        // "Idle" or "Run"
         this.statusReceived = true;
-        this.isOn = state !== 'Idle';
+        const lower = state.toLowerCase().split(':')[0]; // "Hold:0" -> "hold"
+        const wasWaiting = this.controllerState === 'waiting';
+        this.controllerState = (lower === 'run' || lower === 'hold' || lower === 'alarm' || lower === 'waiting') ? lower : 'idle';
+
+        // While a job is streaming, the only states the controller should ever report are
+        // 'run' and 'hold' (hold covers both an M0 we sent and a feed hold we requested - both
+        // tracked separately via m0Waiting/heldByHost). 'idle' or 'alarm' mid-job is therefore
+        // unambiguous: the controller terminated the program on its own (e.g. pendant stop, or
+        // a fault) - abandon the queued lines instead of continuing to pump them at it.
+        const isActiveJob = this.lineIndex < this.lines.length || this.waitForOkOrError;
+        const isUnexpectedStop = (this.controllerState === 'idle' || this.controllerState === 'alarm') && isActiveJob;
+        if (isUnexpectedStop) {
+            this.externalStop = true;
+            this.lines = [];
+            this.lineIndex = 0;
+            this.waitForOkOrError = false;
+            this.currentLine = '';
+        }
+
+        this.log(`Status received: <${payload}>`);
 
         for (let i = 1; i < parts.length; i++) {
             const p = parts[i];
@@ -259,6 +282,13 @@ export class Sender {
                 const f = p.slice(3).split(',');
                 if (f[0] !== undefined && f[0] !== '') this.feed = Number(f[0]);
                 if (f[1] !== undefined && f[1] !== '') this.rpm = Number(f[1]);
+                if (f[2] !== undefined && f[2] !== '') this.angle = Number(f[2]);
+                continue;
+            }
+
+            if (p.startsWith('Tool:')) {
+                const toolNum = p.slice(5).trim();
+                if (toolNum !== '') this.tool = Number(toolNum);
                 continue;
             }
 
@@ -269,30 +299,32 @@ export class Sender {
             // ignore unknowns
         }
 
+        if (this.showNextStatus) {
+            this.showNextStatus = false;
+            appendLineToResponseEditor(`response: <${payload}>`);
+        }
+
         this.notifyStatusChange();
 
-        // ---- log only on *meaningful* change ----
-        const steppersKey = `${this.xEna},${this.yEna},${this.zEna}`;
-
-        const changed =
-            !this.lastLoggedStatus ||
-            this.lastLoggedStatus.state !== state;
-
-        if (changed) {
-            const printable = `<${payload}>`;
-            appendLineToResponseEditor(`response: ${printable}`);
-            this.log(`response: "${printable}"`);
-            this.lastLoggedStatus = {
-                state, x: this.x, y: this.y, z: this.z,
-                feed: this.feed, rpm: this.rpm, steppers: steppersKey
-            };
+        // Resume after M204: confirmed not in Waiting state (handles both instant and slow cases)
+        if (this.m204Waiting && this.controllerState !== 'waiting' && !this.waitForOkOrError) {
+            this.m204Waiting = false;
+            void this.writeCurrentLine();
+        } else if (wasWaiting && this.controllerState !== 'waiting' && !this.waitForOkOrError) {
+            // Fallback: any other transition out of Waiting
+            void this.writeCurrentLine();
         }
     }
 
     async resume() {
         if (this.port && this.writer) {
+            appendLineToResponseEditor(`command: ~`);
             await this.write('~');
             this.heldByHost = false;
+            this.m0Waiting = false;
+            this.pauseReason = undefined;
+            this.notifyStatusChange();
+            await this.writeCurrentLine();
         }
     }
 
@@ -383,11 +415,37 @@ export class Sender {
     }
 
     private m0Waiting = false;   // true while an M0 is pending resume
+    private m204Waiting = false; // true after M204 sent; blocks next line until state confirmed
     private heldByHost = false;  // true after we send '!' (feed hold)
     private pauseReason: string | undefined;
+    private pauseGeneration = 0; // increments each time an M0 pause occurs
+    private externalStop = false; // true when controller entered hold/alarm without us requesting it (e.g. pendant stop)
 
     public getPauseReason(): string | undefined {
         return this.pauseReason;
+    }
+
+    public getPauseGeneration(): number {
+        return this.pauseGeneration;
+    }
+
+    // Returns true (and clears the flag) if the controller entered hold/alarm
+    // on its own - e.g. a pendant-initiated stop - while a job was streaming.
+    public consumeExternalStop(): boolean {
+        const v = this.externalStop;
+        this.externalStop = false;
+        return v;
+    }
+
+    // Clears any leftover pause bookkeeping after an external stop has been consumed.
+    // Unlike stop()/unhold(), this does NOT write to the controller: an external stop already
+    // returns the controller to idle on its own, so sending '!'/'~' afterwards is unnecessary
+    // and shows up as a confusing "resume received" line in the controller's own log.
+    public acknowledgeExternalStop() {
+        this.heldByHost = false;
+        this.m0Waiting = false;
+        this.pauseReason = undefined;
+        this.notifyStatusChange();
     }
 
     private extractPauseReasonFromM0(raw: string): string | undefined {
@@ -440,6 +498,7 @@ export class Sender {
         if (!text) return;
         this.setActiveClient(client);
 
+        this.externalStop = false;
         this.lines = text.split('\n');
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -452,10 +511,25 @@ export class Sender {
     async sendCommand(command: string, client: SenderClient) {
         this.setActiveClient(client);
 
+        // Realtime commands: sent directly, never generate an ok/error response
+        const rt = command.trim();
+        if (rt === '?') {
+            this.showNextStatus = true;
+            appendLineToResponseEditor(`command: ?`);
+            await this.write('?');
+            this.notifyStatusChange();
+            return;
+        }
+        if (rt === '!' || rt === '~') {
+            appendLineToResponseEditor(`command: ${rt}`);
+            await this.write(rt);
+            this.notifyStatusChange();
+            return;
+        }
+
         this.lines = [command];
         this.lineIndex = 0;
         this.waitForOkOrError = false;
-        await this.write('~');
         await this.writeCurrentLine();
         this.notifyStatusChange();
     }
@@ -463,6 +537,7 @@ export class Sender {
     async sendCommands(commands: string[], client: SenderClient) {
         this.setActiveClient(client);
 
+        this.externalStop = false;
         this.lines = commands;
         this.lineIndex = 0;
         this.waitForOkOrError = false;
@@ -471,8 +546,7 @@ export class Sender {
         this.notifyStatusChange();
     }
 
-    async getPosition(client: SenderClient) {
-        this.setActiveClient(client);
+    async getPosition() {
         return this.getStatus();
     }
 
@@ -499,7 +573,7 @@ export class Sender {
     private async done() {
         this.waitForOkOrError = false;
 
-        // Clear batch/bookkeeping so “streaming” logic won’t stick true
+        // Clear batch/bookkeeping so "streaming" logic won't stick true
         this.lines = [];
         this.lineIndex = 0;
         this.currentLine = '';
@@ -508,6 +582,7 @@ export class Sender {
 
     async stop() {
         this.error = '';
+        appendLineToResponseEditor(`command: !`);
         await this.write('!');
         this.heldByHost = true;
         this.lines = [];
@@ -518,6 +593,8 @@ export class Sender {
 
     async unhold() {
         if (this.port && this.writer) {
+            appendLineToResponseEditor(`command: ~`);
+            await this.write('~');
             this.heldByHost = false;
             this.m0Waiting = false;
             this.pauseReason = undefined;
@@ -549,6 +626,7 @@ export class Sender {
 
     private async writeCurrentLine() {
         if (this.waitForOkOrError) return;
+        if (this.controllerState === 'waiting') return;
         if (this.lineIndex >= this.lines.length) {
             this.done();
             return;
@@ -563,13 +641,14 @@ export class Sender {
         }
 
         this.m0Waiting = /^\s*M0\b/i.test(line);
+        if (this.m0Waiting) this.pauseGeneration++;
         this.pauseReason = this.m0Waiting ? this.extractPauseReasonFromM0(raw) : undefined;
+        if (/^\s*M204\b/i.test(line)) this.m204Waiting = true;
 
         this.currentLine = line;
         this.notifyCurrentCommand(this.currentLine);
 
         this.waitForOkOrError = true;
-        //this.log(`command: "${line}"`);
         appendLineToResponseEditor(`command: ${line}`);
         await this.write(line + '\n');
     };
@@ -636,14 +715,27 @@ export class Sender {
                 this.log(`response: "${this.remainingResponse}"`);
                 this.remainingResponse = "";
 
+                // While m204Waiting and we weren't expecting an ok, this is an unsolicited
+                // informational message from the controller (e.g. "RPM condition met").
+                // Log it (done above) but do NOT advance the line index.
+                if (this.m204Waiting && !this.waitForOkOrError) {
+                    continue;
+                }
+
                 this.waitForOkOrError = false;
                 this.lineIndex++;
 
                 this.notifyStatusChange();
 
                 if (this.m0Waiting) {
-                    this.m0Waiting = false;
-                    this.pauseReason = undefined;
+                    // M0 pause: stay paused until resume() is called
+                    continue;
+                }
+
+                if (this.m204Waiting) {
+                    // Force a fresh status request; parseStatusPayload will resume when confirmed not-waiting
+                    void this.write('?');
+                    continue;
                 }
 
                 // optional: immediate status ping (guarded)
@@ -651,13 +743,18 @@ export class Sender {
                     void this.write('?');
                 }
 
-                // send next line (don’t gate on this.isOn anymore)
+                // send next line (don't gate on this.isOn anymore)
                 await this.writeCurrentLine();
                 continue;
             }
 
-            // Not ok/error: accumulate/log if you want
-            this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
+            // Not ok/error: if a command is in flight, accumulate until its ok arrives;
+            // otherwise log immediately (unsolicited message, e.g. M204 progress updates).
+            if (this.waitForOkOrError) {
+                this.remainingResponse += (this.remainingResponse ? "\n" : "") + raw;
+            } else {
+                appendLineToResponseEditor(`response: ${raw}`);
+            }
         }
     }
 
@@ -678,7 +775,7 @@ export class Sender {
         formatted += 'Tool | Z Offset | X Offset | W Comp   | U Comp\n';
         formatted += '─'.repeat(60) + '\n';
 
-        tools.forEach((tool, index) => {
+        tools.forEach((tool) => {
             if (!tool.trim()) return;
 
             // Parse the tool data (format: T0:Z=0.000,X=0.000,W=0.000,U=0.000)
@@ -762,36 +859,6 @@ export class Sender {
             await this.write('?');
         } catch (e) {
             this.setError(`Device disconnected? ${e}`);
-            this.closePort();
-        }
-    }
-
-    private readSoon() {
-        clearTimeout(this.readTimeout);
-        this.readTimeout = window.setTimeout(() => this.readFromPort(), 200);
-    }
-
-    private async readFromPort() {
-        if (!this.port) return;
-        try {
-            if (!this.port.readable) {
-                this.readSoon();
-                return;
-            }
-            if (!this.reader) {
-                const textDecoder = new TextDecoderStream();
-                this.port.readable.pipeTo(textDecoder.writable);
-                this.reader = textDecoder.readable.getReader();
-            }
-            const { value } = await this.reader.read();
-            if (!value) {
-                this.readSoon();
-                return;
-            }
-            await this.processResponse(value);
-            this.readSoon();
-        } catch (e: any) {
-            this.setError(e.message || String(e));
             this.closePort();
         }
     }
